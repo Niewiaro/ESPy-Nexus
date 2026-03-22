@@ -1,0 +1,19 @@
+{
+    "folders": [
+        {
+            "name": "🚀 Firmware (ESP32)",
+            "path": "esp32_firmware"
+        },
+        {
+            "name": "🐍 Host (Python)",
+            "path": "python_host"
+        }
+    ],
+    "settings": {
+        "files.autoSave": "onFocusChange",
+        "editor.rulers": [
+            80,
+            120
+        ]
+    }
+}

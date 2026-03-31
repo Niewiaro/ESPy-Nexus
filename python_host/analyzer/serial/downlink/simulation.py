@@ -1,6 +1,7 @@
 from pdr import calculate_pdr, print_pdr_result
 from jitter import calculate_jitter, print_jitter_result
 from burst_loss import calculate_burst_loss, print_burst_loss_result
+from goodput import calculate_goodput, print_goodput_result
 
 
 class Config:
@@ -39,6 +40,12 @@ def main() -> None:
 
     result_burst_loss = calculate_burst_loss(config.df["packet_id"], config.total_sent)
     print_burst_loss_result(result_burst_loss)
+    print()
+
+    result_goodput = calculate_goodput(
+        config.df["packet_id"], config.df["esp_ts"], payload_size_bytes=20
+    )
+    print_goodput_result(result_goodput)
     print()
 
 

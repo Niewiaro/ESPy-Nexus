@@ -53,7 +53,7 @@ def calculate_pdr(received_ids: pd.Series, total_sent: int) -> PdrResult:
 
 
 def print_pdr_result(result: PdrResult) -> None:
-    print("--- PDR Analysis ---")
+    print("--- PDR Analysis & Duplicate Detection ---")
     print(f"PDR: {result.ratio_percent:.2f}%")
     print(f"Total Expected: {result.total_expected}")
     print(f"Unique Received: {result.unique_received}")

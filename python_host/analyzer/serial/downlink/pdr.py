@@ -39,24 +39,19 @@ def calculate_pdr(received_ids: pd.Series, total_sent: int) -> PdrResult:
     )
 
 
+def print_pdr_result(result: PdrResult) -> None:
+    print("--- PDR Analysis ---")
+    print(f"PDR: {result.ratio_percent:.2f}%")
+    print(f"Total Expected: {result.total_expected}")
+    print(f"Unique Received: {result.unique_received}")
+    print(f"Lost Count: {result.lost_count}")
+    print(f"Duplicates Count: {result.duplicates_count}")
+
+
 if __name__ == "__main__":
-    # Simulation of received packet IDs with some losses and duplicates
-    packet_id = [1, 2, 3, 3, 5]  # Missing 4, but 3 is duplicated (MAC duplicate)
-    esp_ts = [100, 200, 300, 310, 500]
-    df = pd.DataFrame(
-        {
-            "packet_id": packet_id,
-            "esp_ts": esp_ts,
-        }
-    )
+    from simulation import Config
 
-    TOTAL_SENT = 5
+    config = Config()
 
-    print("\n--- PDR Analysis ---")
-    result_pdr = calculate_pdr(df["packet_id"], TOTAL_SENT)
-
-    print(f"PDR: {result_pdr.ratio_percent:.2f}%")
-    print(f"Total Expected: {result_pdr.total_expected}")
-    print(f"Unique Received: {result_pdr.unique_received}")
-    print(f"Lost Count: {result_pdr.lost_count}")
-    print(f"Duplicates Count: {result_pdr.duplicates_count}")
+    result_pdr = calculate_pdr(config.df["packet_id"], config.total_sent)
+    print_pdr_result(result_pdr)

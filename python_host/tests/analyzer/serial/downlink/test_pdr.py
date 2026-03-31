@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from analyzer.serial.downlink import calculate_pdr, PdrResult
+from analyzer.serial.downlink.pdr import calculate_pdr
 
 
 class TestCalculatePDR:
@@ -11,7 +11,7 @@ class TestCalculatePDR:
         total_sent = 5
         received_ids = pd.Series([1, 2, 3, 4, 5])
 
-        result: PdrResult = calculate_pdr(received_ids, total_sent)
+        result = calculate_pdr(received_ids, total_sent)
 
         assert result.ratio_percent == 100.0
         assert result.unique_received == 5
@@ -24,7 +24,7 @@ class TestCalculatePDR:
         # Missing IDs 2 and 4
         received_ids = pd.Series([1, 3, 5])
 
-        result: PdrResult = calculate_pdr(received_ids, total_sent)
+        result = calculate_pdr(received_ids, total_sent)
 
         assert result.ratio_percent == 60.0
         assert result.unique_received == 3
@@ -37,7 +37,7 @@ class TestCalculatePDR:
         # IDs 3 and 5 arrived twice
         received_ids = pd.Series([1, 2, 3, 3, 4, 5, 5])
 
-        result: PdrResult = calculate_pdr(received_ids, total_sent)
+        result = calculate_pdr(received_ids, total_sent)
 
         assert result.ratio_percent == 100.0
         assert result.unique_received == 5
@@ -51,7 +51,7 @@ class TestCalculatePDR:
         # Duplicated: 2, 9 (2 packets)
         received_ids = pd.Series([1, 2, 2, 3, 8, 9, 9, 10])
 
-        result: PdrResult = calculate_pdr(received_ids, total_sent)
+        result = calculate_pdr(received_ids, total_sent)
 
         assert result.ratio_percent == 60.0  # (6 unique / 10 sent) * 100
         assert result.unique_received == 6
@@ -63,7 +63,7 @@ class TestCalculatePDR:
         total_sent = 100
         received_ids = pd.Series([], dtype=int)
 
-        result: PdrResult = calculate_pdr(received_ids, total_sent)
+        result = calculate_pdr(received_ids, total_sent)
 
         assert result.ratio_percent == 0.0
         assert result.unique_received == 0

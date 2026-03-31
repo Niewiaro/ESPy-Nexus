@@ -40,38 +40,38 @@ class MockTestScenario:
 
 
 def main() -> None:
-    mockTestScenario = MockTestScenario()
+    mock_test_scenario = MockTestScenario()
 
     result_pdr = calculate_pdr(
-        mockTestScenario.df["packet_id"], mockTestScenario.total_sent
+        mock_test_scenario.df["packet_id"], mock_test_scenario.total_sent
     )
     print_pdr_result(result_pdr)
     print()
 
-    result_jitter = calculate_jitter(mockTestScenario.df["esp_ts"])
+    result_jitter = calculate_jitter(mock_test_scenario.df["esp_ts"])
     print_jitter_result(result_jitter)
     print()
 
     result_burst_loss = calculate_burst_loss(
-        mockTestScenario.df["packet_id"], mockTestScenario.total_sent
+        mock_test_scenario.df["packet_id"], mock_test_scenario.total_sent
     )
     print_burst_loss_result(result_burst_loss)
     print()
 
     result_goodput = calculate_goodput(
-        mockTestScenario.df["packet_id"],
-        mockTestScenario.df["esp_ts"],
+        mock_test_scenario.df["packet_id"],
+        mock_test_scenario.df["esp_ts"],
         payload_size_bytes=20,
     )
     print_goodput_result(result_goodput)
     print()
 
-    result_out_of_order = calculate_out_of_order(mockTestScenario.df["packet_id"])
+    result_out_of_order = calculate_out_of_order(mock_test_scenario.df["packet_id"])
     print_out_of_order_result(result_out_of_order)
     print()
 
     result_timing_trends = calculate_timing_trends(
-        mockTestScenario.df["pc_ts"], mockTestScenario.df["esp_ts"]
+        mock_test_scenario.df["pc_ts"], mock_test_scenario.df["esp_ts"]
     )
     print_timing_trends_result(result_timing_trends)
     print()

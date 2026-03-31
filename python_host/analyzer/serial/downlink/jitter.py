@@ -61,7 +61,7 @@ def print_jitter_result(result: JitterResult) -> None:
 if __name__ == "__main__":
     from simulation import MockTestScenario
 
-    mockTestScenario = MockTestScenario()
+    mock_test_scenario = MockTestScenario()
 
-    result_jitter = calculate_jitter(mockTestScenario.df["esp_ts"])
+    result_jitter = calculate_jitter(mock_test_scenario.df["esp_ts"])
     print_jitter_result(result_jitter)

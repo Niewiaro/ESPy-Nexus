@@ -61,7 +61,7 @@ def print_out_of_order_result(result: OutOfOrderResult) -> None:
 if __name__ == "__main__":
     from simulation import MockTestScenario
 
-    mockTestScenario = MockTestScenario()
+    mock_test_scenario = MockTestScenario()
 
-    result_jitter = calculate_out_of_order(mockTestScenario.df["packet_id"])
+    result_jitter = calculate_out_of_order(mock_test_scenario.df["packet_id"])
     print_out_of_order_result(result_jitter)

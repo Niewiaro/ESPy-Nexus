@@ -63,6 +63,7 @@ def calculate_goodput(
 
 
 def print_goodput_result(result: GoodputResult) -> None:
+    print("--- Goodput Analysis ---")
     print(f"Goodput: {result.bytes_per_sec:.2f} B/s")
     print(f"Goodput: {result.kilobytes_per_sec:.2f} KB/s")
     print(f"Goodput: {result.megabits_per_sec:.2f} Mbps")

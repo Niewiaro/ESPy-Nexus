@@ -74,7 +74,7 @@ def calculate_timing_trends(
 
 
 def print_timing_trends_result(result: TimingTrendsResult) -> None:
-    print("--- Timing Trends Analysis ---")
+    print("--- Timing Trends Analysis (Bufferbloat & Hardware Drift) ---")
     print(f"Clock Drift: {result.clock_drift_ppm:.2f} ppm")
     print(f"Max Bufferbloat: {result.max_bufferbloat_us:.2f} μs")
     print(f"Avg Bufferbloat: {result.avg_bufferbloat_us:.2f} μs")

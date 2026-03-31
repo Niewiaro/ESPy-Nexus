@@ -70,11 +70,13 @@ def print_goodput_result(result: GoodputResult) -> None:
 
 
 if __name__ == "__main__":
-    from simulation import Config
+    from simulation import MockTestScenario
 
-    config = Config()
+    mockTestScenario = MockTestScenario()
 
     result_jitter = calculate_goodput(
-        config.df["packet_id"], config.df["esp_ts"], payload_size_bytes=20
+        mockTestScenario.df["packet_id"],
+        mockTestScenario.df["esp_ts"],
+        payload_size_bytes=20,
     )
     print_goodput_result(result_jitter)

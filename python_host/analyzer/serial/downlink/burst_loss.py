@@ -77,9 +77,11 @@ def print_burst_loss_result(result: BurstLossResult) -> None:
 
 
 if __name__ == "__main__":
-    from simulation import Config
+    from simulation import MockTestScenario
 
-    config = Config()
+    mockTestScenario = MockTestScenario()
 
-    result_jitter = calculate_burst_loss(config.df["packet_id"], config.total_sent)
+    result_jitter = calculate_burst_loss(
+        mockTestScenario.df["packet_id"], mockTestScenario.total_sent
+    )
     print_burst_loss_result(result_jitter)

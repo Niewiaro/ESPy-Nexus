@@ -63,9 +63,11 @@ def print_pdr_result(result: PdrResult) -> None:
 
 
 if __name__ == "__main__":
-    from simulation import Config
+    from simulation import MockTestScenario
 
-    config = Config()
+    mockTestScenario = MockTestScenario()
 
-    result_pdr = calculate_pdr(config.df["packet_id"], config.total_sent)
+    result_pdr = calculate_pdr(
+        mockTestScenario.df["packet_id"], mockTestScenario.total_sent
+    )
     print_pdr_result(result_pdr)

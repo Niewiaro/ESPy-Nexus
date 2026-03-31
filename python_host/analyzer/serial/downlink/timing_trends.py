@@ -82,9 +82,11 @@ def print_timing_trends_result(result: TimingTrendsResult) -> None:
 
 
 if __name__ == "__main__":
-    from simulation import Config
+    from simulation import MockTestScenario
 
-    config = Config()
-    print(config.df)
-    result = calculate_timing_trends(config.df["pc_ts"], config.df["esp_ts"])
+    mockTestScenario = MockTestScenario()
+    print(mockTestScenario.df)
+    result = calculate_timing_trends(
+        mockTestScenario.df["pc_ts"], mockTestScenario.df["esp_ts"]
+    )
     print_timing_trends_result(result)

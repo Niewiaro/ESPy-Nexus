@@ -2,14 +2,6 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 
-from pdr import calculate_pdr, print_pdr_result
-from jitter import calculate_jitter, print_jitter_result
-from burst_loss import calculate_burst_loss, print_burst_loss_result
-from goodput import calculate_goodput, print_goodput_result
-from out_of_order import calculate_out_of_order, print_out_of_order_result
-from timing_trends import calculate_timing_trends, print_timing_trends_result
-
-
 @dataclass
 class MockTestScenario:
     """Container for mock test data simulating a downlink scenario with specific anomalies."""
@@ -40,41 +32,14 @@ class MockTestScenario:
 
 
 def main() -> None:
+    from pipeline import DownlinkAnalyzer
+
     mock_test_scenario = MockTestScenario()
-
-    result_pdr = calculate_pdr(
-        mock_test_scenario.df["packet_id"], mock_test_scenario.total_sent
+    analyzer = DownlinkAnalyzer(payload_size_bytes=20)
+    metrics = analyzer.calculate_all_metrics(
+        mock_test_scenario.df, mock_test_scenario.total_sent
     )
-    print_pdr_result(result_pdr)
-    print()
-
-    result_jitter = calculate_jitter(mock_test_scenario.df["esp_ts"])
-    print_jitter_result(result_jitter)
-    print()
-
-    result_burst_loss = calculate_burst_loss(
-        mock_test_scenario.df["packet_id"], mock_test_scenario.total_sent
-    )
-    print_burst_loss_result(result_burst_loss)
-    print()
-
-    result_goodput = calculate_goodput(
-        mock_test_scenario.df["packet_id"],
-        mock_test_scenario.df["esp_ts"],
-        payload_size_bytes=20,
-    )
-    print_goodput_result(result_goodput)
-    print()
-
-    result_out_of_order = calculate_out_of_order(mock_test_scenario.df["packet_id"])
-    print_out_of_order_result(result_out_of_order)
-    print()
-
-    result_timing_trends = calculate_timing_trends(
-        mock_test_scenario.df["pc_ts"], mock_test_scenario.df["esp_ts"]
-    )
-    print_timing_trends_result(result_timing_trends)
-    print()
+    analyzer.print_report(metrics)
 
 
 if __name__ == "__main__":

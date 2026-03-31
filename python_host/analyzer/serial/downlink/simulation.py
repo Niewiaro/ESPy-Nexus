@@ -2,6 +2,7 @@ from pdr import calculate_pdr, print_pdr_result
 from jitter import calculate_jitter, print_jitter_result
 from burst_loss import calculate_burst_loss, print_burst_loss_result
 from goodput import calculate_goodput, print_goodput_result
+from out_of_order import calculate_out_of_order, print_out_of_order_result
 
 
 class Config:
@@ -46,6 +47,10 @@ def main() -> None:
         config.df["packet_id"], config.df["esp_ts"], payload_size_bytes=20
     )
     print_goodput_result(result_goodput)
+    print()
+
+    result_out_of_order = calculate_out_of_order(config.df["packet_id"])
+    print_out_of_order_result(result_out_of_order)
     print()
 
 

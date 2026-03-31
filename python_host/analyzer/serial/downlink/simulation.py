@@ -1,5 +1,6 @@
 from pdr import calculate_pdr, print_pdr_result
 from jitter import calculate_jitter, print_jitter_result
+from burst_loss import calculate_burst_loss, print_burst_loss_result
 
 
 class Config:
@@ -12,8 +13,8 @@ class Config:
         self.esp_ts = esp_ts
 
         if self.packet_id is None:
-            # Missing 4, but 3 is duplicated (MAC duplicate)
-            self.packet_id = [1, 2, 3, 3, 5]
+            # Missing 3, but 2 is duplicated (MAC duplicate)
+            self.packet_id = [0, 1, 2, 2, 5]
         if self.esp_ts is None:
             self.esp_ts = [100, 200, 300, 310, 500]
 
@@ -34,6 +35,10 @@ def main() -> None:
 
     result_jitter = calculate_jitter(config.df["esp_ts"])
     print_jitter_result(result_jitter)
+    print()
+
+    result_burst_loss = calculate_burst_loss(config.df["packet_id"], config.total_sent)
+    print_burst_loss_result(result_burst_loss)
     print()
 
 

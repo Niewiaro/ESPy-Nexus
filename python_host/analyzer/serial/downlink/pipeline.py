@@ -2,16 +2,16 @@ import pandas as pd
 from dataclasses import dataclass
 
 
-from pdr import PdrResult, calculate_pdr, print_pdr_result
-from jitter import JitterResult, calculate_jitter, print_jitter_result
-from burst_loss import BurstLossResult, calculate_burst_loss, print_burst_loss_result
-from goodput import GoodputResult, calculate_goodput, print_goodput_result
-from out_of_order import (
+from .pdr import PdrResult, calculate_pdr, print_pdr_result
+from .jitter import JitterResult, calculate_jitter, print_jitter_result
+from .burst_loss import BurstLossResult, calculate_burst_loss, print_burst_loss_result
+from .goodput import GoodputResult, calculate_goodput, print_goodput_result
+from .out_of_order import (
     OutOfOrderResult,
     calculate_out_of_order,
     print_out_of_order_result,
 )
-from timing_trends import (
+from .timing_trends import (
     TimingTrendsResult,
     calculate_timing_trends,
     print_timing_trends_result,

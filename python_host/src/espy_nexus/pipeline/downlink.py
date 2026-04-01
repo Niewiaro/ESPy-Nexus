@@ -43,8 +43,10 @@ class DownlinkMetrics:
 class DownlinkAnalyzer:
     """Main downlink analyzer (PC -> ESP32)."""
 
-    def __init__(self, payload_size_bytes: int = 16) -> None:
+    def __init__(self, frequency_hz: float, payload_size_bytes: int = 16) -> None:
         self.payload_size_bytes = payload_size_bytes
+        self.frequency_hz = frequency_hz
+        self.expected_iat_us = 1_000_000 / frequency_hz
 
     def calculate_all_metrics(
         self, df: pd.DataFrame, total_sent: int
@@ -67,10 +69,10 @@ class DownlinkAnalyzer:
         esp_timestamps = clean_df["esp_ts"]
 
         result_pdr = calculate_pdr(packet_ids, total_sent)
-        result_jitter = calculate_jitter(esp_timestamps)
+        result_jitter = calculate_jitter(esp_timestamps, self.expected_iat_us)
         result_burst_loss = calculate_burst_loss(packet_ids, total_sent)
         result_goodput = calculate_goodput(
-            packet_ids, esp_timestamps, self.payload_size_bytes
+            packet_ids, esp_timestamps, self.frequency_hz, self.payload_size_bytes
         )
         result_out_of_order = calculate_out_of_order(packet_ids)
         result_timing_trends = calculate_timing_trends(pc_timestamps, esp_timestamps)
@@ -102,7 +104,9 @@ if __name__ == "__main__":
     from espy_nexus.metrics.simulation import MockTestScenario
 
     mock_test_scenario = MockTestScenario()
-    analyzer = DownlinkAnalyzer(payload_size_bytes=20)
+    analyzer = DownlinkAnalyzer(
+        payload_size_bytes=20, frequency_hz=mock_test_scenario.frequency_hz
+    )
     metrics = analyzer.calculate_all_metrics(
         mock_test_scenario.df, mock_test_scenario.total_sent
     )

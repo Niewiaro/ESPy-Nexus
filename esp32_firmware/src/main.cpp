@@ -83,7 +83,7 @@ void serialTask(void *pvParameters)
           // convert data to CSV format and send over Serial
           for (uint32_t i = 0; i < recordCount; i++)
           {
-            Serial.printf("%u,%llu,%u\n",
+            Serial.printf("D,%u,%llu,%u\n",
                           resultBuffer[i].packet_id,
                           resultBuffer[i].pc_timestamp,
                           resultBuffer[i].esp_timestamp_us);
@@ -96,15 +96,19 @@ void serialTask(void *pvParameters)
           }
           Serial.println("END_DATA");
         }
+        else if (inputBuffer == "TEST")
+        {
+          Serial.println("ACK_TEST");
+        }
         else
         {
           if (!isTestRunning)
           {
-            Serial.println("ERR:UNKNOWN_CMD");
+            Serial.println("ERROR:UNKNOWN_CMD");
           }
           else
           {
-            Serial.println("ERR:TEST_RUNNING");
+            Serial.println("WARNING:TEST_RUNNING");
           }
         }
 

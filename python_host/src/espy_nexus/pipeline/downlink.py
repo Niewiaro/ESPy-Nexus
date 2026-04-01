@@ -70,7 +70,9 @@ class DownlinkAnalyzer:
 
         result_pdr = calculate_pdr(packet_ids, total_sent)
         result_jitter = calculate_jitter(esp_timestamps, self.expected_iat_us)
-        result_burst_loss = calculate_burst_loss(packet_ids, total_sent)
+        result_burst_loss = calculate_burst_loss(
+            packet_ids, total_sent, self.expected_iat_us
+        )
         result_goodput = calculate_goodput(
             packet_ids, esp_timestamps, self.frequency_hz, self.payload_size_bytes
         )

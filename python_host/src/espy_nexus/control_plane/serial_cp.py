@@ -1,5 +1,4 @@
 import time
-from typing import List, Dict
 
 from espy_nexus.control_plane.connection_manager import SerialConnectionManager
 

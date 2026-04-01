@@ -7,6 +7,8 @@ class MockTestScenario:
     """Container for mock test data simulating a downlink scenario with specific anomalies."""
 
     total_sent: int = 5
+    expected_iat_us: float = 100.0  # Expected inter-arrival time in microseconds
+    frequency_hz: float = 1_000_000 / expected_iat_us  # Convert to Hz for reference
     packet_ids: list[int] = field(default_factory=lambda: [0, 1, 2, 2, 4])
     pc_ts: list[int] = field(
         default_factory=lambda: [1_000_000, 1_000_100, 1_000_200, 1_000_200, 1_000_400]

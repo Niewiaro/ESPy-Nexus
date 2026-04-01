@@ -8,11 +8,14 @@ class TimingTrendsResult:
     clock_drift_ppm: float  # Clock drift in Parts Per Million
     max_bufferbloat_us: float  # Maximum relative deviation (queuing peak)
     avg_bufferbloat_us: float  # Average buffer fill
+    bufferbloat_percent: (
+        float  # Percentage of time spent in buffer (relative to total OWD)
+    )
     trend_slope: float  # Slope coefficient (μs delay per μs of test)
 
 
 def calculate_timing_trends(
-    pc_timestamps: pd.Series, esp_timestamps: pd.Series
+    pc_timestamps: pd.Series, esp_timestamps: pd.Series, expected_iat_us: float
 ) -> TimingTrendsResult:
     """
     Calculates relative delay trend (Bufferbloat) and hardware crystal drift.
@@ -30,7 +33,7 @@ def calculate_timing_trends(
         )
 
     if len(pc_timestamps) < 2:
-        return TimingTrendsResult(0.0, 0.0, 0.0, 0.0)
+        return TimingTrendsResult(0.0, 0.0, 0.0, 0.0, 0.0)
 
     # One-Way Delay (OWD)
     owd_raw = esp_timestamps - pc_timestamps
@@ -42,6 +45,7 @@ def calculate_timing_trends(
 
     max_bufferbloat = float(owd_rel.max())
     avg_bufferbloat = float(owd_rel.mean())
+    bufferbloat_percent = (avg_bufferbloat / expected_iat_us) * 100
 
     # Hardware Clock Drift in PPM
     # Measure total test duration (from first to last received packet)
@@ -69,6 +73,7 @@ def calculate_timing_trends(
         clock_drift_ppm=drift_ppm,
         max_bufferbloat_us=max_bufferbloat,
         avg_bufferbloat_us=avg_bufferbloat,
+        bufferbloat_percent=bufferbloat_percent,
         trend_slope=slope,
     )
 
@@ -78,6 +83,7 @@ def print_timing_trends_result(result: TimingTrendsResult) -> None:
     print(f"Clock Drift: {result.clock_drift_ppm:.2f} ppm")
     print(f"Max Bufferbloat: {result.max_bufferbloat_us:.2f} μs")
     print(f"Avg Bufferbloat: {result.avg_bufferbloat_us:.2f} μs")
+    print(f"Bufferbloat Percent: {result.bufferbloat_percent:.2f}%")
     print(f"Bufferbloat Trend Slope: {result.trend_slope:.6f} μs/μs")
 
 
@@ -87,6 +93,8 @@ if __name__ == "__main__":
     mock_test_scenario = MockTestScenario()
     print(mock_test_scenario.df)
     result = calculate_timing_trends(
-        mock_test_scenario.df["pc_ts"], mock_test_scenario.df["esp_ts"]
+        mock_test_scenario.df["pc_ts"],
+        mock_test_scenario.df["esp_ts"],
+        mock_test_scenario.expected_iat_us,
     )
     print_timing_trends_result(result)

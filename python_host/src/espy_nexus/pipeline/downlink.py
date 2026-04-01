@@ -77,7 +77,9 @@ class DownlinkAnalyzer:
             packet_ids, esp_timestamps, self.frequency_hz, self.payload_size_bytes
         )
         result_out_of_order = calculate_out_of_order(packet_ids)
-        result_timing_trends = calculate_timing_trends(pc_timestamps, esp_timestamps)
+        result_timing_trends = calculate_timing_trends(
+            pc_timestamps, esp_timestamps, self.expected_iat_us
+        )
 
         return DownlinkMetrics(
             pdr=result_pdr,

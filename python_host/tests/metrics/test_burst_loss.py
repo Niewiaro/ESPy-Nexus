@@ -1,6 +1,7 @@
 import pytest
 import pandas as pd
-from analyzer.serial.downlink.burst_loss import calculate_burst_loss
+
+from espy_nexus.metrics.burst_loss import calculate_burst_loss
 
 
 class TestCalculateBurstLoss:

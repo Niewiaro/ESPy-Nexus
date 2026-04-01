@@ -82,7 +82,7 @@ def print_timing_trends_result(result: TimingTrendsResult) -> None:
 
 
 if __name__ == "__main__":
-    from simulation import MockTestScenario
+    from espy_nexus.metrics.simulation import MockTestScenario
 
     mock_test_scenario = MockTestScenario()
     print(mock_test_scenario.df)

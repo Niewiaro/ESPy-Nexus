@@ -86,7 +86,7 @@ def run_test():
 
 
 def analyze_data(df: pd.DataFrame):
-    from analyzer.serial.downlink.pipeline import DownlinkAnalyzer
+    from espy_nexus.pipeline.downlink import DownlinkAnalyzer
 
     analyzer = DownlinkAnalyzer(payload_size_bytes=16)
     metrics = analyzer.calculate_all_metrics(df, total_sent=NUM_PACKETS)

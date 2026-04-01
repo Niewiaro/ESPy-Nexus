@@ -77,7 +77,7 @@ def print_burst_loss_result(result: BurstLossResult) -> None:
 
 
 if __name__ == "__main__":
-    from simulation import MockTestScenario
+    from espy_nexus.metrics.simulation import MockTestScenario
 
     mock_test_scenario = MockTestScenario()
 

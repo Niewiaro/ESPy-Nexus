@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "espy_nexus"
+version = "0.1.0"
+description = "Hardware-in-the-loop wireless communication system for the ESPy framework"
+requires-python = ">=3.14"
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "Niewiaro"},
+]
+
+dependencies = [
+    "numpy==2.4.4",
+    "pandas==3.0.2",
+    "pyserial==3.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.0.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

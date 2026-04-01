@@ -59,7 +59,7 @@ def print_out_of_order_result(result: OutOfOrderResult) -> None:
 
 
 if __name__ == "__main__":
-    from simulation import MockTestScenario
+    from espy_nexus.metrics.simulation import MockTestScenario
 
     mock_test_scenario = MockTestScenario()
 

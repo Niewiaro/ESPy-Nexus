@@ -2,16 +2,28 @@ import pandas as pd
 from dataclasses import dataclass
 
 
-from .pdr import PdrResult, calculate_pdr, print_pdr_result
-from .jitter import JitterResult, calculate_jitter, print_jitter_result
-from .burst_loss import BurstLossResult, calculate_burst_loss, print_burst_loss_result
-from .goodput import GoodputResult, calculate_goodput, print_goodput_result
-from .out_of_order import (
+from espy_nexus.metrics.pdr import PdrResult, calculate_pdr, print_pdr_result
+from espy_nexus.metrics.jitter import (
+    JitterResult,
+    calculate_jitter,
+    print_jitter_result,
+)
+from espy_nexus.metrics.burst_loss import (
+    BurstLossResult,
+    calculate_burst_loss,
+    print_burst_loss_result,
+)
+from espy_nexus.metrics.goodput import (
+    GoodputResult,
+    calculate_goodput,
+    print_goodput_result,
+)
+from espy_nexus.metrics.out_of_order import (
     OutOfOrderResult,
     calculate_out_of_order,
     print_out_of_order_result,
 )
-from .timing_trends import (
+from espy_nexus.metrics.timing_trends import (
     TimingTrendsResult,
     calculate_timing_trends,
     print_timing_trends_result,
@@ -84,3 +96,14 @@ class DownlinkAnalyzer:
         print_out_of_order_result(metrics.out_of_order)
         print()
         print_timing_trends_result(metrics.timing_trends)
+
+
+if __name__ == "__main__":
+    from espy_nexus.metrics.simulation import MockTestScenario
+
+    mock_test_scenario = MockTestScenario()
+    analyzer = DownlinkAnalyzer(payload_size_bytes=20)
+    metrics = analyzer.calculate_all_metrics(
+        mock_test_scenario.df, mock_test_scenario.total_sent
+    )
+    analyzer.print_report(metrics)

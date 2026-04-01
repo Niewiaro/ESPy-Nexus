@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from analyzer.serial.downlink.out_of_order import calculate_out_of_order
+from espy_nexus.metrics.out_of_order import calculate_out_of_order
 
 
 class TestCalculateOutOfOrder:

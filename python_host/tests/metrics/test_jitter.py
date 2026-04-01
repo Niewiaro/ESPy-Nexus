@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from analyzer.serial.downlink.jitter import calculate_jitter
+from espy_nexus.metrics.jitter import calculate_jitter
 
 
 class TestCalculateJitter:

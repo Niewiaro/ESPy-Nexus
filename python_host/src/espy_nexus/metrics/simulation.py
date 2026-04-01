@@ -29,18 +29,3 @@ class MockTestScenario:
                 "esp_ts": self.esp_ts,
             }
         )
-
-
-def main() -> None:
-    from pipeline import DownlinkAnalyzer
-
-    mock_test_scenario = MockTestScenario()
-    analyzer = DownlinkAnalyzer(payload_size_bytes=20)
-    metrics = analyzer.calculate_all_metrics(
-        mock_test_scenario.df, mock_test_scenario.total_sent
-    )
-    analyzer.print_report(metrics)
-
-
-if __name__ == "__main__":
-    main()

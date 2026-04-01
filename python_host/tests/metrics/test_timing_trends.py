@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from analyzer.serial.downlink.timing_trends import calculate_timing_trends
+from espy_nexus.metrics.timing_trends import calculate_timing_trends
 
 
 class TestCalculateTimingTrends:

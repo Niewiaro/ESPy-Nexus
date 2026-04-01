@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from analyzer.serial.downlink.pdr import calculate_pdr
+from espy_nexus.metrics.pdr import calculate_pdr
 
 
 class TestCalculatePDR:

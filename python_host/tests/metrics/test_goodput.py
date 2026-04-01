@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from analyzer.serial.downlink.goodput import calculate_goodput
+from espy_nexus.metrics.goodput import calculate_goodput
 
 
 class TestCalculateGoodput:

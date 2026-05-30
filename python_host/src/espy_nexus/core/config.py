@@ -2,12 +2,27 @@ from enum import Enum
 from dataclasses import dataclass
 
 
+class ControlPlane(str, Enum):
+    """Supported control plane implementations."""
+
+    SERIAL = "SERIAL"
+    MOCK = "MOCK"
+
+
 class Protocol(str, Enum):
     """Supported transport layers."""
 
+    MOCK = "MOCK"
     SERIAL = "SERIAL"
     # UDP = "UDP"
     # TCP = "TCP"
+
+
+class RateType(str, Enum):
+    """Types of frequency sweeps."""
+
+    LINEAR = "LINEAR"
+    EXPONENTIAL = "EXPONENTIAL"
 
 
 @dataclass(frozen=True, slots=True)

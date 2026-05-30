@@ -1,61 +1,80 @@
 import time
+import logging
 from espy_nexus.data_plane.base import BaseDataPlane
 from espy_nexus.control_plane.connection_manager import SerialConnectionManager
 
 
 class SerialDataPlane(BaseDataPlane):
     """
-    Data Plane for serial port.
-    Generating and sending test data payloads at a precise frequency using busy-waiting.
-    This class is responsible only for generating and sending a fast test payload
+    Data Plane dla portu szeregowego (Serial port).
+    Generuje i wysyła pakiety testowe z wysoką precyzją, wymuszając rygor
+    czasowy na poziomie mikrosekund za pomocą pętli "Busy-Wait".
     """
 
     def __init__(self, port: str, baudrate: int):
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.manager = SerialConnectionManager(port, baudrate)
+
+    def connect(self) -> None:
+        """Pobiera zasoby systemowe portu szeregowego."""
+        self.logger.info(
+            "Konfiguracja buforów systemowych dla szybkiej transmisji po Serialu."
+        )
+        self.manager.connect()
+
+    def disconnect(self) -> None:
+        """Zwalnia port, aby inny skrypt/narzędzie mogło go użyć."""
+        self.logger.info("Zwalnianie zasobów Serial Data Plane.")
+        self.manager.disconnect()
 
     def transmit(self, packet_count: int, frequency_hz: int) -> None:
         """
-        Main transmission loop.
-        Uses "Busy-Wait" with time.perf_counter_ns() to avoid
-        inaccuracy of system scheduler (Windows/Linux time.sleep).
+        Główna, rygorystyczna pętla nadawcza.
+        UWAGA: Ta funkcja celowo blokuje całkowicie 1 rdzeń procesora (Busy-Wait).
+        Nigdy nie używać tutaj time.sleep() (błąd planisty rzędu ~15ms w systemach Windows).
         """
-        # Get the physical serial port object from the manager
         serial = self.manager.get_serial()
+        if not serial:
+            self.logger.error(
+                "Transmisja przerwana: Zwrócono pusty uchwyt portu Serial."
+            )
+            return
 
-        print(
-            f"[Data Plane] Start transmission: {packet_count} packets @ {frequency_hz} Hz"
+        self.logger.info(
+            f"Rozpoczynanie agresywnego nadawania: {packet_count} Pkts @ {frequency_hz} Hz"
         )
 
-        # Interval between packets in nanoseconds (1 second = 1 billion ns)
+        # Obliczenie idealnego odstępu w nanosekundach
         interval_ns = 1_000_000_000 / frequency_hz
 
-        # Flush any garbage from the port before the critical test
+        # Wyczyszczenie brudów w buforze wysyłkowym systemu OS
         serial.flush()
 
-        # Set time zero point for our precise clock
+        # Wyznaczenie punktu zerowego dla naszego bardzo precyzyjnego zegara sprzętowego
         next_transmission_time = time.perf_counter_ns()
 
         for i in range(packet_count):
-            # precise wait (Busy-Wait Loop)
-            # While loop blocks 1 CPU core for a millisecond fraction,
-            # but guarantees jitter at hardware level.
+
+            # --- BLOKADA ZASOBÓW (BUSY-WAIT) ---
+            # Ten kod kręci się w miejscu, pożerając CPU, aż osiągnie dokładny interwał.
+            # Zapewnia to pominięcie niedokładnego planisty (system scheduler).
             while time.perf_counter_ns() < next_transmission_time:
                 pass
 
-            # get sender timestamp (pc_ts in microseconds)
+            # Pobranie stempla czasowego (TS) wysyłki po wyjściu z busy-wait
             pc_timestamp_us = time.time_ns() // 1000
 
-            # build packet (Currently ASCII format)
+            # Budowa pakietu do sprzętu: "D,<Id_Pakietu>,<Stempel_Czasowy_PC>\n"
             packet = f"D,{i},{pc_timestamp_us}\n".encode("ascii")
 
-            # physically write to serial port
+            # Wrzucenie strumienia bajtów na USB (system OS przerzuca to do sterownika CH340/CP2102)
             serial.write(packet)
 
-            # schedule next transmission time
-            # Always add interval to *theoretical* time, not to "now".
-            # This avoids cumulative drift.
+            # Przesunięcie znacznika czasu do przodu.
+            # Ważne: ZAWSZE dodajemy interwał do teoretycznego punktu w czasie,
+            # aby błędy systemowe nie kumulowały się (drift prevention).
             next_transmission_time += interval_ns
 
-        # Ensure the last bytes physically left the computer's USB buffer
+        # Wymuszenie fizycznego opróżnienia kolejki FIFO portu z ostatnich pakietów
         serial.flush()
-        print("[Data Plane] Transmission completed successfully.")
+        self.logger.info("Fizyczna wysyłka portem sprzętowym zakończona.")

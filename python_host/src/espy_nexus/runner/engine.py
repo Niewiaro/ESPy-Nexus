@@ -1,193 +1,292 @@
 import time
+import logging
 import pandas as pd
 import os
 from typing import Any
+from datetime import datetime, timedelta
 
 from espy_nexus.core.config import TestConfig, Protocol
-from espy_nexus.control_plane.serial_cp import SerialControlPlane
-from espy_nexus.data_plane.serial_dp import SerialDataPlane
+from espy_nexus.control_plane.base import BaseControlPlane
+from espy_nexus.data_plane.base import BaseDataPlane
 from espy_nexus.pipeline.downlink import DownlinkAnalyzer, DownlinkMetrics
 
+ROW_SEP_LEN = 74
 
-def convert_seconds_to_formatted(seconds: float) -> str:
+
+def format_duration(seconds: float, compact: bool = False) -> str:
+    """Konwertuje sekundy na czytelny format. Z opcją skróconą dla tabel."""
     hours, remainder = divmod(seconds, 3600)
     minutes, remainder = divmod(remainder, 60)
     secs = int(remainder)
     millis = int((remainder - secs) * 1000)
+
+    if compact:
+        if hours > 0:
+            return f"{int(hours):02d}h {int(minutes):02d}m {secs:02d}s"
+        return f"{int(minutes):02d}m {secs:02d}s {millis:03d}ms"
+
     return f"{int(hours):02d}h {int(minutes):02d}m {secs:02d}s {millis:03d}ms"
 
 
 class TestEngine:
     """
-    Orchestrator executing a test matrix on hardware (Hardware-in-the-Loop).
-    Manages control/data planes, analyzer, and exports results to CSV.
+    The Test Engine orchestrates the execution of a test matrix on hardware (Hardware-in-the-Loop).
+    It manages the control plane, data planes and analysis.
     """
 
-    def __init__(self, port: str, baudrate: int):
-        self.port = port
-        self.baudrate = baudrate
-        # Control plane always uses serial connection, independent of data protocol
-        self.control_plane = SerialControlPlane(port=port, baudrate=baudrate)
+    def __init__(
+        self,
+        control_plane: BaseControlPlane,
+        data_planes: dict[Protocol, BaseDataPlane],
+    ):
+        # 1. Logger for the engine itself
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        # 2. Control Plane Dependence Injection (Strategy Pattern)
+        self.control_plane = control_plane
+
+        # 3. Data Plane Dependence Injection (Strategy Pattern)
+        self.data_planes = data_planes
 
     def run_matrix(
         self,
         matrix: list[TestConfig],
         output_csv: str = "matrix_results.csv",
-        cooldown_s: float = 5,
+        cooldown_s: float = 5.0,
     ) -> None:
 
-        # calculate estimated duration for user information
-        total_estimated_tx_time = sum(
-            config.packet_count / config.frequency_hz for config in matrix
-        )
-        total_estimated_cooldown_time = len(matrix) * cooldown_s
-        estimated_overhead = len(matrix) * 1.0
+        self._print_schedule(matrix, cooldown_s)
 
-        total_estimated_s = (
-            total_estimated_tx_time + total_estimated_cooldown_time + estimated_overhead
-        )
-        total_estimated_formatted = convert_seconds_to_formatted(total_estimated_s)
+        try:
+            input("\nPress [ENTER] to start tests (or Ctrl+C to cancel)...")
+        except KeyboardInterrupt:
+            self.logger.warning("\nTests cancelled before starting.")
+            return
 
-        print("=" * 60)
-        print(f"⚙️ Lunching test matrix ({len(matrix)} testruns)")
-        print(f"⏳ Estimated duration: {total_estimated_formatted}")
-        print("=" * 60)
+        self.logger.info("=" * ROW_SEP_LEN)
+        self.logger.info("🚀 STARTING TEST MATRIX")
+        self.logger.info("=" * ROW_SEP_LEN)
+
         total_matrix_start = time.perf_counter()
 
         try:
             self.control_plane.connect()
 
             for i, config in enumerate(matrix, 1):
-                total_loop_start = time.perf_counter()
+                start_dt = datetime.now()
+                est_test_duration = (
+                    (config.packet_count / config.frequency_hz) + cooldown_s + 1.0
+                )
+                end_dt = start_dt + timedelta(seconds=est_test_duration)
 
-                print(
-                    f"\n[{i}/{len(matrix)}] >>> {config.test_id} ({config.frequency_hz} Hz)"
+                self.logger.info(
+                    f"[{i}/{len(matrix)}] >>> {config.protocol.value} {config.frequency_hz} Hz"
+                )
+                self.logger.info(
+                    f"⏳ Estimated time: {format_duration(est_test_duration, compact=True)} | "
+                    f"Planned end time: {end_dt.strftime('%H:%M:%S')}"
                 )
 
-                theoretical_tx_s = config.packet_count / config.frequency_hz
-                theoretical_tx_formatted = convert_seconds_to_formatted(
-                    theoretical_tx_s
-                )
-                print(f"\t[Time] Theoretical: {theoretical_tx_formatted}")
+                test_start_perf = time.perf_counter()
 
-                # Strategy pattern for data plane instantiation based on protocol
-                if config.protocol == Protocol.SERIAL:
-                    data_plane = SerialDataPlane(port=self.port, baudrate=self.baudrate)
-                else:
-                    print(f"\t[-] Unknown protocol: {config.protocol.value}. Skipping.")
-                    continue
+                self._run_single_test(config, output_csv)
 
-                # Negotiation and handshakes (Control Plane)
-                if not self.control_plane.send_command(
-                    f"START_{config.protocol.value}",
-                    expected_ack=f"ACK_START_{config.protocol.value}",
-                ):
-                    print(
-                        f"\t[-] ESP32 did not acknowledge start. Marking test as failed."
-                    )
-                    self._save_to_csv(
-                        self._create_empty_row(config, "ERR_START"), output_csv
-                    )
-                    continue
-
-                # Aggressive Data Transmission (Data Plane)
-                actual_tx_start = time.perf_counter()
-
-                data_plane.transmit(
-                    packet_count=config.packet_count, frequency_hz=config.frequency_hz
+                test_actual_duration = time.perf_counter() - test_start_perf
+                self.logger.info(
+                    f"✅ Completed. Actual time: {format_duration(test_actual_duration)}"
                 )
 
-                actual_tx_end = time.perf_counter()
-                actual_tx_s = actual_tx_end - actual_tx_start
-                actual_tx_formatted = convert_seconds_to_formatted(actual_tx_s)
-                print(f"\t[Time] Actual transmission: {actual_tx_formatted}")
-
-                # Safe Shutdown (Control Plane)
-                self.control_plane.send_command("STOP", expected_ack="ACK_STOP")
-
-                # Get buffered logs (Control Plane)
-                actual_fetch_start = time.perf_counter()
-
-                records = self.control_plane.fetch_data()
-
-                actual_fetch_end = time.perf_counter()
-                actual_fetch_s = actual_fetch_end - actual_fetch_start
-                actual_fetch_end_formatted = convert_seconds_to_formatted(
-                    actual_fetch_s
-                )
-                print(f"\t[Time] Data fetch: {actual_fetch_end_formatted}")
-
-                # Analyze
-                if not records:
-                    row = self._create_empty_row(config, "NO_DATA")
-                    row.update(
-                        {
-                            "time_tx_actual": actual_tx_s,
-                            "time_fetch": actual_fetch_s,
-                        }
+                if i < len(matrix):
+                    self.logger.debug(
+                        f"Cooling down for {cooldown_s} seconds before next test..."
                     )
-                    self._save_to_csv(row, output_csv)
-                    continue
-
-                df_raw = pd.DataFrame(records)
-                analyzer = DownlinkAnalyzer(
-                    payload_size_bytes=config.payload_size_bytes,
-                    frequency_hz=config.frequency_hz,
-                )
-
-                try:
-                    metrics = analyzer.calculate_all_metrics(
-                        df_raw,
-                        total_sent=config.packet_count,
-                    )
-                    total_loop_end = time.perf_counter()
-                    total_loop_s = total_loop_end - total_loop_start
-                    total_loop_formatted = convert_seconds_to_formatted(total_loop_s)
-
-                    result_row = self._flatten_metrics(config, metrics)
-
-                    result_row.update(
-                        {
-                            "engine_time_tx_theory": theoretical_tx_s,
-                            "engine_time_tx_actual": actual_tx_s,
-                            "engine_time_fetch": actual_fetch_s,
-                            "engine_time_total_loop": total_loop_s,
-                        }
-                    )
-
-                    self._save_to_csv(result_row, output_csv)
-
-                    print(
-                        f"\t[+] OK. PDR: {metrics.pdr.ratio_percent}% | Jitter CV: {metrics.jitter.cv_percent:.2f} % | "
-                        f"Loop: {total_loop_formatted} (Tx: {actual_tx_formatted}, Fetch: {actual_fetch_end_formatted})"
-                    )
-
-                except Exception as e:
-                    print(f"\t[!] Analyze error: {e}")
-                    self._save_to_csv(
-                        self._create_empty_row(config, f"ERR_ANALYZE: {e}"), output_csv
-                    )
-
-                time.sleep(cooldown_s)
+                    time.sleep(cooldown_s)
 
         except KeyboardInterrupt:
-            print("\n\t[!] Keyboard interrupt (Ctrl+C).")
+            self.logger.warning("\n[!] Tests cancelled by user (Ctrl+C).")
         finally:
             self.control_plane.disconnect()
 
-            total_matrix_end = time.perf_counter()
-            total_matrix_s = total_matrix_end - total_matrix_start
-            total_matrix_formatted = convert_seconds_to_formatted(total_matrix_s)
+            total_matrix_s = time.perf_counter() - total_matrix_start
+            self.logger.info("=" * ROW_SEP_LEN)
+            self.logger.info(
+                f"📊 END OF TEST MATRIX | actual time: {format_duration(total_matrix_s)}"
+            )
+            self.logger.info("=" * ROW_SEP_LEN)
 
-            print("\n" + "=" * 60)
-            print(f"📊 End test matrix (took {total_matrix_formatted})")
-            print("=" * 60)
+    # =========================================================================
+    # SCHEDULE AND TABLE PRINTING
+    # =========================================================================
+
+    def _print_schedule(self, matrix: list[TestConfig], cooldown_s: float) -> None:
+        now = datetime.now()
+        current_time = now
+        total_duration = 0.0
+
+        ROW_SEP_LEN = 74
+
+        schedule_rows = []
+
+        for config in matrix:
+            tx_s = config.packet_count / config.frequency_hz
+            overhead = 1.0
+            test_total_s = tx_s + overhead + cooldown_s
+
+            start_str = current_time.strftime("%H:%M:%S")
+            current_time += timedelta(seconds=test_total_s)
+            end_str = current_time.strftime("%H:%M:%S")
+
+            schedule_rows.append(
+                f"{config.protocol.value:<10} | {config.frequency_hz:<10d} Hz | {format_duration(test_total_s, compact=True):<14} | {start_str:<10} | {end_str:<10}"
+            )
+            total_duration += test_total_s
+
+        self.logger.info("=" * ROW_SEP_LEN)
+        self.logger.info("📅 TEST MATRIX SCHEDULE")
+        self.logger.info("=" * ROW_SEP_LEN)
+        self.logger.info(f"Payload size:\t\t{matrix[0].payload_size_bytes} B")
+        self.logger.info(f"Packet count:\t\t{matrix[0].packet_count}")
+        self.logger.info(f"Start time:\t\t{now.strftime('%Y-%m-%d %H:%M:%S')}")
+        self.logger.info(
+            f"End estimated time:\t{current_time.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        self.logger.info(f"Total estimated time:\t{format_duration(total_duration)}")
+        self.logger.info("-" * ROW_SEP_LEN)
+        self.logger.info(
+            f"{'#':<3} | {'PROTOCOL':<10} | {'FREQUENCY':<13} | {'DURATION':<14} | {'START':<10} | {'END':<10}"
+        )
+        self.logger.info("-" * ROW_SEP_LEN)
+        for index, row in enumerate(schedule_rows):
+            self.logger.info(f"{index + 1:3d} | {row}")
+        self.logger.info("=" * ROW_SEP_LEN)
+
+    # =========================================================================
+    # SINGLE TEST EXECUTION
+    # =========================================================================
+
+    def _run_single_test(self, config: TestConfig, output_csv: str) -> None:
+        total_loop_start = time.perf_counter()
+        theoretical_tx_s = config.packet_count / config.frequency_hz
+
+        # 1. Data Plane Dependency Injection
+        data_plane = self.data_planes.get(config.protocol)
+        if not data_plane:
+            self.logger.warning(
+                f"[-] No data plane found for protocol: {config.protocol.value}. Skipping..."
+            )
+            return
+
+        # 2. Control Plane Handshake (START command)
+        if not self._perform_start_handshake(config):
+            self._handle_error(config, "ERR_START", output_csv)
+            return
+
+        # 3. Data Transmission with timing
+        try:
+            data_plane.connect()
+            actual_tx_s = self._transmit_data(data_plane, config)
+        except Exception as e:
+            self.logger.error(f"[!] Critical error during transmission: {e}")
+            self._handle_error(config, f"ERR_DATA_PLANE: {e}", output_csv)
+            return
+        finally:
+            data_plane.disconnect()
+
+        # 4. Closing and fetching results from Control Plane
+        self.control_plane.send_command("STOP", expected_ack="ACK_STOP")
+        records, actual_fetch_s = self._fetch_logs()
+
+        # 5. Analysis and Saving
+        if not records:
+            extra_data = {"time_tx_actual": actual_tx_s, "time_fetch": actual_fetch_s}
+            self._handle_error(config, "NO_DATA", output_csv, **extra_data)
+            return
+
+        self._analyze_and_save(
+            config=config,
+            records=records,
+            output_csv=output_csv,
+            time_data=(total_loop_start, theoretical_tx_s, actual_tx_s, actual_fetch_s),
+        )
+
+    # =========================================================================
+    # HELPER METHODS FOR TEST EXECUTION
+    # =========================================================================
+
+    def _perform_start_handshake(self, config: TestConfig) -> bool:
+        cmd = f"START_{config.protocol.value}"
+        ack = f"ACK_START_{config.protocol.value}"
+        success = self.control_plane.send_command(cmd, expected_ack=ack)
+        if not success:
+            self.logger.error(
+                "[-] No ACK received for START command. Control Plane handshake failed."
+            )
+        return success
+
+    def _transmit_data(self, data_plane: BaseDataPlane, config: TestConfig) -> float:
+        tx_start = time.perf_counter()
+        data_plane.transmit(
+            packet_count=config.packet_count, frequency_hz=config.frequency_hz
+        )
+        tx_duration = time.perf_counter() - tx_start
+        self.logger.info(f"Transmit data actual time: {format_duration(tx_duration)}")
+        return tx_duration
+
+    def _fetch_logs(self) -> tuple[list[dict], float]:
+        fetch_start = time.perf_counter()
+        records = self.control_plane.fetch_data()
+        fetch_duration = time.perf_counter() - fetch_start
+        self.logger.info(f"Fetch logs actual time: {format_duration(fetch_duration)}")
+        return records, fetch_duration
+
+    def _analyze_and_save(
+        self, config: TestConfig, records: list[dict], output_csv: str, time_data: tuple
+    ) -> None:
+        total_loop_start, theoretical_tx_s, actual_tx_s, actual_fetch_s = time_data
+        df_raw = pd.DataFrame(records)
+        analyzer = DownlinkAnalyzer(
+            payload_size_bytes=config.payload_size_bytes,
+            frequency_hz=config.frequency_hz,
+        )
+
+        try:
+            metrics = analyzer.calculate_all_metrics(
+                df_raw, total_sent=config.packet_count
+            )
+            total_loop_s = time.perf_counter() - total_loop_start
+
+            result_row = self._flatten_metrics(config, metrics)
+            result_row.update(
+                {
+                    "engine_time_tx_theory": theoretical_tx_s,
+                    "engine_time_tx_actual": actual_tx_s,
+                    "engine_time_fetch": actual_fetch_s,
+                    "engine_time_total_loop": total_loop_s,
+                }
+            )
+
+            self._save_to_csv(result_row, output_csv)
+
+            self.logger.info(
+                f"[+] OK. PDR: {metrics.pdr.ratio_percent}% | Jitter CV: {metrics.jitter.cv_percent:.2f}% | "
+                f"Loop: {format_duration(total_loop_s)}"
+            )
+
+        except Exception as e:
+            self.logger.error(f"\t[!] Error analyzing data: {e}")
+            self._handle_error(config, f"ERR_ANALYZE: {e}", output_csv)
+
+    def _handle_error(
+        self, config: TestConfig, status: str, output_csv: str, **kwargs
+    ) -> None:
+        row = self._create_empty_row(config, status)
+        row.update(kwargs)
+        self._save_to_csv(row, output_csv)
 
     def _flatten_metrics(
         self, config: TestConfig, m: DownlinkMetrics
     ) -> dict[str, Any]:
         return {
-            "test_id": config.test_id,
             "protocol": config.protocol.value,
             "freq_hz": config.frequency_hz,
             "status": "OK",
@@ -234,13 +333,12 @@ class TestEngine:
 
     def _create_empty_row(self, config: TestConfig, status: str) -> dict[str, Any]:
         return {
-            "test_id": config.test_id,
             "protocol": config.protocol.value,
             "freq_hz": config.frequency_hz,
             "status": status,
         }
 
-    def _save_to_csv(self, row_dict: dict[str, Any], filename: str):
+    def _save_to_csv(self, row_dict: dict[str, Any], filename: str) -> None:
         df = pd.DataFrame([row_dict])
         file_exists = os.path.isfile(filename)
         df.to_csv(filename, mode="a", index=False, header=not file_exists)

@@ -34,6 +34,8 @@ class SerialConnectionManager:
         self.baudrate = baudrate
         self.timeout_s = timeout_s
 
+        self._ref_count = 0  # Track how many times this port is requested
+
         self.serial_obj = serial.Serial()
         self.serial_obj.port = self.port
         self.serial_obj.baudrate = self.baudrate
@@ -59,30 +61,40 @@ class SerialConnectionManager:
 
     def connect(self) -> None:
         """Open the physical communication port."""
-        if not self.serial_obj.is_open:
-            try:
-                self.serial_obj.open()
-                # Short delay to allow voltages to stabilize after DTR/RTS reset
-                time.sleep(0.1)
-                self.serial_obj.reset_input_buffer()
-                self.serial_obj.reset_output_buffer()
-                self.logger.debug(
-                    f"Port {self.port} @ {self.baudrate} bps has been opened."
-                )
-            except serial.SerialException as e:
-                self.logger.error(f"Failed to open port {self.port}: {e}")
-                raise
+        self._ref_count += 1
+
+        if self._ref_count == 1:
+            if not self.serial_obj.is_open:
+                try:
+                    self.serial_obj.open()
+                    # Short delay to allow voltages to stabilize after DTR/RTS reset
+                    time.sleep(0.1)
+                    self.serial_obj.reset_input_buffer()
+                    self.serial_obj.reset_output_buffer()
+                    self.logger.debug(
+                        f"Port {self.port} @ {self.baudrate} bps has been opened."
+                    )
+                except serial.SerialException as e:
+                    self._ref_count -= 1
+                    self.logger.error(f"Failed to open port {self.port}: {e}")
+                    raise
         else:
-            self.logger.debug(f"Port {self.port} is already open. Skipping connect().")
+            self.logger.debug(
+                f"Port {self.port} is already open (active clients: {self._ref_count})."
+            )
 
     def disconnect(self) -> None:
         """Close the physical communication port."""
-        if self.serial_obj.is_open:
-            self.serial_obj.close()
-            self.logger.debug(f"Port {self.port} has been closed successfully.")
+        if self._ref_count > 0:
+            self._ref_count -= 1
+
+        if self._ref_count == 0:
+            if self.serial_obj.is_open:
+                self.serial_obj.close()
+                self.logger.debug(f"Last client has closed port {self.port}.")
         else:
             self.logger.debug(
-                f"Port {self.port} is already closed. Skipping disconnect()."
+                f"Client disconnected from port {self.port} (remaining clients: {self._ref_count})."
             )
 
     def get_serial(self) -> serial.Serial:

@@ -5,49 +5,45 @@ from espy_nexus.data_plane.base import BaseDataPlane
 
 class MockDataPlane(BaseDataPlane):
     """
-    Atrapa Data Plane do szybkiego testowania całego systemu bez sprzętu.
-    Nie używa busy-wait, aby nie obciążać procesora podczas pracy w IDE.
+    Mock Data Plane for fast system testing without hardware.
+    Does not use busy-wait to avoid consuming CPU during IDE execution.
     """
 
-    def __init__(self, port: str = "MOCK", baudrate: int = 0):
+    def __init__(self, port: str = "MOCK", baud_rate: int = 0):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.port = port
-        self.baudrate = baudrate
+        self.baud_rate = baud_rate
         self.is_connected = False
 
     def connect(self) -> None:
-        self.logger.info(
-            f"Otwieranie wirtualnego gniazda dla Data Plane (Port: {self.port}, Baudrate: {self.baudrate})"
+        self.logger.debug(
+            f"Opening virtual socket for Data Plane (Port: {self.port}, Baud Rate: {self.baud_rate})"
         )
         self.is_connected = True
 
     def disconnect(self) -> None:
-        self.logger.info(f"Zamykanie wirtualnego gniazda Data Plane.")
+        self.logger.debug(f"Closing virtual Data Plane socket.")
         self.is_connected = False
 
     def transmit(self, packet_count: int, frequency_hz: int) -> None:
         if not self.is_connected:
-            self.logger.error("Błąd: Data Plane nie jest podłączony przed transmisją!")
+            self.logger.error("Error: Data Plane is not connected before transmission!")
             return
 
-        self.logger.info(
-            f"Rozpoczęto symulowaną transmisję: {packet_count} pakietów @ {frequency_hz} Hz"
+        self.logger.debug(
+            f"Starting simulated transmission: {packet_count} packets @ {frequency_hz} Hz"
         )
 
-        # Odstęp między pakietami w sekundach
+        # Interval between packets in seconds
         interval_s = 1.0 / frequency_hz
 
-        # Symulacja wysyłki
-        # Używamy sleep w MOCKU, ponieważ dokładność czasowa nie ma tu znaczenia
-        # dla działania samej maszyny stanowej TestEngine.
+        # Transmission simulation
         for i in range(packet_count):
-            # Tutaj normalnie szłyby dane do kabla
+            # Here normally data would go to the cable
             time.sleep(interval_s)
 
-            # (Opcjonalnie: logowanie co 1000 pakietu, żeby nie zaśmiecić konsoli)
+            # Log every 1000 packets to avoid cluttering console/file
             if (i + 1) % 1000 == 0:
-                self.logger.debug(
-                    f"  ...wysłano {i + 1} / {packet_count} wirtualnych pakietów"
-                )
+                self.logger.debug(f"  ...sent {i + 1} / {packet_count} virtual packets")
 
-        self.logger.info("Transmisja symulowana ukończona sukcesem.")
+        self.logger.debug("Simulated transmission completed successfully.")

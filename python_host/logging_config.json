@@ -1,0 +1,47 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "colored_console": {
+            "()": "colorlog.ColoredFormatter",
+            "format": "%(log_color)s%(asctime)s | %(levelname)-8s | %(cyan)s%(name)s.%(funcName)s:%(lineno)d%(reset)s | %(log_color)s%(message)s",
+            "datefmt": "%H:%M:%S",
+            "log_colors": {
+                "DEBUG": "blue",
+                "INFO": "green",
+                "WARNING": "yellow",
+                "ERROR": "red",
+                "CRITICAL": "red,bg_white"
+            }
+        },
+        "detailed_file": {
+            "format": "%(asctime)s | %(levelname)-8s | %(name)s.%(funcName)s:%(lineno)d | %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S"
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "colored_console",
+            "stream": "ext://sys.stdout"
+        },
+        "file": {
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "level": "DEBUG",
+            "formatter": "detailed_file",
+            "filename": "logs/test_engine.log",
+            "when": "midnight",
+            "interval": 1,
+            "backupCount": 30,
+            "encoding": "utf-8"
+        }
+    },
+    "root": {
+        "level": "DEBUG",
+        "handlers": [
+            "console",
+            "file"
+        ]
+    }
+}

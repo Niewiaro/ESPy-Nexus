@@ -29,7 +29,6 @@ class RateType(str, Enum):
 class TestConfig:
     """Immutable definition of a single test scenario."""
 
-    test_id: str
     protocol: Protocol
     frequency_hz: int
     packet_count: int

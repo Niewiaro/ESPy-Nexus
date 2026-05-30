@@ -40,7 +40,6 @@ def generate_test_matrix(
 
     matrix = [
         TestConfig(
-            test_id=f"{protocol.value}_{int(freq)}Hz_{payload}B_{packet_count}Packets",
             protocol=protocol,
             frequency_hz=freq,
             packet_count=packet_count,

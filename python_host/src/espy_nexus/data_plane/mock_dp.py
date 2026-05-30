@@ -9,15 +9,15 @@ class MockDataPlane(BaseDataPlane):
     Does not use busy-wait to avoid consuming CPU during IDE execution.
     """
 
-    def __init__(self, port: str = "MOCK", baud_rate: int = 0):
+    def __init__(self, port: str = "MOCK", baudrate: int = 0):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.port = port
-        self.baud_rate = baud_rate
+        self.baudrate = baudrate
         self.is_connected = False
 
     def connect(self) -> None:
         self.logger.debug(
-            f"Opening virtual socket for Data Plane (Port: {self.port}, Baud Rate: {self.baud_rate})"
+            f"Opening virtual socket for Data Plane (Port: {self.port}, Baud Rate: {self.baudrate})"
         )
         self.is_connected = True
 

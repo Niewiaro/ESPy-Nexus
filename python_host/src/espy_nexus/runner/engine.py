@@ -176,15 +176,28 @@ class TestEngine:
             )
             return
 
-        # 2. Control Plane Handshake (START command)
+        # 2. Prepare payloads (pre-compilation step)
+        precompiled_packets = data_plane.prepare_payloads(
+            config.packet_count, config.payload_size_bytes
+        )
+
+        # 3. Control Plane Handshake (START command)
         if not self._perform_start_handshake(config):
             self._handle_error(config, "ERR_START", output_csv)
             return
 
-        # 3. Data Transmission with timing
+        # 4. Data Transmission with timing
+        tx_records = []
         try:
             data_plane.connect()
-            actual_tx_s = self._transmit_data(data_plane, config)
+            tx_start = time.perf_counter()
+            tx_records = data_plane.transmit(
+                precompiled_packets, frequency_hz=config.frequency_hz
+            )
+            actual_tx_s = time.perf_counter() - tx_start
+            self.logger.info(
+                f"Transmit data actual time: {format_duration(actual_tx_s)}"
+            )
         except Exception as e:
             self.logger.error(f"[!] Critical error during transmission: {e}")
             self._handle_error(config, f"ERR_DATA_PLANE: {e}", output_csv)
@@ -192,19 +205,34 @@ class TestEngine:
         finally:
             data_plane.disconnect()
 
-        # 4. Closing and fetching results from Control Plane
+        # 5. Closing and fetching results from Control Plane
         self.control_plane.send_command("STOP", expected_ack="ACK_STOP")
-        records, actual_fetch_s = self._fetch_logs()
+        rx_records, actual_fetch_s = self._fetch_logs()
 
-        # 5. Analysis and Saving
-        if not records:
+        # 6. Data Join
+        if not rx_records:
             extra_data = {"time_tx_actual": actual_tx_s, "time_fetch": actual_fetch_s}
             self._handle_error(config, "NO_DATA", output_csv, **extra_data)
             return
 
+        df_tx = pd.DataFrame(tx_records)  # [packet_id, pc_tx_ts]
+        df_rx = pd.DataFrame(rx_records)  # [packet_id, esp_rx_ts]
+
+        if not df_rx.empty:
+            df_rx["rx_seq"] = df_rx.index
+        else:
+            df_rx["rx_seq"] = []
+
+        # Outer Join
+        df_merged = pd.merge(df_tx, df_rx, on="packet_id", how="outer")
+
+        df_merged.sort_values(by="packet_id", inplace=True)
+        df_merged.reset_index(drop=True, inplace=True)
+
+        # 7. Analysis
         self._analyze_and_save(
             config=config,
-            records=records,
+            records_df=df_merged,
             output_csv=output_csv,
             time_data=(total_loop_start, theoretical_tx_s, actual_tx_s, actual_fetch_s),
         )
@@ -223,15 +251,6 @@ class TestEngine:
             )
         return success
 
-    def _transmit_data(self, data_plane: BaseDataPlane, config: TestConfig) -> float:
-        tx_start = time.perf_counter()
-        data_plane.transmit(
-            packet_count=config.packet_count, frequency_hz=config.frequency_hz
-        )
-        tx_duration = time.perf_counter() - tx_start
-        self.logger.info(f"Transmit data actual time: {format_duration(tx_duration)}")
-        return tx_duration
-
     def _fetch_logs(self) -> tuple[list[dict], float]:
         fetch_start = time.perf_counter()
         records = self.control_plane.fetch_data()
@@ -240,10 +259,13 @@ class TestEngine:
         return records, fetch_duration
 
     def _analyze_and_save(
-        self, config: TestConfig, records: list[dict], output_csv: str, time_data: tuple
+        self,
+        config: TestConfig,
+        records_df: pd.DataFrame,
+        output_csv: str,
+        time_data: tuple,
     ) -> None:
         total_loop_start, theoretical_tx_s, actual_tx_s, actual_fetch_s = time_data
-        df_raw = pd.DataFrame(records)
         analyzer = DownlinkAnalyzer(
             payload_size_bytes=config.payload_size_bytes,
             frequency_hz=config.frequency_hz,
@@ -251,7 +273,7 @@ class TestEngine:
 
         try:
             metrics = analyzer.calculate_all_metrics(
-                df_raw, total_sent=config.packet_count
+                records_df, total_sent=config.packet_count
             )
             total_loop_s = time.perf_counter() - total_loop_start
 
@@ -325,9 +347,9 @@ class TestEngine:
             "ooo_events": m.out_of_order.ooo_ids,
             # Timing
             "timing_drift_ppm": m.timing_trends.clock_drift_ppm,
-            "timing_max_bloat_us": m.timing_trends.max_bufferbloat_us,
-            "timing_avg_bloat_us": m.timing_trends.avg_bufferbloat_us,
-            "timing_bloat_percent": m.timing_trends.bufferbloat_percent,
+            "timing_max_bloat_us": m.timing_trends.max_queuing_delay_us,
+            "timing_avg_bloat_us": m.timing_trends.avg_queuing_delay_us,
+            "timing_bloat_percent": m.timing_trends.queuing_delay_percent,
             "timing_slope": m.timing_trends.trend_slope,
         }
 

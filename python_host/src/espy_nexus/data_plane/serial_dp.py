@@ -15,6 +15,8 @@ class SerialDataPlane(BaseDataPlane):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.manager = SerialConnectionManager(port, baudrate)
 
+        self.tx_timestamps: list[int] = []
+
     def connect(self) -> None:
         """Acquires system resources for the serial port."""
         self.logger.debug(
@@ -27,18 +29,36 @@ class SerialDataPlane(BaseDataPlane):
         self.logger.debug("Releasing Serial Data Plane resources.")
         self.manager.disconnect()
 
-    def transmit(self, packet_count: int, frequency_hz: int) -> None:
+    def prepare_payloads(
+        self, packet_count: int, payload_size_bytes: int
+    ) -> list[tuple[int, bytes]]:
+        self.logger.debug("Preparing ASCII payloads...")
+        precompiled = []
+        for i in range(packet_count):
+            header = f"D,{i}\n".encode("ascii")
+            padding_size = max(0, payload_size_bytes - len(header))
+            padding = b"X" * padding_size
+            precompiled.append((i, header + padding))
+        return precompiled
+
+    def transmit(
+        self, precompiled_packets: list[tuple[int, bytes]], frequency_hz: int
+    ) -> list[dict[str, int]]:
         """
         Main strict transmission loop.
         NOTE: This function intentionally fully occupies one CPU core (busy-wait).
         Never use time.sleep() here (scheduler delay is about ~15ms on Windows systems).
         """
         serial_obj = self.manager.get_serial()
+        packet_count = len(precompiled_packets)
+
+        self.tx_timestamps: list[int] = []
+
         if not serial_obj:
             self.logger.error(
                 "Transmission aborted: received an empty serial port handle."
             )
-            return
+            return []
 
         self.logger.debug(
             f"Starting aggressive transmission: {packet_count} packets @ {frequency_hz} Hz"
@@ -54,21 +74,17 @@ class SerialDataPlane(BaseDataPlane):
         next_transmission_time = time.perf_counter_ns()
 
         for i in range(packet_count):
+            packet_id, raw_bytes = precompiled_packets[i]
 
             # --- RESOURCE BLOCKING (BUSY-WAIT) ---
-            # This code spins in place, consuming CPU until the exact interval is reached.
-            # This avoids relying on the imprecise system scheduler.
             while time.perf_counter_ns() < next_transmission_time:
                 pass
 
             # Capture the transmission timestamp after leaving busy-wait.
-            pc_timestamp_us = time.time_ns() // 1000
-
-            # Build the packet for the hardware: "D,<PacketId>,<PC_Timestamp>\n"
-            packet = f"D,{i},{pc_timestamp_us}\n".encode("ascii")
+            self.tx_timestamps[i] = time.time_ns() // 1000
 
             # Push the byte stream over USB (the OS forwards it to the CH340/CP2102 driver).
-            serial_obj.write(packet)
+            serial_obj.write(raw_bytes)
 
             # Log progress every 1000 packets (for DEBUG logs).
             if (i + 1) % 1000 == 0:
@@ -84,3 +100,8 @@ class SerialDataPlane(BaseDataPlane):
         # Force the port FIFO queue to flush the remaining packets.
         serial_obj.flush()
         self.logger.debug("Physical transmission over the hardware port completed.")
+
+        return [
+            {"packet_id": precompiled_packets[i][0], "pc_tx_ts": self.tx_timestamps[i]}
+            for i in range(packet_count)
+        ]

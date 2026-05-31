@@ -19,7 +19,19 @@ class BaseDataPlane(ABC):
         pass
 
     @abstractmethod
-    def transmit(self, packet_count: int, frequency_hz: int) -> None:
+    def prepare_payloads(
+        self, packet_count: int, payload_size_bytes: int
+    ) -> list[tuple[int, bytes]]:
+        """
+        Returns a pre-allocated list of tuples: (packet_id, payload_bytes_ready_to_send).
+        Each protocol (Serial, UDP) implements its own frame format here.
+        """
+        pass
+
+    @abstractmethod
+    def transmit(
+        self, precompiled_packets: list[tuple[int, bytes]], frequency_hz: int
+    ) -> list[dict[str, int]]:
         """
         Main transmission loop.
         Responsible for sending `packet_count` packets at the specified `frequency_hz`,

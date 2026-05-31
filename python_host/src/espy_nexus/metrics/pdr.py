@@ -26,18 +26,19 @@ def calculate_pdr(received_ids: pd.Series, total_sent: int) -> PdrResult:
     if total_sent <= 0:
         raise ValueError("total_sent must be a positive integer.")
 
-    unique_received = int(received_ids.nunique())
+    valid_ids = received_ids.dropna().astype(int)
+
+    unique_received = valid_ids.nunique()
     lost_count = max(0, total_sent - unique_received)
 
-    total_duplicates = int(len(received_ids) - unique_received)
-
+    total_duplicates = len(valid_ids) - unique_received
     mac_duplicates = 0
     ghost_duplicates = 0
 
     if total_duplicates > 0:
-        immediate_mask = received_ids == received_ids.shift(1)
+        # Zakładamy, że valid_ids są posortowane chronologicznie
+        immediate_mask = valid_ids == valid_ids.shift(1)
         mac_duplicates = int(immediate_mask.sum())
-
         ghost_duplicates = total_duplicates - mac_duplicates
 
     ratio_percent = min(100.0, (unique_received / total_sent) * 100.0)

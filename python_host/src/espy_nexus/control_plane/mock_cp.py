@@ -77,8 +77,7 @@ class MockControlPlane(BaseControlPlane):
             records.append(
                 {
                     "packet_id": i + 1,
-                    "pc_ts": base_pc_ts + time_delta,
-                    "esp_ts": base_pc_ts + time_delta + esp_offset,
+                    "esp_rx_ts": base_pc_ts + time_delta + esp_offset,
                 }
             )
 

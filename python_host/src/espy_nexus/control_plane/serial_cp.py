@@ -91,8 +91,7 @@ class SerialControlPlane(BaseControlPlane):
                         records.append(
                             {
                                 "packet_id": int(parts[1]),
-                                "pc_ts": int(parts[2]),
-                                "esp_ts": int(parts[3]),
+                                "esp_rx_ts": int(parts[2]),
                             }
                         )
                     except (IndexError, ValueError):

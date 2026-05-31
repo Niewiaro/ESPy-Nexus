@@ -29,12 +29,10 @@ def calculate_burst_loss(
     if total_sent <= 0:
         return BurstLossResult(0, 0, 0.0, {})
 
-    # Edge case: all packets lost. One burst of length total_sent, starting at ID 0.
-    if received_ids.empty:
+    if received_ids.dropna().empty:
         blackout_ms = (total_sent * expected_iat_us) / 1000.0
         return BurstLossResult(1, total_sent, blackout_ms, {total_sent: [0]})
 
-    # remove duplicates and NaN
     received_set = set(received_ids.dropna().astype(int))
 
     burst_events: dict[int, list[int]] = {}
@@ -42,25 +40,22 @@ def calculate_burst_loss(
     current_burst_start = -1
     total_events = 0
 
-    for packet_id in range(0, total_sent):
+    for packet_id in range(total_sent):
         if packet_id not in received_set:
             if current_burst_len == 0:
                 current_burst_start = packet_id
             current_burst_len += 1
         else:
             if current_burst_len > 0:
-                if current_burst_len not in burst_events:
-                    burst_events[current_burst_len] = []
-                burst_events[current_burst_len].append(current_burst_start)
-
+                burst_events.setdefault(current_burst_len, []).append(
+                    current_burst_start
+                )
                 total_events += 1
                 current_burst_len = 0
 
     # Edge case: if the last packets were lost, we need to record that burst as well
     if current_burst_len > 0:
-        if current_burst_len not in burst_events:
-            burst_events[current_burst_len] = []
-        burst_events[current_burst_len].append(current_burst_start)
+        burst_events.setdefault(current_burst_len, []).append(current_burst_start)
         total_events += 1
 
     max_len = max(burst_events.keys()) if burst_events else 0

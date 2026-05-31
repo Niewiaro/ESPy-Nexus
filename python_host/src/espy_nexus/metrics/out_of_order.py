@@ -21,7 +21,7 @@ def calculate_out_of_order(received_ids: pd.Series) -> OutOfOrderResult:
     Returns:
         OutOfOrderResult with the number of violations.
     """
-    if received_ids.empty:
+    if received_ids.dropna().empty:
         return OutOfOrderResult(0, [], 0)
 
     ooo_ids: list[int] = []
@@ -31,10 +31,8 @@ def calculate_out_of_order(received_ids: pd.Series) -> OutOfOrderResult:
     for current_id in received_ids.dropna().astype(int):
         if current_id > max_id_seen:
             max_id_seen = current_id
-
         elif current_id < max_id_seen:
             ooo_ids.append(current_id)
-
             displacement = max_id_seen - current_id
             if displacement > max_displacement:
                 max_displacement = displacement

@@ -17,9 +17,9 @@ class TestCalculateTimingTrends:
         result = calculate_timing_trends(pc_ts, esp_ts, expected_iat)
 
         assert result.clock_drift_ppm == 0.0
-        assert result.max_bufferbloat_us == 0.0
-        assert result.avg_bufferbloat_us == 0.0
-        assert result.bufferbloat_percent == 0.0  # Zero zatoru
+        assert result.max_queuing_delay_us == 0.0
+        assert result.avg_queuing_delay_us == 0.0
+        assert result.queuing_delay_percent == 0.0  # Zero zatoru
         assert result.trend_slope == 0.0
 
     def test_timing_trends_microscopic_anomaly(self):
@@ -35,10 +35,10 @@ class TestCalculateTimingTrends:
         # Measurement time for both is exactly 400 µs -> 0 Drift
         assert result.clock_drift_ppm == 0.0
         # OWD_rel: [0, 0, 0, 10, 0]
-        assert result.max_bufferbloat_us == 10.0
-        assert result.avg_bufferbloat_us == 2.0
+        assert result.max_queuing_delay_us == 10.0
+        assert result.avg_queuing_delay_us == 2.0
         # 2.0 / 100.0 * 100 = 2.0%
-        assert result.bufferbloat_percent == 2.0
+        assert result.queuing_delay_percent == 2.0
         assert result.trend_slope == pytest.approx(0.002273, abs=1e-5)
 
     def test_timing_trends_extreme_clock_drift(self):
@@ -54,10 +54,10 @@ class TestCalculateTimingTrends:
         result = calculate_timing_trends(pc_ts, esp_ts, expected_iat)
 
         assert result.clock_drift_ppm == pytest.approx(-999200.0)
-        assert result.max_bufferbloat_us == 499600.0
-        assert result.avg_bufferbloat_us == 299782.0
+        assert result.max_queuing_delay_us == 499600.0
+        assert result.avg_queuing_delay_us == 299782.0
         # 299782.0 / 100000.0 * 100 = 299.782%
-        assert result.bufferbloat_percent == pytest.approx(299.782)
+        assert result.queuing_delay_percent == pytest.approx(299.782)
         assert result.trend_slope == pytest.approx(-0.999214, abs=1e-5)
 
     def test_timing_trends_pure_bufferbloat_spike(self):
@@ -74,10 +74,10 @@ class TestCalculateTimingTrends:
 
         assert result.clock_drift_ppm == 0.0
         # OWD_raw: 1000, 1000, 1050, 1000 -> OWD_rel: 0, 0, 50, 0
-        assert result.max_bufferbloat_us == 50.0
-        assert result.avg_bufferbloat_us == 12.5  # (0 + 0 + 50 + 0) / 4
+        assert result.max_queuing_delay_us == 50.0
+        assert result.avg_queuing_delay_us == 12.5  # (0 + 0 + 50 + 0) / 4
         # 12.5 / 100.0 * 100 = 12.5%
-        assert result.bufferbloat_percent == 12.5
+        assert result.queuing_delay_percent == 12.5
 
     def test_timing_trends_increasing_bufferbloat(self):
         """
@@ -96,9 +96,9 @@ class TestCalculateTimingTrends:
         assert result.clock_drift_ppm > 0.0
 
         # OWD_raw: 900, 920, 940, 960 -> OWD_rel: 0, 20, 40, 60
-        assert result.max_bufferbloat_us == 60.0
-        assert result.avg_bufferbloat_us == 30.0  # (0 + 20 + 40 + 60) / 4
-        assert result.bufferbloat_percent == 30.0
+        assert result.max_queuing_delay_us == 60.0
+        assert result.avg_queuing_delay_us == 30.0  # (0 + 20 + 40 + 60) / 4
+        assert result.queuing_delay_percent == 30.0
         assert result.trend_slope > 0.1  # Proves constant, positive delay increase
 
     def test_timing_trends_insufficient_data(self):
@@ -107,14 +107,14 @@ class TestCalculateTimingTrends:
         result_empty = calculate_timing_trends(
             pd.Series([], dtype=float), pd.Series([], dtype=float), expected_iat
         )
-        assert result_empty.max_bufferbloat_us == 0.0
-        assert result_empty.bufferbloat_percent == 0.0
+        assert result_empty.max_queuing_delay_us == 0.0
+        assert result_empty.queuing_delay_percent == 0.0
 
         result_single = calculate_timing_trends(
             pd.Series([100]), pd.Series([200]), expected_iat
         )
         assert result_single.clock_drift_ppm == 0.0
-        assert result_single.bufferbloat_percent == 0.0
+        assert result_single.queuing_delay_percent == 0.0
 
     def test_timing_trends_mismatched_vectors(self):
         """

@@ -100,7 +100,7 @@ def main():
                         "Received": metrics.pdr.unique_received,
                         "PDR_%": metrics.pdr.ratio_percent,
                         "Mean_Jitter_us": round(metrics.jitter.mean_us, 2),
-                        "Max_Bufferbloat_us": metrics.timing_trends.max_bufferbloat_us,
+                        "Max_Queuing_Delay_us": metrics.timing_trends.max_queuing_delay_us,
                         "Clock_Drift_ppm": round(
                             metrics.timing_trends.clock_drift_ppm, 2
                         ),

@@ -55,8 +55,9 @@ def calculate_goodput(
 
     duration_s = duration_us / 1_000_000.0
 
-    # Calculate total useful bytes
-    total_useful_bytes = unique_count * payload_size_bytes
+    # Calculate total useful bytes (subtract 1 to account for the Fencepost error)
+    # The first packet starts the stopwatch, so we only count data received AFTER T=0.
+    total_useful_bytes = (unique_count - 1) * payload_size_bytes
 
     bps = total_useful_bytes / duration_s
     kbps = bps / 1024.0

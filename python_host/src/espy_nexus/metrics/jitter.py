@@ -28,7 +28,8 @@ def calculate_jitter(esp_timestamps: pd.Series, expected_iat_us: float) -> Jitte
     Returns:
         JitterResult object. Returns zeroed object if insufficient data (fewer than 2 packets).
     """
-    if len(esp_timestamps) < 2:
+    valid_ts = esp_timestamps.dropna()
+    if len(valid_ts) < 2:
         return JitterResult(expected_iat_us, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     # Calculate inter-arrival time intervals (IAT) and drop the first empty row

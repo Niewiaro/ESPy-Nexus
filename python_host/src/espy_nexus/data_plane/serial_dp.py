@@ -35,10 +35,13 @@ class SerialDataPlane(BaseDataPlane):
         self.logger.debug("Preparing ASCII payloads...")
         precompiled = []
         for i in range(packet_count):
-            header = f"D,{i}\n".encode("ascii")
-            padding_size = max(0, payload_size_bytes - len(header))
-            padding = b"X" * padding_size
-            precompiled.append((i, header + padding))
+            header_str = f"D,{i},"
+
+            padding_size = max(0, payload_size_bytes - len(header_str) - 1)
+            padding_str = "X" * padding_size
+            full_frame = f"{header_str}{padding_str}\n".encode("ascii")
+
+            precompiled.append((i, full_frame))
         return precompiled
 
     def transmit(
@@ -52,7 +55,7 @@ class SerialDataPlane(BaseDataPlane):
         serial_obj = self.manager.get_serial()
         packet_count = len(precompiled_packets)
 
-        self.tx_timestamps: list[int] = []
+        self.tx_timestamps = [0] * packet_count  # Pre-allocate for performance
 
         if not serial_obj:
             self.logger.error(

@@ -1,3 +1,4 @@
+import struct
 import time
 import logging
 
@@ -67,7 +68,7 @@ class SerialControlPlane(BaseControlPlane):
 
         return False
 
-    def fetch_data(self, timeout_data: float = 5.0) -> list[dict[str, int]]:
+    def fetch_str_data(self, timeout_data: float = 5.0) -> list[dict[str, int]]:
         """Fetches result data from ESP32."""
         serial_obj = self.manager.get_serial()
         self.logger.debug("Fetching data...")
@@ -105,6 +106,80 @@ class SerialControlPlane(BaseControlPlane):
             else:
                 time.sleep(0.001)
 
+        return records
+
+    def fetch_data(self, timeout_data: float = 5.0) -> list[dict[str, int]]:
+        """Fetches binary result data from ESP32."""
+        serial_obj = self.manager.get_serial()
+        self.logger.debug("Fetching binary data...")
+
+        serial_obj.reset_input_buffer()
+
+        serial_obj.write(b"GET_DATA\n")
+        serial_obj.flush()
+
+        start_time = time.time()
+        record_count = 0
+        ack_received = False
+
+        while (time.time() - start_time) < timeout_data:
+            if serial_obj.in_waiting > 0:
+                line = serial_obj.readline().decode("ascii", errors="replace").strip()
+
+                if line.startswith("ACK_GET_DATA,"):
+                    try:
+                        record_count = int(line.split(",")[1])
+                        ack_received = True
+                        self.logger.debug(
+                            f"Hardware reported {record_count} records in PSRAM."
+                        )
+                        break
+                    except ValueError:
+                        self.logger.error("Failed to parse record count from ACK.")
+                        return []
+                elif line.startswith("WARNING:") or line.startswith("ERROR:"):
+                    self.logger.warning(f"[ESP32] {line}")
+            else:
+                time.sleep(0.001)
+
+        if not ack_received:
+            self.logger.error("Timeout waiting for ACK_GET_DATA.")
+            return []
+
+        if record_count == 0:
+            self.logger.warning("ESP32 reported 0 records.")
+            return []
+
+        # C++: uint32_t (4) + int64_t (8) = 12 bits per record
+        bytes_per_record = 12
+        expected_bytes = record_count * bytes_per_record
+
+        self.logger.debug(f"Downloading {expected_bytes} bytes of raw PSRAM...")
+
+        raw_bytes = serial_obj.read(expected_bytes)
+
+        if len(raw_bytes) != expected_bytes:
+            self.logger.error(
+                f"Download incomplete. Got {len(raw_bytes)}/{expected_bytes} bytes."
+            )
+            return []
+
+        # C++: '<' (Little Endian), 'I' (uint32_t = 4B), 'q' (int64_t = 8B)
+        self.logger.debug("Unpacking binary structs...")
+        records = []
+
+        try:
+            for struct_tuple in struct.iter_unpack("<Iq", raw_bytes):
+                records.append(
+                    {"packet_id": struct_tuple[0], "esp_rx_ts": struct_tuple[1]}
+                )
+        except struct.error as e:
+            self.logger.error(f"Failed to unpack struct: {e}")
+            return []
+
+        self.logger.info(
+            f"Data retrieval complete. Fetched {len(records)} records instantly."
+        )
         return records
 
 

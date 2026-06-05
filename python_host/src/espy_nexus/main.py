@@ -20,7 +20,8 @@ from espy_nexus.control_plane.serial_cp import SerialControlPlane
 
 # Implementations Data Planes
 from espy_nexus.data_plane.mock_dp import MockDataPlane
-from espy_nexus.data_plane.serial_dp import SerialDataPlane
+from espy_nexus.data_plane.serial_str_dp import SerialStrDataPlane
+from espy_nexus.data_plane.serial_bin_dp import SerialBinDataPlane
 
 # Global logging initialization
 setup_global_logging()
@@ -36,17 +37,23 @@ def get_active_profile() -> RunnerSettings:
     """Return the active configuration profile for the current run."""
 
     # --- PROFILE A: Fast developer tests (MOCK) ---
-    return RunnerSettings()
+    # return RunnerSettings()
 
     # --- PROFILE B: Full hardware test (HARDWARE) ---
-    # return RunnerSettings(
-    #     control_plane_type=ControlPlane.SERIAL,
-    #     protocols=[Protocol.SERIAL],
-    #     control_plane_port="COM5",
-    #     data_plane_port="COM6",
-    #     baudrate=921600,
-    #     packet_count=10000
-    # )
+    return RunnerSettings(
+        control_plane_type=ControlPlane.SERIAL,
+        protocols=[Protocol.SERIAL_STR, Protocol.SERIAL_BIN],
+        control_plane_port="COM3",
+        data_plane_port="COM3",
+        baudrate=921600,
+        packet_count=1000,
+        rate_type=RateType.EXPONENTIAL,
+        freq_start=100,
+        freq_stop=10000,
+        freq_step=500,
+        exp_base=100,
+        exp_max=10000,
+    )
 
 
 # =========================================================================
@@ -84,8 +91,12 @@ def build_data_planes(config: RunnerSettings) -> dict[Protocol, BaseDataPlane]:
             data_plane_map[protocol] = MockDataPlane(
                 port=config.data_plane_port, baudrate=config.baudrate
             )
-        elif protocol == Protocol.SERIAL:
-            data_plane_map[protocol] = SerialDataPlane(
+        elif protocol == Protocol.SERIAL_STR:
+            data_plane_map[protocol] = SerialStrDataPlane(
+                port=config.data_plane_port, baudrate=config.baudrate
+            )
+        elif protocol == Protocol.SERIAL_BIN:
+            data_plane_map[protocol] = SerialBinDataPlane(
                 port=config.data_plane_port, baudrate=config.baudrate
             )
         else:
@@ -113,7 +124,8 @@ def build_matrix(config: RunnerSettings) -> list[TestConfig]:
     return generate_test_matrix(
         protocols=config.protocols,
         rates_hz=frequencies,
-        payloads_bytes=[config.payload_size_bytes],
+        # payloads_bytes=[config.payload_size_bytes],
+        payloads_bytes=[16, 64],
         packet_count=config.packet_count,
     )
 

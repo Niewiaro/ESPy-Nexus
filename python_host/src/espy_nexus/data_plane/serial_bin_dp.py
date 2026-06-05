@@ -1,10 +1,11 @@
+import struct
 import time
 import logging
 from espy_nexus.data_plane.base import BaseDataPlane
 from espy_nexus.control_plane.connection_manager import SerialConnectionManager
 
 
-class SerialDataPlane(BaseDataPlane):
+class SerialBinDataPlane(BaseDataPlane):
     """
     Data plane for the serial port.
     Generates and sends test packets with high precision, enforcing timing
@@ -29,19 +30,41 @@ class SerialDataPlane(BaseDataPlane):
         self.logger.debug("Releasing Serial Data Plane resources.")
         self.manager.disconnect()
 
+    def _cobs_encode(self, data: bytes) -> bytes:
+        """
+        Simple COBS (Consistent Overhead Byte Stuffing) encoder.
+        """
+        encoded = bytearray()
+        zero_index = 0
+
+        for i, b in enumerate(data):
+            if b == 0:
+                encoded.append(i - zero_index + 1)
+                encoded.extend(data[zero_index:i])
+                zero_index = i + 1
+
+        encoded.append(len(data) - zero_index + 1)
+        encoded.extend(data[zero_index:])
+        return bytes(encoded)
+
     def prepare_payloads(
         self, packet_count: int, payload_size_bytes: int
     ) -> list[tuple[int, bytes]]:
-        self.logger.debug("Preparing ASCII payloads...")
+        """
+        Precompiles binary payloads with a simple header (packet ID) and COBS encoding.
+        """
+        self.logger.debug("Preparing binary payloads...")
         precompiled = []
+
+        padding_bytes = max(0, payload_size_bytes - 4)
+        struct_format = f"<I{padding_bytes}x"
+
         for i in range(packet_count):
-            header_str = f"D,{i},"
-
-            padding_size = max(0, payload_size_bytes - len(header_str) - 1)
-            padding_str = "X" * padding_size
-            full_frame = f"{header_str}{padding_str}\n".encode("ascii")
-
+            raw_binary = struct.pack(struct_format, i)
+            cobs_data = self._cobs_encode(raw_binary)
+            full_frame = cobs_data + b"\x00"
             precompiled.append((i, full_frame))
+
         return precompiled
 
     def transmit(

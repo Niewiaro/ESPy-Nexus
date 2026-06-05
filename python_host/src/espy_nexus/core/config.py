@@ -13,7 +13,8 @@ class Protocol(str, Enum):
     """Supported transport layers."""
 
     MOCK = "MOCK"
-    SERIAL = "SERIAL"
+    SERIAL_STR = "SERIAL_STR"
+    SERIAL_BIN = "SERIAL_BIN"
     # UDP = "UDP"
     # TCP = "TCP"
 

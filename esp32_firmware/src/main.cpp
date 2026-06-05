@@ -1,167 +1,180 @@
 #include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
+#include "TestRecord.h"
+#include "IDataPlane.h"
+#include "SerialStrDataPlane.h"
+#include "SerialBinDataPlane.h"
 
 #define SERIAL_BAUDRATE 921600
-
-// TestRecord array
-struct __attribute__((packed)) TestRecord
-{
-  uint32_t packet_id;        // 4 bytes: ID
-  uint64_t pc_timestamp;     // 8 bytes: PC timestamp (microseconds)
-  uint32_t esp_timestamp_us; // 4 bytes: Local reception time (microseconds)
-};
 const uint32_t MAX_RECORDS = 50000;
+
 TestRecord *resultBuffer = nullptr;
-uint32_t recordCount = 0;
 
-// test control variables
-bool isTestRunning = false;
-String currentProtocol = "NONE";
+volatile uint32_t recordCount = 0;
+volatile bool isTestRunning = false;
 
-TaskHandle_t SerialControlTaskHandle = NULL;
+QueueHandle_t controlQueue;
 
-void serialTask(void *pvParameters)
+SerialStrDataPlane serialStrDataPlane;
+SerialBinDataPlane serialBinDataPlane;
+
+IDataPlane *currentDataPlane = nullptr;
+
+void dataPlaneTask(void *pvParameters)
 {
-  String inputBuffer = "";
-  inputBuffer.reserve(128);
+  for (;;)
+  {
+    if (isTestRunning && currentDataPlane != nullptr)
+    {
+      currentDataPlane->process(resultBuffer, recordCount, MAX_RECORDS, controlQueue);
+    }
+    else
+    {
+      while (Serial.available() > 0)
+      {
+        String cmd = Serial.readStringUntil('\n');
+        cmd.trim();
+        if (cmd.length() > 0)
+        {
+          char raw_cmd[32];
+          strncpy(raw_cmd, cmd.c_str(), 31);
+          xQueueSend(controlQueue, &raw_cmd, 0);
+        }
+      }
+    }
+    taskYIELD();
+  }
+}
+
+void controlPlaneTask(void *pvParameters)
+{
+  char cmd[32];
+  String currentProtocol = "NONE";
 
   for (;;)
   {
-    while (Serial.available() > 0)
+    if (xQueueReceive(controlQueue, &cmd, portMAX_DELAY) == pdPASS)
     {
-      char c = Serial.read();
+      String command(cmd);
+      command.trim();
 
-      if (c != '\n' && c != '\r')
+      if (command.startsWith("START_"))
       {
-        inputBuffer += c;
-        continue;
-      }
+        String protocol = command.substring(6); // get protocol name after "START_"
 
-      if (inputBuffer.length() > 0)
-      {
-        uint32_t esp_ts = micros();
-
-        inputBuffer.trim();
-
-        if (isTestRunning && currentProtocol == "SERIAL" && inputBuffer.startsWith("D,"))
+        if (currentDataPlane)
         {
-          if (recordCount < MAX_RECORDS)
-          {
-            const char *str = inputBuffer.c_str() + 2; // skip "D,"
-            char *endPtr;
-
-            // get packet ID, move endPtr to the position after the number
-            uint32_t p_id = strtoul(str, &endPtr, 10);
-
-            // get PC timestamp, which should be after the comma following the packet ID
-            if (*endPtr == ',')
-            {
-              uint64_t pc_ts = strtoull(endPtr + 1, NULL, 10);
-
-              resultBuffer[recordCount].packet_id = p_id;
-              resultBuffer[recordCount].pc_timestamp = pc_ts;
-              resultBuffer[recordCount].esp_timestamp_us = esp_ts;
-              recordCount++;
-            }
-          }
+          currentDataPlane->end();
+          currentDataPlane = nullptr;
         }
-        else if (inputBuffer == "STOP")
+
+        bool initSuccess = false;
+
+        // STRATEGY
+        if (protocol == "SERIAL_STR")
         {
-          isTestRunning = false;
-          Serial.println("ACK_STOP");
+          currentDataPlane = &serialStrDataPlane;
+          initSuccess = currentDataPlane->begin();
         }
-        else if (inputBuffer.startsWith("START_") && inputBuffer.length() > 6)
+        else if (protocol == "SERIAL_BIN")
         {
-          currentProtocol = inputBuffer.substring(6);
-          recordCount = 0; // reset record count for new test
+          currentDataPlane = &serialBinDataPlane;
+          initSuccess = currentDataPlane->begin();
+        }
+
+        if (initSuccess)
+        {
+          recordCount = 0;
           isTestRunning = true;
-          Serial.printf("ACK_START_%s\n", currentProtocol.c_str());
-        }
-        else if (inputBuffer == "GET_DATA" && !isTestRunning)
-        {
-          Serial.println("ACK_GET_DATA");
-
-          // convert data to CSV format and send over Serial
-          for (uint32_t i = 0; i < recordCount; i++)
-          {
-            Serial.printf("D,%u,%llu,%u\n",
-                          resultBuffer[i].packet_id,
-                          resultBuffer[i].pc_timestamp,
-                          resultBuffer[i].esp_timestamp_us);
-
-            // Small delay every 1000 records to reset watchdog
-            if (i % 1000 == 0)
-            {
-              vTaskDelay(pdMS_TO_TICKS(1));
-            }
-          }
-          Serial.println("END_DATA");
-        }
-        else if (inputBuffer == "TEST")
-        {
-          Serial.println("ACK_TEST");
+          Serial.printf("ACK_START_%s\n", protocol.c_str());
         }
         else
         {
-          if (!isTestRunning)
-          {
-            Serial.println("ERROR:UNKNOWN_CMD");
-          }
-          else
-          {
-            Serial.println("WARNING:TEST_RUNNING");
-          }
+          Serial.printf("ERROR_START_FAILED_%s\n", protocol.c_str());
         }
+      }
+      else if (command == "STOP")
+      {
+        isTestRunning = false;
+        Serial.println("ACK_STOP");
+      }
+      else if (command == "GET_DATA" && !isTestRunning)
+      {
+        // Serial data dump
+        // Serial.println("ACK_GET_DATA");
+        // for (uint32_t i = 0; i < recordCount; i++)
+        // {
+        //   Serial.printf("D,%u,%u\n",
+        //                 resultBuffer[i].packet_id,
+        //                 resultBuffer[i].esp_timestamp_us);
 
-        inputBuffer.clear(); // clear buffer for next command
+        //   if (i % 1000 == 0)
+        //   {
+        //     vTaskDelay(pdMS_TO_TICKS(1));
+        //   }
+        // }
+        // Serial.println("END_DATA");
+
+        // Binary data dump
+        Serial.printf("ACK_GET_DATA,%u\n", recordCount);
+        vTaskDelay(pdMS_TO_TICKS(10));
+
+        if (recordCount > 0)
+        {
+          Serial.write((uint8_t *)resultBuffer, recordCount * sizeof(TestRecord));
+        }
+      }
+      else
+      {
+        Serial.printf("WARNING:UNKNOWN_CMD_[%s]\n", command.c_str());
       }
     }
-    vTaskDelay(pdMS_TO_TICKS(1)); // give some time to watchdog and other tasks
   }
 }
 
 void setup()
 {
   Serial.begin(SERIAL_BAUDRATE);
+
+  Serial.setRxBufferSize(4096);
+
   vTaskDelay(pdMS_TO_TICKS(1000));
+  Serial.println("\n--- Init ESPy-Nexus (RTOS Strategy Architecture) ---");
 
-  Serial.println("\n--- Init ESPy-Nexus ---");
-
-  // PSRAM (WROOMER only) check and allocation
   if (psramFound())
   {
-    Serial.printf("Allocating buffer for %u records in PSRAM...\n", MAX_RECORDS);
-
-    // ps_malloc alocks in PSRAM, not in RAM
+    Serial.printf("Allocating PSRAM for %u records...\n", MAX_RECORDS);
     resultBuffer = (TestRecord *)ps_malloc(MAX_RECORDS * sizeof(TestRecord));
 
     if (resultBuffer != nullptr)
     {
-      Serial.printf("Success! Allocated %u bytes.\n", MAX_RECORDS * sizeof(TestRecord));
+      Serial.printf("OK! Allocated %u bytes.\n", MAX_RECORDS * sizeof(TestRecord));
     }
     else
     {
-      Serial.println("FATAL ERROR: Failed to allocate PSRAM!");
+      Serial.println("FATAL ERROR: PSRAM allocation failed!");
       while (1)
-        ; // Halt system
+        ;
     }
   }
   else
   {
-    Serial.println("FATAL ERROR: No hardware PSRAM found!");
+    Serial.println("FATAL ERROR: PSRAM not detected!");
     while (1)
       ;
   }
 
-  Serial.println("\n --- System Ready ---");
+  controlQueue = xQueueCreate(10, sizeof(char[32]));
 
   xTaskCreatePinnedToCore(
-      serialTask,
-      "SerialCtrl",
-      8192,
-      NULL,
-      2,
-      &SerialControlTaskHandle,
-      1);
+      controlPlaneTask, "ControlTask", 4096, NULL, 1, NULL, 0);
+
+  xTaskCreatePinnedToCore(
+      dataPlaneTask, "DataTask", 8192, NULL, configMAX_PRIORITIES - 1, NULL, 1);
+
+  Serial.println("\n--- System Ready ---");
 }
 
 void loop()

@@ -20,6 +20,7 @@ class RunnerSettings:
     data_plane_ip_address: str = "127.0.0.1"
     data_plane_udp_port: int = 8080
     data_plane_tcp_port: int = 8080
+    data_plane_ws_port: int = 8080
     baudrate: int = 921600
 
     # --- Test Parameters ---

@@ -30,6 +30,7 @@ from espy_nexus.data_plane.serial_str_dp import SerialStrDataPlane
 from espy_nexus.data_plane.serial_bin_dp import SerialBinDataPlane
 from espy_nexus.data_plane.udp_dp import UdpDataPlane
 from espy_nexus.data_plane.tcp_dp import TcpDataPlane
+from espy_nexus.data_plane.ws_dp import WsDataPlane
 
 # Global logging initialization
 setup_global_logging()
@@ -52,7 +53,7 @@ def get_active_profile() -> RunnerSettings:
         router_topology=RouterTopology.STA,
         control_plane_type=ControlPlane.SERIAL,
         # protocols=[Protocol.SERIAL_STR, Protocol.SERIAL_BIN],
-        protocols=[Protocol.TCP],
+        protocols=[Protocol.WS],
         control_plane_port="COM3",
         data_plane_serial_port="COM3",
         # data_plane_ip_address="127.0.0.1",
@@ -123,6 +124,11 @@ def build_data_planes(config: RunnerSettings) -> dict[Protocol, BaseDataPlane]:
             data_plane_map[protocol] = TcpDataPlane(
                 ip_address=config.data_plane_ip_address,
                 port=config.data_plane_tcp_port,
+            )
+        elif protocol == Protocol.WS:
+            data_plane_map[protocol] = WsDataPlane(
+                ip_address=config.data_plane_ip_address,
+                port=config.data_plane_ws_port,
             )
         else:
             logger.warning(f"No Data Plane implementation for: {protocol.value}")

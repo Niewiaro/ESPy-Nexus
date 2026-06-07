@@ -25,6 +25,7 @@ class Protocol(str, Enum):
     SERIAL_BIN = "SERIAL_BIN"
     UDP = "UDP"
     TCP = "TCP"
+    WS = "WS"
 
 
 class RateType(str, Enum):

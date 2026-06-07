@@ -24,7 +24,7 @@ class Protocol(str, Enum):
     SERIAL_STR = "SERIAL_STR"
     SERIAL_BIN = "SERIAL_BIN"
     UDP = "UDP"
-    # TCP = "TCP"
+    TCP = "TCP"
 
 
 class RateType(str, Enum):

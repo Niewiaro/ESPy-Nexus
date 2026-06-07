@@ -38,6 +38,8 @@ class TestEngine:
         self,
         control_plane: BaseControlPlane,
         data_planes: dict[Protocol, BaseDataPlane],
+        cooldown_s: float = 5.0,
+        drain_time_s: float = 5.0,
     ):
         # 1. Logger for the engine itself
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
@@ -48,14 +50,17 @@ class TestEngine:
         # 3. Data Plane Dependence Injection (Strategy Pattern)
         self.data_planes = data_planes
 
+        # 4. Timing parameters
+        self.cooldown_s = cooldown_s
+        self.drain_time_s = drain_time_s
+
     def run_matrix(
         self,
         matrix: list[TestConfig],
         output_csv: str = "matrix_results.csv",
-        cooldown_s: float = 5.0,
     ) -> None:
 
-        self._print_schedule(matrix, cooldown_s)
+        self._print_schedule(matrix)
 
         try:
             input("\nPress [ENTER] to start tests (or Ctrl+C to cancel)...")
@@ -75,7 +80,7 @@ class TestEngine:
             for i, config in enumerate(matrix, 1):
                 start_dt = datetime.now()
                 est_test_duration = (
-                    (config.packet_count / config.frequency_hz) + cooldown_s + 1.0
+                    (config.packet_count / config.frequency_hz) + self.cooldown_s + 1.0
                 )
                 end_dt = start_dt + timedelta(seconds=est_test_duration)
 
@@ -98,9 +103,9 @@ class TestEngine:
 
                 if i < len(matrix):
                     self.logger.debug(
-                        f"Cooling down for {cooldown_s} seconds before next test..."
+                        f"Cooling down for {self.cooldown_s} seconds before next test..."
                     )
-                    time.sleep(cooldown_s)
+                    time.sleep(self.cooldown_s)
 
         except KeyboardInterrupt:
             self.logger.warning("\n[!] Tests cancelled by user (Ctrl+C).")
@@ -118,7 +123,7 @@ class TestEngine:
     # SCHEDULE AND TABLE PRINTING
     # =========================================================================
 
-    def _print_schedule(self, matrix: list[TestConfig], cooldown_s: float) -> None:
+    def _print_schedule(self, matrix: list[TestConfig]) -> None:
         now = datetime.now()
         current_time = now
         total_duration = 0.0
@@ -130,7 +135,7 @@ class TestEngine:
         for config in matrix:
             tx_s = config.packet_count / config.frequency_hz
             overhead = 1.0
-            test_total_s = tx_s + overhead + cooldown_s
+            test_total_s = tx_s + overhead + self.cooldown_s + self.drain_time_s
 
             start_str = current_time.strftime("%H:%M:%S")
             current_time += timedelta(seconds=test_total_s)
@@ -200,6 +205,10 @@ class TestEngine:
             self.logger.info(
                 f"Transmit data actual time: {format_duration(actual_tx_s)}"
             )
+            self.logger.debug(
+                f"Waiting {self.drain_time_s}s for delayed packets to arrive in the network..."
+            )
+            time.sleep(self.drain_time_s)
         except Exception as e:
             self.logger.error(f"[!] Critical error during transmission: {e}")
             self._handle_error(config, f"ERR_DATA_PLANE: {e}", output_csv)

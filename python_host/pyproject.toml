@@ -18,7 +18,8 @@ dependencies = [
     "pandas==3.0.2",
     "pyserial==3.5",
     "colorlog>=6.10.1",
-    "python-dotenv>=1.0.1"
+    "python-dotenv>=1.0.1",
+    "websocket-client>=1.9.0",
 ]
 
 [project.optional-dependencies]

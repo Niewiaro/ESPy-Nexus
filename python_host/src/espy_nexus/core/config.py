@@ -5,6 +5,7 @@ from dataclasses import dataclass
 class RouterTopology(str, Enum):
     """Possible network topologies for ESP32 connectivity."""
 
+    NONE = "NONE"
     AP = "AP"
     STA = "STA"
     STA_MOBILE = "STA_MOBILE"

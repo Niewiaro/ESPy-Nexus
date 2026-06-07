@@ -150,7 +150,7 @@ class TestEngine:
         self.logger.info("📅 TEST MATRIX SCHEDULE")
         self.logger.info("=" * ROW_SEP_LEN)
         self.logger.info(f"Total tests:\t\t{len(matrix)}")
-        self.logger.info(f"Router topology:\t\t{matrix[0].router_topology.value}")
+        self.logger.info(f"Router topology:\t{matrix[0].router_topology.value}")
         self.logger.info(f"Payload size:\t\t{matrix[0].payload_size_bytes} B")
         self.logger.info(f"Packet count:\t\t{matrix[0].packet_count}")
         self.logger.info(f"Start time:\t\t{now.strftime('%Y-%m-%d %H:%M:%S')}")

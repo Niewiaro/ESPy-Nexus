@@ -1,7 +1,7 @@
 import itertools
 import logging
 
-from espy_nexus.core.config import TestConfig, Protocol
+from espy_nexus.core.config import TestConfig, Protocol, RouterTopology
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ def generate_exponential_rates(base: int, max_val: int) -> list[int]:
 
 
 def generate_test_matrix(
+    router_topology: RouterTopology,
     protocols: list[Protocol],
     rates_hz: list[int],
     payloads_bytes: list[int],
@@ -40,6 +41,7 @@ def generate_test_matrix(
 
     matrix = [
         TestConfig(
+            router_topology=router_topology,
             protocol=protocol,
             frequency_hz=freq,
             packet_count=packet_count,

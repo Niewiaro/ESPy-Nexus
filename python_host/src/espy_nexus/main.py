@@ -8,7 +8,13 @@ from espy_nexus.runner.matrix import (
 )
 from espy_nexus.runner.engine import TestEngine
 from espy_nexus.core.logger import setup_global_logging
-from espy_nexus.core.config import ControlPlane, Protocol, RateType, TestConfig
+from espy_nexus.core.config import (
+    ControlPlane,
+    Protocol,
+    RateType,
+    TestConfig,
+    RouterTopology,
+)
 
 # Interfaces (for typing and dependency injection)
 from espy_nexus.control_plane.base import BaseControlPlane
@@ -22,6 +28,7 @@ from espy_nexus.control_plane.serial_cp import SerialControlPlane
 from espy_nexus.data_plane.mock_dp import MockDataPlane
 from espy_nexus.data_plane.serial_str_dp import SerialStrDataPlane
 from espy_nexus.data_plane.serial_bin_dp import SerialBinDataPlane
+from espy_nexus.data_plane.udp_dp import UdpDataPlane
 
 # Global logging initialization
 setup_global_logging()
@@ -41,17 +48,21 @@ def get_active_profile() -> RunnerSettings:
 
     # --- PROFILE B: Full hardware test (HARDWARE) ---
     return RunnerSettings(
+        router_topology=RouterTopology.STA,
         control_plane_type=ControlPlane.SERIAL,
-        protocols=[Protocol.SERIAL_STR, Protocol.SERIAL_BIN],
+        # protocols=[Protocol.SERIAL_STR, Protocol.SERIAL_BIN],
+        protocols=[Protocol.UDP],
         control_plane_port="COM3",
-        data_plane_port="COM3",
+        data_plane_serial_port="COM3",
+        # data_plane_ip_address="127.0.0.1",
+        data_plane_ip_address="192.168.100.167",
         baudrate=921600,
-        packet_count=1000,
+        packet_count=100,
         rate_type=RateType.EXPONENTIAL,
         freq_start=100,
         freq_stop=10000,
         freq_step=500,
-        exp_base=100,
+        exp_base=10,
         exp_max=10000,
     )
 
@@ -89,15 +100,23 @@ def build_data_planes(config: RunnerSettings) -> dict[Protocol, BaseDataPlane]:
     for protocol in config.protocols:
         if protocol == Protocol.MOCK:
             data_plane_map[protocol] = MockDataPlane(
-                port=config.data_plane_port, baudrate=config.baudrate
+                port=config.data_plane_mock_port,
+                baudrate=config.baudrate,
             )
         elif protocol == Protocol.SERIAL_STR:
             data_plane_map[protocol] = SerialStrDataPlane(
-                port=config.data_plane_port, baudrate=config.baudrate
+                port=config.data_plane_serial_port,
+                baudrate=config.baudrate,
             )
         elif protocol == Protocol.SERIAL_BIN:
             data_plane_map[protocol] = SerialBinDataPlane(
-                port=config.data_plane_port, baudrate=config.baudrate
+                port=config.data_plane_serial_port,
+                baudrate=config.baudrate,
+            )
+        elif protocol == Protocol.UDP:
+            data_plane_map[protocol] = UdpDataPlane(
+                ip_address=config.data_plane_ip_address,
+                port=config.data_plane_udp_port,
             )
         else:
             logger.warning(f"No Data Plane implementation for: {protocol.value}")
@@ -122,10 +141,10 @@ def build_matrix(config: RunnerSettings) -> list[TestConfig]:
         raise ValueError(f"Unsupported rate type: {config.rate_type}")
 
     return generate_test_matrix(
+        router_topology=config.router_topology,
         protocols=config.protocols,
         rates_hz=frequencies,
-        # payloads_bytes=[config.payload_size_bytes],
-        payloads_bytes=[16, 64],
+        payloads_bytes=[config.payload_size_bytes],
         packet_count=config.packet_count,
     )
 

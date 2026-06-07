@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from espy_nexus.core.config import ControlPlane, Protocol, RateType
+from espy_nexus.core.config import ControlPlane, Protocol, RateType, RouterTopology
 
 
 @dataclass(frozen=True, slots=True)
@@ -9,10 +9,16 @@ class RunnerSettings:
     Based on default values that can be overridden during initialization.
     """
 
+    # --- Network Configuration ---
+    router_topology: RouterTopology = RouterTopology.AP
+
     # --- Environment Configuration ---
     control_plane_type: ControlPlane = ControlPlane.MOCK
     control_plane_port: str = "MOCK_CP"
-    data_plane_port: str = "MOCK_DP"
+    data_plane_mock_port: str = "MOCK_DP"
+    data_plane_serial_port: str = "COM3"
+    data_plane_ip_address: str = "127.0.0.1"
+    data_plane_udp_port: int = 8080
     baudrate: int = 921600
 
     # --- Test Parameters ---
@@ -48,8 +54,12 @@ class RunnerSettings:
             if self.freq_start >= self.freq_stop:
                 raise ValueError("Linear freq_start must be less than freq_stop.")
         elif self.rate_type == RateType.EXPONENTIAL:
-            if self.exp_base <= 1 or self.exp_max <= 1:
-                raise ValueError("Exponential rates must have base > 1 and max > 1.")
+            if self.exp_base < 1:
+                raise ValueError("Exponential base must be at least 1.")
+            if self.exp_max <= 1:
+                raise ValueError("Exponential max must be greater than 1.")
+            if self.exp_base >= self.exp_max:
+                raise ValueError("Exponential base must be less than exp_max.")
         else:
             raise ValueError(f"Unsupported rate type: {self.rate_type}")
 

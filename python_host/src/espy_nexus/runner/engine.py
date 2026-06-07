@@ -144,6 +144,8 @@ class TestEngine:
         self.logger.info("=" * ROW_SEP_LEN)
         self.logger.info("📅 TEST MATRIX SCHEDULE")
         self.logger.info("=" * ROW_SEP_LEN)
+        self.logger.info(f"Total tests:\t\t{len(matrix)}")
+        self.logger.info(f"Router topology:\t\t{matrix[0].router_topology.value}")
         self.logger.info(f"Payload size:\t\t{matrix[0].payload_size_bytes} B")
         self.logger.info(f"Packet count:\t\t{matrix[0].packet_count}")
         self.logger.info(f"Start time:\t\t{now.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -309,6 +311,7 @@ class TestEngine:
         self, config: TestConfig, m: DownlinkMetrics
     ) -> dict[str, Any]:
         return {
+            "router_topology": config.router_topology.value,
             "protocol": config.protocol.value,
             "freq_hz": config.frequency_hz,
             "status": "OK",
@@ -355,6 +358,7 @@ class TestEngine:
 
     def _create_empty_row(self, config: TestConfig, status: str) -> dict[str, Any]:
         return {
+            "router_topology": config.router_topology.value,
             "protocol": config.protocol.value,
             "freq_hz": config.frequency_hz,
             "status": status,

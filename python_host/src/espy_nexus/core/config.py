@@ -2,6 +2,14 @@ from enum import Enum
 from dataclasses import dataclass
 
 
+class RouterTopology(str, Enum):
+    """Possible network topologies for ESP32 connectivity."""
+
+    AP = "AP"
+    STA = "STA"
+    STA_MOBILE = "STA_MOBILE"
+
+
 class ControlPlane(str, Enum):
     """Supported control plane implementations."""
 
@@ -15,7 +23,7 @@ class Protocol(str, Enum):
     MOCK = "MOCK"
     SERIAL_STR = "SERIAL_STR"
     SERIAL_BIN = "SERIAL_BIN"
-    # UDP = "UDP"
+    UDP = "UDP"
     # TCP = "TCP"
 
 
@@ -30,6 +38,7 @@ class RateType(str, Enum):
 class TestConfig:
     """Immutable definition of a single test scenario."""
 
+    router_topology: RouterTopology
     protocol: Protocol
     frequency_hz: int
     packet_count: int

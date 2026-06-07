@@ -8,6 +8,7 @@
 #include "SerialStrDataPlane.h"
 #include "SerialBinDataPlane.h"
 #include "UdpDataPlane.h"
+#include "TcpDataPlane.h"
 
 #define SERIAL_BAUDRATE 921600
 const uint32_t MAX_RECORDS = 50000;
@@ -23,6 +24,7 @@ QueueHandle_t controlQueue;
 SerialStrDataPlane serialStrDataPlane;
 SerialBinDataPlane serialBinDataPlane;
 UdpDataPlane udpDataPlane;
+TcpDataPlane tcpDataPlane;
 
 IDataPlane *currentDataPlane = nullptr;
 
@@ -110,6 +112,12 @@ void controlPlaneTask(void *pvParameters)
         else if (protocol == "UDP")
         {
           currentDataPlane = &udpDataPlane;
+          initSuccess = currentDataPlane->begin();
+          serialPortOwnedByDataPlane = false;
+        }
+        else if (protocol == "TCP")
+        {
+          currentDataPlane = &tcpDataPlane;
           initSuccess = currentDataPlane->begin();
           serialPortOwnedByDataPlane = false;
         }

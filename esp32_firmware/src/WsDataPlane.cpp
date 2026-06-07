@@ -38,7 +38,7 @@ void WsDataPlane::webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, s
 
 bool WsDataPlane::begin()
 {
-#if MY_HIL_ROUTER_MODE == 1
+#if IS_ESPY_NEXUS_AP == 1
     bool networkReady = (WiFi.softAPIP()[0] != 0);
 #else
     bool networkReady = (WiFi.status() == WL_CONNECTED);

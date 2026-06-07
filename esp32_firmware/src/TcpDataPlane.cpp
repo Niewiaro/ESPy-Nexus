@@ -31,7 +31,7 @@ bool TcpDataPlane::begin()
 {
     rx_index = 0;
 
-#if MY_HIL_ROUTER_MODE == 1
+#if IS_ESPY_NEXUS_AP == 1
     bool networkReady = (WiFi.softAPIP()[0] != 0);
 #else
     bool networkReady = (WiFi.status() == WL_CONNECTED);

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
@@ -6,6 +7,7 @@
 #include "IDataPlane.h"
 #include "SerialStrDataPlane.h"
 #include "SerialBinDataPlane.h"
+#include "UdpDataPlane.h"
 
 #define SERIAL_BAUDRATE 921600
 const uint32_t MAX_RECORDS = 50000;
@@ -14,13 +16,47 @@ TestRecord *resultBuffer = nullptr;
 
 volatile uint32_t recordCount = 0;
 volatile bool isTestRunning = false;
+volatile bool serialPortOwnedByDataPlane = false;
 
 QueueHandle_t controlQueue;
 
 SerialStrDataPlane serialStrDataPlane;
 SerialBinDataPlane serialBinDataPlane;
+UdpDataPlane udpDataPlane;
 
 IDataPlane *currentDataPlane = nullptr;
+
+void uartListenerTask(void *pvParameters)
+{
+  char rx_buffer[32];
+  uint8_t rx_index = 0;
+
+  for (;;)
+  {
+    if (!serialPortOwnedByDataPlane)
+    {
+      while (Serial.available() > 0)
+      {
+        char c = Serial.read();
+
+        if (c == '\n' || c == '\r')
+        {
+          if (rx_index > 0)
+          {
+            rx_buffer[rx_index] = '\0';
+            xQueueSend(controlQueue, &rx_buffer, 0);
+            rx_index = 0;
+          }
+        }
+        else if (rx_index < sizeof(rx_buffer) - 1)
+        {
+          rx_buffer[rx_index++] = c;
+        }
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
 
 void dataPlaneTask(void *pvParameters)
 {
@@ -29,20 +65,6 @@ void dataPlaneTask(void *pvParameters)
     if (isTestRunning && currentDataPlane != nullptr)
     {
       currentDataPlane->process(resultBuffer, recordCount, MAX_RECORDS, controlQueue);
-    }
-    else
-    {
-      while (Serial.available() > 0)
-      {
-        String cmd = Serial.readStringUntil('\n');
-        cmd.trim();
-        if (cmd.length() > 0)
-        {
-          char raw_cmd[32];
-          strncpy(raw_cmd, cmd.c_str(), 31);
-          xQueueSend(controlQueue, &raw_cmd, 0);
-        }
-      }
     }
     taskYIELD();
   }
@@ -77,11 +99,24 @@ void controlPlaneTask(void *pvParameters)
         {
           currentDataPlane = &serialStrDataPlane;
           initSuccess = currentDataPlane->begin();
+          serialPortOwnedByDataPlane = true;
         }
         else if (protocol == "SERIAL_BIN")
         {
           currentDataPlane = &serialBinDataPlane;
           initSuccess = currentDataPlane->begin();
+          serialPortOwnedByDataPlane = true;
+        }
+        else if (protocol == "UDP")
+        {
+          currentDataPlane = &udpDataPlane;
+          initSuccess = currentDataPlane->begin();
+          serialPortOwnedByDataPlane = false;
+        }
+        else
+        {
+          Serial.printf("ERROR_UNKNOWN_PROTOCOL_[%s]\n", protocol.c_str());
+          continue;
         }
 
         if (initSuccess)
@@ -99,6 +134,7 @@ void controlPlaneTask(void *pvParameters)
       {
         isTestRunning = false;
         Serial.println("ACK_STOP");
+        serialPortOwnedByDataPlane = false;
       }
       else if (command == "GET_DATA" && !isTestRunning)
       {
@@ -136,13 +172,15 @@ void controlPlaneTask(void *pvParameters)
 
 void setup()
 {
+  // Serial port initialization
   Serial.begin(SERIAL_BAUDRATE);
-
   Serial.setRxBufferSize(4096);
 
   vTaskDelay(pdMS_TO_TICKS(1000));
+
   Serial.println("\n--- Init ESPy-Nexus (RTOS Strategy Architecture) ---");
 
+  // PSRAM allocation for result buffer
   if (psramFound())
   {
     Serial.printf("Allocating PSRAM for %u records...\n", MAX_RECORDS);
@@ -166,7 +204,53 @@ void setup()
       ;
   }
 
+  // Wi-Fi initialization
+  // If ESPy-Nexus is configured to run in Access Point mode, it will create its own Wi-Fi network.
+  // Otherwise, it will connect to the specified home Wi-Fi network.
+#if IS_ESPY_NEXUS_AP == 1
+  Serial.printf("\n[Wi-Fi] Starting Access Point mode: %s \n", WIFI_AP_SSID);
+
+  WiFi.mode(WIFI_AP); // Set the board to AP mode
+
+  // Create network (SSID, Password, Channel (e.g. 1), Hide network (0 = visible), Max connections (e.g. 4))
+  bool apStatus = WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASS, 1, 0, 4);
+
+  if (apStatus)
+  {
+    Serial.println("[+] AP network started successfully!");
+    Serial.print("Connect your computer to this network. IP address for Python: ");
+    // In AP mode, ESP32 typically defaults to 192.168.4.1
+    Serial.println(WiFi.softAPIP());
+  }
+  else
+  {
+    Serial.println("[-] FATAL ERROR: Failed to start AP mode!");
+    while (1)
+      ;
+  }
+
+#else
+  Serial.printf("\n[Wi-Fi] Connecting to home network: %s ", WIFI_STA_SSID);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_STA_SSID, WIFI_STA_PASS);
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    vTaskDelay(pdMS_TO_TICKS(500));
+    Serial.print(".");
+  }
+
+  Serial.println("\n[+] Connected to Wi-Fi!");
+  Serial.print("IP address assigned by router: ");
+  Serial.println(WiFi.localIP());
+#endif
+
+  // Create control queue and tasks
   controlQueue = xQueueCreate(10, sizeof(char[32]));
+
+  xTaskCreatePinnedToCore(
+      uartListenerTask, "UartListener", 2048, NULL, 2, NULL, 0);
 
   xTaskCreatePinnedToCore(
       controlPlaneTask, "ControlTask", 4096, NULL, 1, NULL, 0);

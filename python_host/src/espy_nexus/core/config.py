@@ -45,6 +45,8 @@ class TestConfig:
     frequency_hz: int
     packet_count: int
     payload_size_bytes: int
+    drain_time_s: float
+    cooldown_s: float
 
     def __post_init__(self):
         if self.frequency_hz <= 0:

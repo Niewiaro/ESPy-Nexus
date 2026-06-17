@@ -1,14 +1,13 @@
 import time
 import logging
 import pandas as pd
-import os
-from typing import Any
+import sqlite3
+import numpy as np
 from datetime import datetime, timedelta
 
 from espy_nexus.core.config import TestConfig, Protocol
 from espy_nexus.control_plane.base import BaseControlPlane
 from espy_nexus.data_plane.base import BaseDataPlane
-from espy_nexus.pipeline.downlink import DownlinkAnalyzer, DownlinkMetrics
 
 ROW_SEP_LEN = 74
 
@@ -31,34 +30,73 @@ def format_duration(seconds: float, compact: bool = False) -> str:
 class TestEngine:
     """
     The Test Engine orchestrates the execution of a test matrix on hardware (Hardware-in-the-Loop).
-    It manages the control plane, data planes and analysis.
+    It acts as a Data Acquisition System (DAQ), storing raw telemetry into SQLite for offline analysis.
     """
 
     def __init__(
         self,
         control_plane: BaseControlPlane,
         data_planes: dict[Protocol, BaseDataPlane],
-        cooldown_s: float = 5.0,
-        drain_time_s: float = 5.0,
+        db_path: str = "hil_raw_data.sqlite",
     ):
-        # 1. Logger for the engine itself
+        # 1. Logger
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-        # 2. Control Plane Dependence Injection (Strategy Pattern)
+        # 2. DI - Control Plane
         self.control_plane = control_plane
 
-        # 3. Data Plane Dependence Injection (Strategy Pattern)
+        # 3. DI - Data Planes
         self.data_planes = data_planes
 
-        # 4. Timing parameters
-        self.cooldown_s = cooldown_s
-        self.drain_time_s = drain_time_s
+        # 4. Inicjalizacja bazy danych surowych logów (DAQ)
+        self.db_path = db_path
+        self._init_db()
 
-    def run_matrix(
-        self,
-        matrix: list[TestConfig],
-        output_csv: str = "matrix_results.csv",
-    ) -> None:
+    def _init_db(self) -> None:
+        """Inicjalizuje schemat relacyjnej bazy danych SQLite dla surowych danych."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+
+                # Table 1: Metadata for each test run (one row per test)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS test_runs (
+                        test_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        run_datetime TEXT,
+                        topology TEXT,
+                        protocol TEXT,
+                        freq_hz INTEGER,
+                        status TEXT,
+                        payload_size INTEGER,
+                        expected_count INTEGER,
+                        engine_time_tx_actual REAL,
+                        engine_time_fetch REAL
+                    )
+                """)
+
+                # Table 2: Raw packet logs for each test run (multiple rows per test)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS raw_packets (
+                        test_id INTEGER,
+                        packet_id INTEGER,
+                        pc_tx_ts_us INTEGER,
+                        esp_rx_ts_us INTEGER,
+                        FOREIGN KEY(test_id) REFERENCES test_runs(test_id)
+                    )
+                """)
+
+                # Index for faster queries on raw_packets by test_id
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_test_id ON raw_packets(test_id)"
+                )
+
+                conn.commit()
+                self.logger.info(f"Database initialized/verified at: {self.db_path}")
+        except sqlite3.Error as e:
+            self.logger.critical(f"Failed to initialize SQLite Database: {e}")
+            raise
+
+    def run_matrix(self, matrix: list[TestConfig]) -> None:
 
         self._print_schedule(matrix)
 
@@ -69,7 +107,7 @@ class TestEngine:
             return
 
         self.logger.info("=" * ROW_SEP_LEN)
-        self.logger.info("🚀 STARTING TEST MATRIX")
+        self.logger.info("🚀 STARTING TEST MATRIX (DATA ACQUISITION MODE)")
         self.logger.info("=" * ROW_SEP_LEN)
 
         total_matrix_start = time.perf_counter()
@@ -80,8 +118,8 @@ class TestEngine:
             for i, config in enumerate(matrix, 1):
                 start_dt = datetime.now()
                 est_test_duration = (
-                    (config.packet_count / config.frequency_hz) + self.cooldown_s + 1.0
-                )
+                    config.packet_count / config.frequency_hz
+                ) + config.cooldown_s
                 end_dt = start_dt + timedelta(seconds=est_test_duration)
 
                 self.logger.info(
@@ -94,7 +132,7 @@ class TestEngine:
 
                 test_start_perf = time.perf_counter()
 
-                self._run_single_test(config, output_csv)
+                self._run_single_test(config)
 
                 test_actual_duration = time.perf_counter() - test_start_perf
                 self.logger.info(
@@ -103,9 +141,9 @@ class TestEngine:
 
                 if i < len(matrix):
                     self.logger.debug(
-                        f"Cooling down for {self.cooldown_s} seconds before next test..."
+                        f"Cooling down for {config.cooldown_s} seconds before next test..."
                     )
-                    time.sleep(self.cooldown_s)
+                    time.sleep(config.cooldown_s)
 
         except KeyboardInterrupt:
             self.logger.warning("\n[!] Tests cancelled by user (Ctrl+C).")
@@ -115,7 +153,7 @@ class TestEngine:
             total_matrix_s = time.perf_counter() - total_matrix_start
             self.logger.info("=" * ROW_SEP_LEN)
             self.logger.info(
-                f"📊 END OF TEST MATRIX | actual time: {format_duration(total_matrix_s)}"
+                f"📊 END OF ACQUISITION | total time: {format_duration(total_matrix_s)}"
             )
             self.logger.info("=" * ROW_SEP_LEN)
 
@@ -128,14 +166,11 @@ class TestEngine:
         current_time = now
         total_duration = 0.0
 
-        ROW_SEP_LEN = 74
-
         schedule_rows = []
 
         for config in matrix:
             tx_s = config.packet_count / config.frequency_hz
-            overhead = 1.0
-            test_total_s = tx_s + overhead + self.cooldown_s + self.drain_time_s
+            test_total_s = tx_s + config.cooldown_s + config.drain_time_s
 
             start_str = current_time.strftime("%H:%M:%S")
             current_time += timedelta(seconds=test_total_s)
@@ -168,13 +203,10 @@ class TestEngine:
         self.logger.info("=" * ROW_SEP_LEN)
 
     # =========================================================================
-    # SINGLE TEST EXECUTION
+    # SINGLE TEST EXECUTION (ACQUISITION ONLY)
     # =========================================================================
 
-    def _run_single_test(self, config: TestConfig, output_csv: str) -> None:
-        total_loop_start = time.perf_counter()
-        theoretical_tx_s = config.packet_count / config.frequency_hz
-
+    def _run_single_test(self, config: TestConfig) -> None:
         # 1. Data Plane Dependency Injection
         data_plane = self.data_planes.get(config.protocol)
         if not data_plane:
@@ -190,11 +222,12 @@ class TestEngine:
 
         # 3. Control Plane Handshake (START command)
         if not self._perform_start_handshake(config):
-            self._handle_error(config, "ERR_START", output_csv)
+            self._handle_error(config, "ERR_START")
             return
 
         # 4. Data Transmission with timing
         tx_records = []
+        actual_tx_s = 0.0
         try:
             data_plane.connect()
             tx_start = time.perf_counter()
@@ -206,12 +239,12 @@ class TestEngine:
                 f"Transmit data actual time: {format_duration(actual_tx_s)}"
             )
             self.logger.debug(
-                f"Waiting {self.drain_time_s}s for delayed packets to arrive in the network..."
+                f"Waiting {config.drain_time_s}s for delayed packets to arrive in the network..."
             )
-            time.sleep(self.drain_time_s)
+            time.sleep(config.drain_time_s)
         except Exception as e:
             self.logger.error(f"[!] Critical error during transmission: {e}")
-            self._handle_error(config, f"ERR_DATA_PLANE: {e}", output_csv)
+            self._handle_error(config, f"ERR_DATA_PLANE: {e}")
             return
         finally:
             data_plane.disconnect()
@@ -220,36 +253,42 @@ class TestEngine:
         self.control_plane.send_command("STOP", expected_ack="ACK_STOP")
         rx_records, actual_fetch_s = self._fetch_logs()
 
-        # 6. Data Join
+        # 6. Data Integrity Check & Join
         if not rx_records:
-            extra_data = {"time_tx_actual": actual_tx_s, "time_fetch": actual_fetch_s}
-            self._handle_error(config, "NO_DATA", output_csv, **extra_data)
+            self._handle_error(config, "NO_DATA", actual_tx_s, actual_fetch_s)
             return
 
-        df_tx = pd.DataFrame(tx_records)  # [packet_id, pc_tx_ts]
-        df_rx = pd.DataFrame(rx_records)  # [packet_id, esp_rx_ts]
+        df_tx = pd.DataFrame(tx_records)  # Expected: [packet_id, pc_tx_ts]
+        df_rx = pd.DataFrame(rx_records)  # Expected: [packet_id, esp_rx_ts]
 
-        if not df_rx.empty:
-            df_rx["rx_seq"] = df_rx.index
+        # safe join (merge) to ensure all packets are accounted for, even if lost
+        if not df_tx.empty and not df_rx.empty:
+            df_merged = pd.merge(df_tx, df_rx, on="packet_id", how="outer")
+        elif not df_tx.empty:
+            df_merged = df_tx.copy()
+            df_merged["esp_rx_ts"] = np.nan
         else:
-            df_rx["rx_seq"] = []
-
-        # Outer Join
-        df_merged = pd.merge(df_tx, df_rx, on="packet_id", how="outer")
+            df_merged = pd.DataFrame(columns=["packet_id", "pc_tx_ts", "esp_rx_ts"])
 
         df_merged.sort_values(by="packet_id", inplace=True)
-        df_merged.reset_index(drop=True, inplace=True)
 
-        # 7. Analysis
-        self._analyze_and_save(
+        # Rename columns for clarity before saving to DB
+        df_merged.rename(
+            columns={"pc_tx_ts": "pc_tx_ts_us", "esp_rx_ts": "esp_rx_ts_us"},
+            inplace=True,
+        )
+
+        # 7. Commit to SQLite Database (ACID Transaction)
+        self._commit_to_db(
             config=config,
             records_df=df_merged,
-            output_csv=output_csv,
-            time_data=(total_loop_start, theoretical_tx_s, actual_tx_s, actual_fetch_s),
+            actual_tx_s=actual_tx_s,
+            actual_fetch_s=actual_fetch_s,
+            status="OK",
         )
 
     # =========================================================================
-    # HELPER METHODS FOR TEST EXECUTION
+    # HELPER METHODS FOR TEST EXECUTION & DB TRANSACTIONS
     # =========================================================================
 
     def _perform_start_handshake(self, config: TestConfig) -> bool:
@@ -269,111 +308,82 @@ class TestEngine:
         self.logger.info(f"Fetch logs actual time: {format_duration(fetch_duration)}")
         return records, fetch_duration
 
-    def _analyze_and_save(
+    def _handle_error(
+        self,
+        config: TestConfig,
+        error_msg: str,
+        tx_s: float = 0.0,
+        fetch_s: float = 0.0,
+    ) -> None:
+        """Handles test errors by committing the error status to the database."""
+        self.logger.error(f"[X] {error_msg}")
+        self._commit_to_db(config, pd.DataFrame(), tx_s, fetch_s, status=error_msg)
+
+    def _commit_to_db(
         self,
         config: TestConfig,
         records_df: pd.DataFrame,
-        output_csv: str,
-        time_data: tuple,
+        actual_tx_s: float,
+        actual_fetch_s: float,
+        status: str,
     ) -> None:
-        total_loop_start, theoretical_tx_s, actual_tx_s, actual_fetch_s = time_data
-        analyzer = DownlinkAnalyzer(
-            payload_size_bytes=config.payload_size_bytes,
-            frequency_hz=config.frequency_hz,
-        )
-
+        """Commits the test results to the SQLite database (ACID Transaction)"""
         try:
-            metrics = analyzer.calculate_all_metrics(
-                records_df, total_sent=config.packet_count
-            )
-            total_loop_s = time.perf_counter() - total_loop_start
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
 
-            result_row = self._flatten_metrics(config, metrics)
-            result_row.update(
-                {
-                    "engine_time_tx_theory": theoretical_tx_s,
-                    "engine_time_tx_actual": actual_tx_s,
-                    "engine_time_fetch": actual_fetch_s,
-                    "engine_time_total_loop": total_loop_s,
-                }
-            )
+                # 1. Insert metadata for the test run into test_runs table
+                cursor.execute(
+                    """
+                    INSERT INTO test_runs (run_datetime, topology, protocol, freq_hz, status, payload_size, expected_count, engine_time_tx_actual, engine_time_fetch)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        datetime.now().isoformat(),
+                        config.router_topology.value,
+                        config.protocol.value,
+                        config.frequency_hz,
+                        status,
+                        config.payload_size_bytes,
+                        config.packet_count,
+                        actual_tx_s,
+                        actual_fetch_s,
+                    ),
+                )
 
-            self._save_to_csv(result_row, output_csv)
+                test_id = (
+                    cursor.lastrowid
+                )  # Retrieve the auto-generated test_id for the inserted row
 
-            self.logger.info(
-                f"[+] OK. PDR: {metrics.pdr.ratio_percent}% | Jitter CV: {metrics.jitter.cv_percent:.2f}% | "
-                f"Loop: {format_duration(total_loop_s)}"
-            )
+                # 2. Insert raw packet logs into raw_packets table if records exist
+                if not records_df.empty:
+                    # Add test_id to each row in the DataFrame before inserting into raw_packets
+                    records_df["test_id"] = test_id
 
-        except Exception as e:
-            self.logger.error(f"\t[!] Error analyzing data: {e}")
-            self._handle_error(config, f"ERR_ANALYZE: {e}", output_csv)
+                    # Select only the necessary columns to match the raw_packets table schema
+                    cols_to_save = [
+                        "test_id",
+                        "packet_id",
+                        "pc_tx_ts_us",
+                        "esp_rx_ts_us",
+                    ]
 
-    def _handle_error(
-        self, config: TestConfig, status: str, output_csv: str, **kwargs
-    ) -> None:
-        row = self._create_empty_row(config, status)
-        row.update(kwargs)
-        self._save_to_csv(row, output_csv)
+                    # Ensure all required columns exist in the DataFrame, even if they are empty
+                    for col in cols_to_save:
+                        if col not in records_df.columns:
+                            records_df[col] = np.nan
 
-    def _flatten_metrics(
-        self, config: TestConfig, m: DownlinkMetrics
-    ) -> dict[str, Any]:
-        return {
-            "router_topology": config.router_topology.value,
-            "protocol": config.protocol.value,
-            "freq_hz": config.frequency_hz,
-            "status": "OK",
-            "payload_b": config.payload_size_bytes,
-            "expected_cnt": config.packet_count,
-            # PDR
-            "pdr_ratio_percent": m.pdr.ratio_percent,
-            "pdr_expected": m.pdr.total_expected,
-            "pdr_received": m.pdr.unique_received,
-            "pdr_lost": m.pdr.lost_count,
-            "pdr_mac_dups": m.pdr.mac_duplicates_count,
-            "pdr_ghost_dups": m.pdr.ghost_duplicates_count,
-            # Jitter
-            "jitter_expected_iat_us": m.jitter.expected_iat_us,
-            "jitter_mean_iat_us": m.jitter.mean_us,
-            "jitter_err_iat_us": m.jitter.mean_error_us,
-            "jitter_std_us": m.jitter.std_us,
-            "jitter_cv_percent": m.jitter.cv_percent,
-            "jitter_max_iat_us": m.jitter.max_us,
-            "jitter_min_iat_us": m.jitter.min_us,
-            "jitter_max_iat_dev_us": m.jitter.max_deviation_us,
-            "jitter_min_iat_dev_us": m.jitter.min_deviation_us,
-            # Burst Loss
-            "burst_total_events": m.burst_loss.total_burst_events,
-            "burst_max_len": m.burst_loss.max_burst_length,
-            "burst_max_blackout_ms": m.burst_loss.max_blackout_time_ms,
-            "burst_events": m.burst_loss.burst_events,
-            # Goodput
-            "goodput_bytes_sec": m.goodput.bytes_per_sec,
-            "goodput_efficiency_percent": m.goodput.efficiency_percent,
-            "goodput_kbps": m.goodput.kilobytes_per_sec,
-            "goodput_mbps": m.goodput.megabits_per_sec,
-            # Out of Order
-            "ooo_count": m.out_of_order.total_ooo_count,
-            "ooo_max_dist": m.out_of_order.max_id_displacement,
-            "ooo_events": m.out_of_order.ooo_ids,
-            # Timing
-            "timing_drift_ppm": m.timing_trends.clock_drift_ppm,
-            "timing_max_bloat_us": m.timing_trends.max_queuing_delay_us,
-            "timing_avg_bloat_us": m.timing_trends.avg_queuing_delay_us,
-            "timing_bloat_percent": m.timing_trends.queuing_delay_percent,
-            "timing_slope": m.timing_trends.trend_slope,
-        }
+                    records_df = records_df[cols_to_save]
 
-    def _create_empty_row(self, config: TestConfig, status: str) -> dict[str, Any]:
-        return {
-            "router_topology": config.router_topology.value,
-            "protocol": config.protocol.value,
-            "freq_hz": config.frequency_hz,
-            "status": status,
-        }
+                    # Commit to SQLite Database (ACID Transaction)
+                    records_df.to_sql(
+                        "raw_packets", conn, if_exists="append", index=False
+                    )
 
-    def _save_to_csv(self, row_dict: dict[str, Any], filename: str) -> None:
-        df = pd.DataFrame([row_dict])
-        file_exists = os.path.isfile(filename)
-        df.to_csv(filename, mode="a", index=False, header=not file_exists)
+                conn.commit()
+                self.logger.info(
+                    f"[DB] Saved Test ID: {test_id} | Status: {status} | Packets logged: {len(records_df)}"
+                )
+
+        except sqlite3.Error as e:
+            self.logger.critical(f"[DB] Critical Error during database commit: {e}")

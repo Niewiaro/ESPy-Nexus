@@ -41,6 +41,10 @@ class RunnerSettings:
     exp_base: int = 10
     exp_max: int = 10000
 
+    # timing parameters
+    drain_time_s: float = 5.0
+    cooldown_s: float = 5.0
+
     def __post_init__(self):
         if (
             self.control_plane_type == ControlPlane.MOCK
@@ -49,7 +53,10 @@ class RunnerSettings:
             raise ValueError("Mock Control Plane must use port 'MOCK_CP'.")
 
         if self.rate_type == RateType.LINEAR:
-            if self.freq_start <= 0 or self.freq_stop <= 0 or self.freq_step <= 0:
+            # start can be zero for linear rates, but stop and step must be positive.
+            # if start is zero, we will replace it with 1
+            # this feature allows to generate list like [1, 10, 20, 30, ...] instead of [0, 10, 20, 30, ...]
+            if self.freq_start < 0 or self.freq_stop <= 0 or self.freq_step <= 0:
                 raise ValueError(
                     "Linear rates must have positive start, stop, and step values."
                 )

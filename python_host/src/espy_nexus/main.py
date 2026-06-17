@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from espy_nexus.core.settings import RunnerSettings
 from espy_nexus.runner.matrix import (
@@ -7,6 +8,7 @@ from espy_nexus.runner.matrix import (
     generate_exponential_rates,
 )
 from espy_nexus.runner.engine import TestEngine
+from espy_nexus.runner.batch_analyzer import BatchAnalyzer
 from espy_nexus.core.logger import setup_global_logging
 from espy_nexus.core.config import (
     ControlPlane,
@@ -52,20 +54,30 @@ def get_active_profile() -> RunnerSettings:
     return RunnerSettings(
         router_topology=RouterTopology.STA,
         control_plane_type=ControlPlane.SERIAL,
-        # protocols=[Protocol.SERIAL_STR, Protocol.SERIAL_BIN],
-        protocols=[Protocol.WS],
+        protocols=[
+            Protocol.SERIAL_STR,
+            Protocol.SERIAL_BIN,
+            # Protocol.UDP,
+            # Protocol.TCP,
+            # Protocol.WS,
+        ],
+        output_csv=f"test_matrix_results_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv",
         control_plane_port="COM3",
         data_plane_serial_port="COM3",
         # data_plane_ip_address="127.0.0.1",
-        data_plane_ip_address="192.168.100.167",
+        data_plane_ip_address="192.168.100.183",
+        # data_plane_ip_address="10.180.170.155",
+        # data_plane_ip_address="192.168.4.1",
         baudrate=921600,
         packet_count=100,
         rate_type=RateType.EXPONENTIAL,
-        freq_start=100,
+        freq_start=0,
         freq_stop=10000,
-        freq_step=500,
+        freq_step=10,
         exp_base=10,
         exp_max=10000,
+        drain_time_s=3.0,
+        cooldown_s=1,
     )
 
 
@@ -143,7 +155,9 @@ def build_matrix(config: RunnerSettings) -> list[TestConfig]:
     """Build the final test matrix based on configuration."""
     if config.rate_type == RateType.LINEAR:
         frequencies = generate_linear_rates(
-            start=config.freq_start, stop=config.freq_stop, step=config.freq_step
+            start=config.freq_start,
+            stop=config.freq_stop,
+            step=config.freq_step,
         )
     elif config.rate_type == RateType.EXPONENTIAL:
         frequencies = generate_exponential_rates(
@@ -158,6 +172,8 @@ def build_matrix(config: RunnerSettings) -> list[TestConfig]:
         rates_hz=frequencies,
         payloads_bytes=[config.payload_size_bytes],
         packet_count=config.packet_count,
+        drain_time_s=config.drain_time_s,
+        cooldown_s=config.cooldown_s,
     )
 
 
@@ -180,9 +196,22 @@ def main() -> None:
     # 3. Build test logic
     test_matrix = build_matrix(config)
 
-    # 4. Run TestEngine state machine
-    engine = TestEngine(control_plane=control_plane, data_planes=data_planes)
-    engine.run_matrix(matrix=test_matrix, output_csv=config.output_csv)
+    # 4. Run TestEngine state machine (Data Acquisition Phase)
+    logger.info("--- PHASE 1: DATA ACQUISITION ---")
+    engine = TestEngine(
+        control_plane=control_plane,
+        data_planes=data_planes,
+        db_path="hil_raw_data.sqlite",
+    )
+    engine.run_matrix(matrix=test_matrix)
+
+    logger.info("--- PHASE 2: BATCH ANALYSIS ---")
+    batch_processor = BatchAnalyzer(
+        raw_db_path="hil_raw_data.sqlite",
+        analytics_db_path="hil_analytics.sqlite",
+        output_csv_path="hil_analytics.csv",
+    )
+    batch_processor.run_pipeline()
 
 
 if __name__ == "__main__":

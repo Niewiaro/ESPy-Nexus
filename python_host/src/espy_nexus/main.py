@@ -61,7 +61,6 @@ def get_active_profile() -> RunnerSettings:
             # Protocol.TCP,
             # Protocol.WS,
         ],
-        output_csv=f"test_matrix_results_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv",
         control_plane_port="COM3",
         data_plane_serial_port="COM3",
         # data_plane_ip_address="127.0.0.1",
@@ -201,15 +200,15 @@ def main() -> None:
     engine = TestEngine(
         control_plane=control_plane,
         data_planes=data_planes,
-        db_path="hil_raw_data.sqlite",
+        db_path=config.raw_db_path,
     )
     engine.run_matrix(matrix=test_matrix)
 
     logger.info("--- PHASE 2: BATCH ANALYSIS ---")
     batch_processor = BatchAnalyzer(
-        raw_db_path="hil_raw_data.sqlite",
-        analytics_db_path="hil_analytics.sqlite",
-        output_csv_path="hil_analytics.csv",
+        raw_db_path=config.raw_db_path,
+        analytics_db_path=config.analytics_db_path,
+        output_csv_path=config.output_csv_path,
     )
     batch_processor.run_pipeline()
 

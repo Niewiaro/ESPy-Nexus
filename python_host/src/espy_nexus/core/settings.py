@@ -27,7 +27,11 @@ class RunnerSettings:
     protocols: list[Protocol] = field(default_factory=lambda: [Protocol.MOCK])
     payload_size_bytes: int = 16
     packet_count: int = 100
-    output_csv: str = "test_matrix_results.csv"
+
+    # --- Output Configuration ---
+    raw_db_path: str = "hil_raw_data.sqlite"
+    analytics_db_path: str | None = "hil_analytics.sqlite"
+    output_csv_path: str | None = "hil_analytics.csv"
 
     # --- Frequency Parameters (Sweep) ---
     rate_type: RateType = RateType.EXPONENTIAL

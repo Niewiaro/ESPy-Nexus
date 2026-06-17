@@ -30,7 +30,6 @@ class MockTestScenario:
     packet_ids: list[int] = field(init=False)
     pc_tx_ts: list[int] = field(init=False)
     esp_rx_ts: list[float] = field(init=False)
-    rx_seq: list[float] = field(init=False)
 
     df: pd.DataFrame = field(init=False)
 
@@ -76,7 +75,6 @@ class MockTestScenario:
         self.packet_ids = [0, 1, 2, 3, 4]
         self.pc_tx_ts = [1_000_000, 1_000_100, 1_000_200, 1_000_300, 1_000_400]
         self.esp_rx_ts = [100.0, 200.0, 300.0, 400.0, 500.0]
-        self.rx_seq = [0.0, 1.0, 2.0, 3.0, 4.0]
 
         # 2. SCENARIO-DEPENDENT MUTATIONS
         if self.anomaly == AnomalyType.PDR_AND_DUPLICATES:
@@ -117,7 +115,6 @@ class MockTestScenario:
                 1_000_400,
             ]
             self.esp_rx_ts = [100.0, 250.0, 200.0, 210.0, np.nan, 400.0, 500.0]
-            self.rx_seq = [0.0, 3.0, 1.0, 2.0, np.nan, 4.0, 5.0]
 
         elif self.anomaly == AnomalyType.JITTER:
             """
@@ -161,7 +158,6 @@ class MockTestScenario:
             Efficiency: 25.00 %
             """
             self.esp_rx_ts = [100.0, np.nan, np.nan, np.nan, 500.0]
-            self.rx_seq = [0.0, np.nan, np.nan, np.nan, 1.0]
 
         elif self.anomaly == AnomalyType.GOODPUT:
             """
@@ -198,7 +194,6 @@ class MockTestScenario:
                 1_000_400,
             ]
             self.esp_rx_ts = [100.0, 200.0, 300.0, 310.0, np.nan, 500.0]
-            self.rx_seq = [0.0, 1.0, 2.0, 3.0, np.nan, 4.0]
 
         elif self.anomaly == AnomalyType.OUT_OF_ORDER:
             """
@@ -223,8 +218,6 @@ class MockTestScenario:
             """
             self.esp_rx_ts[2] = 400.0
             self.esp_rx_ts[3] = 300.0
-            self.rx_seq[2] = 3.0
-            self.rx_seq[3] = 2.0
 
         elif self.anomaly == AnomalyType.QUEUING_AND_DRIFT:
             """
@@ -258,7 +251,6 @@ class MockTestScenario:
             len(self.packet_ids),
             len(self.pc_tx_ts),
             len(self.esp_rx_ts),
-            len(self.rx_seq),
         }
 
         if len(lengths) > 1:
@@ -271,7 +263,6 @@ class MockTestScenario:
                 "packet_id": self.packet_ids,
                 "pc_tx_ts": self.pc_tx_ts,
                 "esp_rx_ts": self.esp_rx_ts,
-                "rx_seq": self.rx_seq,
             }
         )
 

@@ -64,7 +64,7 @@ class DownlinkAnalyzer:
                 "The input DataFrame is empty. Metrics cannot be calculated."
             )
 
-        expected_columns = {"packet_id", "pc_tx_ts", "esp_rx_ts", "rx_seq"}
+        expected_columns = {"packet_id", "pc_tx_ts", "esp_rx_ts"}
         if not expected_columns.issubset(df.columns):
             raise ValueError(
                 f"The TestEngine DataFrame must contain the following columns: {expected_columns}"
@@ -79,7 +79,9 @@ class DownlinkAnalyzer:
         # For PDR, pass IDs of packets that have a real receive timestamp
         # (they were not lost on the bus).
         received_mask = df["esp_rx_ts"].notna()
-        rx_sorted_df = df[received_mask].sort_values(by="rx_seq")
+        rx_sorted_df = df[received_mask].sort_values(
+            by="esp_rx_ts"
+        )  # Sort by actual receive time
         successfully_received_ids = rx_sorted_df["packet_id"]
 
         result_pdr = calculate_pdr(successfully_received_ids, total_sent)
@@ -99,7 +101,7 @@ class DownlinkAnalyzer:
         # From this point on, time-based analysis requires completely clean data.
         # We drop lost packets (NaN). Only duplicates and correctly delivered
         # packets are kept.
-        clean_df = df.dropna(subset=["pc_tx_ts", "esp_rx_ts", "rx_seq"]).copy()
+        clean_df = df.dropna(subset=["pc_tx_ts", "esp_rx_ts"]).copy()
 
         if clean_df.empty:
             raise ValueError(
@@ -112,7 +114,7 @@ class DownlinkAnalyzer:
         # =========================================================
         # Sort the DataFrame in the order packets were physically received over time.
         # Only then will the Out-Of-Order algorithm detect shifts in 'packet_id'.
-        ordered_by_rx = clean_df.sort_values(by="rx_seq")
+        ordered_by_rx = clean_df.sort_values(by="esp_rx_ts")
         result_out_of_order = calculate_out_of_order(ordered_by_rx["packet_id"])
 
         # =========================================================
@@ -182,7 +184,7 @@ if __name__ == "__main__":
 
         # If MockTestScenario generates the old format (pc_ts, esp_ts),
         # make sure the test structure contains:
-        # 'packet_id', 'pc_tx_ts', 'esp_rx_ts', and 'rx_seq' before testing here.
+        # 'packet_id', 'pc_tx_ts', 'esp_rx_ts' before testing here.
 
         analyzer = DownlinkAnalyzer(
             payload_size_bytes=20, frequency_hz=mock_test_scenario.frequency_hz

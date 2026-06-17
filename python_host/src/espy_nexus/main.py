@@ -204,6 +204,7 @@ def main() -> None:
     )
     engine.run_matrix(matrix=test_matrix)
 
+    # 5. Run BatchAnalyzer (Data Analysis Phase)
     logger.info("--- PHASE 2: BATCH ANALYSIS ---")
     batch_processor = BatchAnalyzer(
         raw_db_path=config.raw_db_path,

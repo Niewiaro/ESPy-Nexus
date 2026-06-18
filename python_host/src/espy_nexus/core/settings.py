@@ -73,6 +73,9 @@ class RunnerSettings:
                 raise ValueError("Exponential max must be greater than 1.")
             if self.exp_base >= self.exp_max:
                 raise ValueError("Exponential base must be less than exp_max.")
+        elif self.rate_type == RateType.LOG:
+            if self.exp_max <= 1:
+                raise ValueError("Logarithmic max must be greater than 1.")
         else:
             raise ValueError(f"Unsupported rate type: {self.rate_type}")
 

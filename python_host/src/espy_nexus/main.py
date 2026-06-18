@@ -6,6 +6,7 @@ from espy_nexus.runner.matrix import (
     generate_test_matrix,
     generate_linear_rates,
     generate_exponential_rates,
+    generate_log_rates,
 )
 from espy_nexus.runner.engine import TestEngine
 from espy_nexus.runner.batch_analyzer import BatchAnalyzer
@@ -52,31 +53,31 @@ def get_active_profile() -> RunnerSettings:
 
     # --- PROFILE B: Full hardware test (HARDWARE) ---
     return RunnerSettings(
-        router_topology=RouterTopology.STA,
+        router_topology=RouterTopology.STA_MOBILE,
         control_plane_type=ControlPlane.SERIAL,
         protocols=[
-            Protocol.SERIAL_STR,
-            Protocol.SERIAL_BIN,
-            # Protocol.UDP,
-            # Protocol.TCP,
-            # Protocol.WS,
+            # Protocol.SERIAL_STR,
+            # Protocol.SERIAL_BIN,
+            Protocol.UDP,
+            Protocol.TCP,
+            Protocol.WS,
         ],
         control_plane_port="COM3",
         data_plane_serial_port="COM3",
         # data_plane_ip_address="127.0.0.1",
-        data_plane_ip_address="192.168.100.183",
-        # data_plane_ip_address="10.180.170.155",
+        # data_plane_ip_address="192.168.100.167",
+        data_plane_ip_address="10.47.121.155",
         # data_plane_ip_address="192.168.4.1",
         baudrate=921600,
-        packet_count=100,
-        rate_type=RateType.EXPONENTIAL,
+        packet_count=1000,
+        rate_type=RateType.LOG,
         freq_start=0,
         freq_stop=10000,
         freq_step=10,
         exp_base=10,
         exp_max=10000,
-        drain_time_s=3.0,
-        cooldown_s=1,
+        drain_time_s=10,
+        cooldown_s=10,
     )
 
 
@@ -162,6 +163,8 @@ def build_matrix(config: RunnerSettings) -> list[TestConfig]:
         frequencies = generate_exponential_rates(
             base=config.exp_base, max_val=config.exp_max
         )
+    elif config.rate_type == RateType.LOG:
+        frequencies = generate_log_rates(max_val=config.exp_max)
     else:
         raise ValueError(f"Unsupported rate type: {config.rate_type}")
 

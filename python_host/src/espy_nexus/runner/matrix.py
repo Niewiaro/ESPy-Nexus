@@ -34,6 +34,29 @@ def generate_exponential_rates(base: int, max_val: int) -> list[int]:
     return rates
 
 
+def generate_log_rates(max_val: int) -> list[int]:
+    """
+    Generates a log-scale-like sequence:
+    1, 2, 3, ..., 9, 10, 20, 30, ..., 90, 100, 200, ...
+    Useful for broad performance profiling with denser low-end coverage.
+    """
+    if max_val < 1:
+        return []
+
+    rates: list[int] = []
+    magnitude = 1
+
+    while magnitude <= max_val:
+        for multiplier in range(1, 10):
+            value = multiplier * magnitude
+            if value > max_val:
+                break
+            rates.append(value)
+        magnitude *= 10
+
+    return rates
+
+
 def generate_test_matrix(
     router_topology: RouterTopology,
     protocols: list[Protocol],

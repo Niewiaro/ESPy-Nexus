@@ -34,6 +34,7 @@ class RateType(str, Enum):
 
     LINEAR = "LINEAR"
     EXPONENTIAL = "EXPONENTIAL"
+    LOG = "LOG"
 
 
 @dataclass(frozen=True, slots=True)

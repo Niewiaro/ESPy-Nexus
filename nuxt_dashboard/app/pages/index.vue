@@ -83,6 +83,13 @@
 </template>
 
 <script setup lang="ts">
+useSeoMeta({
+	title: "Dashboard Analityczny",
+	description: "Interaktywny dashboard do analizy telemetrii sieciowej. Porównuj wydajność topologii AP i STA w czasie rzeczywistym.",
+	ogTitle: "Dashboard Analityczny | ESPy-Nexus",
+	ogDescription: "Przeglądaj znormalizowane wyniki pomiarów PDR, Jittera i Goodputu. Profesjonalne narzędzie analityczne dla sieci wbudowanych.",
+});
+
 const { selectedMetric } = useAnalytics();
 
 const isFullscreenModalOpen = ref(false);

@@ -7,7 +7,7 @@ export default defineNuxtConfig({
 	app: {
 		head: {
 			title: appName,
-			titleTemplate: "%s",
+			titleTemplate: `%s - ${appName}`,
 
 			htmlAttrs: {
 				lang: "pl",
@@ -29,6 +29,7 @@ export default defineNuxtConfig({
 	runtimeConfig: {
 		public: {
 			appName: appName,
+			appURL: "https://espy-nexus.niewiaro.cc",
 			gitURL: "https://github.com/Niewiaro",
 			gitRepoURL: "https://github.com/Niewiaro/ESPy-Nexus",
 			linkedInURL: "https://www.linkedin.com/in/jakub-niewiarowski",

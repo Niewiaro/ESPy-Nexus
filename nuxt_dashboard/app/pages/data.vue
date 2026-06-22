@@ -109,6 +109,13 @@ import { h, resolveComponent, ref } from "vue";
 import type { TableColumn, DropdownMenuItem } from "@nuxt/ui";
 import { getPaginationRowModel } from "@tanstack/vue-table";
 
+useSeoMeta({
+	title: "Eksplorator Danych",
+	description: "Surowa baza pomiarów i testów sieciowych. Filtruj tysiące rekordów telemetrii i analizuj ukryte anomalie.",
+	ogTitle: "Eksplorator Danych | ESPy-Nexus",
+	ogDescription: "Zaawansowana tabela z wynikami testów. Użyj presetów widoku, by badać skoki opóźnień, zgubione pakiety i wąskie gardła sieci.",
+});
+
 const UBadge = resolveComponent("UBadge");
 
 const { data } = useAnalytics();

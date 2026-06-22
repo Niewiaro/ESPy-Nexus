@@ -7,6 +7,10 @@
         {
             "name": "🐍 Host (Python)",
             "path": "python_host"
+        },
+        {
+            "name": "📊 Dashboard (Nuxt)",
+            "path": "nuxt_dashboard"
         }
     ],
     "settings": {

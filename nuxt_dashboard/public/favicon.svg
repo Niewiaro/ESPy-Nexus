@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="512" height="512"><defs>
+    <linearGradient id="hilLoop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"></stop>
+      <stop offset="100%" stop-color="#F59E0B"></stop>
+    </linearGradient>
+  </defs><path d="M 104 40 L 72 40 L 24 128 L 72 216 L 144 216 L 144 172 L 216 172 L 216 128 L 144 128 L 144 84 L 216 84 L 216 40 Z" fill="none" stroke="url(#hilLoop)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"></path></svg>

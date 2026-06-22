@@ -23,27 +23,43 @@
 				</div>
 
 				<div class="lg:col-span-3 flex flex-col gap-6">
-					<UCard class="w-full">
+					<UCard
+						class="w-full flex flex-col"
+						:ui="{ body: 'flex-1' }"
+					>
 						<template #header>
-							<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-								<h2 class="flex items-center gap-2 font-semibold text-primary text-base">
-									<UIcon
-										name="i-heroicons-chart-bar"
-										class="w-7 h-7"
-									/>
-									Wykres liniowy
-								</h2>
-								<UBadge
-									v-if="selectedMetric"
-									color="secondary"
-									variant="soft"
-									size="lg"
+							<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+								<div class="flex items-center gap-4">
+									<h2 class="flex items-center gap-2 font-semibold text-primary text-base">
+										<UIcon
+											name="i-heroicons-chart-bar"
+											class="w-7 h-7"
+										/>
+										Wykres liniowy
+									</h2>
+									<UBadge
+										v-if="selectedMetric"
+										color="secondary"
+										variant="soft"
+										size="lg"
+									>
+										{{ selectedMetric }}
+									</UBadge>
+								</div>
+
+								<UButton
+									icon="i-heroicons-arrows-pointing-out"
+									color="neutral"
+									variant="ghost"
+									size="sm"
+									@click="isFullscreenModalOpen = true"
 								>
-									{{ selectedMetric }}
-								</UBadge>
+									Pełny ekran
+								</UButton>
 							</div>
 						</template>
-						<div class="p-1 sm:p-2">
+
+						<div class="h-full flex flex-col">
 							<DynamicLineChart />
 						</div>
 					</UCard>
@@ -52,9 +68,22 @@
 				</div>
 			</div>
 		</UContainer>
+
+		<UModal
+			v-model:open="isFullscreenModalOpen"
+			fullscreen
+			title="Analiza wykresu - Widok pełnoekranowy"
+			:ui="{ body: 'flex flex-col flex-1 min-h-0' }"
+		>
+			<template #body>
+				<DynamicLineChart />
+			</template>
+		</UModal>
 	</div>
 </template>
 
 <script setup lang="ts">
 const { selectedMetric } = useAnalytics();
+
+const isFullscreenModalOpen = ref(false);
 </script>

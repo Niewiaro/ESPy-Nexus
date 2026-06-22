@@ -1,12 +1,29 @@
 <template>
 	<div>
-		<UPageHero
-			title="Eksplorator Danych"
-			description="Przeglądaj, filtruj i przeszukuj surowe wyniki testów sieciowych."
-			:ui="{ container: 'py-12 sm:py-16' }"
-		/>
+		<div class="relative overflow-hidden bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+			<div class="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)] bg-size-[24px_24px] mask-[linear-gradient(to_bottom,white,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,white,transparent)]" />
 
-		<UContainer class="pb-12">
+			<UPageHero
+				headline="Baza pomiarów"
+				title="Eksplorator Danych"
+				description="Przeglądaj, filtruj i przeszukuj surowe wyniki testów sieciowych. Zmieniaj presety widoków, aby skupić się na najważniejszych metrykach."
+				:links="[
+					{
+						label: 'Wróć do wykresów',
+						icon: 'i-heroicons-arrow-left',
+						to: '/',
+						color: 'neutral',
+						variant: 'outline',
+					},
+				]"
+				:ui="{
+					wrapper: 'relative z-10',
+					container: 'py-10 sm:py-14',
+				}"
+			/>
+		</div>
+
+		<UContainer class="py-12">
 			<UCard
 				class="w-full flex flex-col"
 				:ui="{ body: 'p-0 sm:p-0' }"

@@ -33,7 +33,7 @@ export const useAnalytics = () => {
 	const xRangeLimit = useState<[number, number]>("hil-x-range-limit", () => [0, 1000]);
 	const selectedXRange = useState<[number, number]>("hil-selected-x-range", () => [0, 1000]);
 
-	const isLogX = useState<boolean>("hil-log-x", () => false);
+	const isLogX = useState<boolean>("hil-log-x", () => true);
 	const isLogY = useState<boolean>("hil-log-y", () => false);
 
 	const isInitialized = useState<boolean>("hil-is-initialized", () => false);
@@ -51,12 +51,25 @@ export const useAnalytics = () => {
 		return allKeys.filter(key => !ignoredColumns.includes(key));
 	});
 
-	if (!isInitialized.value && availableTests.value.length > 0 && availableMetrics.value.length > 0) {
+	const availableProtocols = computed(() => {
+		const protocols = rawDataRef.value.map(row => row.protocol);
+		return [...new Set(protocols)];
+	});
+
+	const randomizeSelection = () => {
+		if (availableTests.value.length === 0 || availableMetrics.value.length === 0) return;
+
 		const shuffledTests = shuffleArray(availableTests.value);
 		selectedTests.value = shuffledTests.slice(0, 5);
 
 		const shuffledMetrics = shuffleArray(availableMetrics.value);
 		selectedMetric.value = shuffledMetrics[0];
+
+		selectedXRange.value = [...xRangeLimit.value];
+	};
+
+	if (!isInitialized.value && availableTests.value.length > 0 && availableMetrics.value.length > 0) {
+		randomizeSelection();
 
 		const frequencies = rawDataRef.value.map(row => Number(row.freq_hz));
 		const minFreq = Math.min(...frequencies);
@@ -116,15 +129,22 @@ export const useAnalytics = () => {
 		selectedTests.value = [];
 	};
 
+	const selectByProtocol = (protocol: string) => {
+		selectedTests.value = availableTests.value.filter(test => test.startsWith(`${protocol}_`));
+	};
+
 	return {
 		availableTests,
 		availableMetrics,
+		availableProtocols,
 		selectedTests,
 		selectedMetric,
 		chartData,
 		data: rawDataRef,
 		selectAllTests,
 		clearAllTests,
+		randomizeSelection,
+		selectByProtocol,
 		xRangeLimit,
 		selectedXRange,
 		isLogX,

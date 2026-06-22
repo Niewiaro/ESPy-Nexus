@@ -6,8 +6,8 @@
 			id="dashboard-section"
 			class="py-24"
 		>
-			<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-				<div class="lg:col-span-1 flex flex-col gap-4">
+			<div class="grid grid-cols-1 lg:grid-cols-7 gap-6 items-start">
+				<div class="lg:col-span-2 flex flex-col gap-4">
 					<UCard>
 						<template #header>
 							<div class="flex items-center gap-2 font-semibold text-muted text-sm">
@@ -22,7 +22,7 @@
 					</UCard>
 				</div>
 
-				<div class="lg:col-span-3 flex flex-col gap-6">
+				<div class="lg:col-span-5 flex flex-col gap-6">
 					<UCard
 						class="w-full flex flex-col"
 						:ui="{ body: 'flex-1' }"

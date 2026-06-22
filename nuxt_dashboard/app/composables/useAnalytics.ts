@@ -15,14 +15,7 @@ export interface ChartPoint {
 	y: number;
 }
 
-const data = ref<HilDataRow[]>(rawJsonData as HilDataRow[]);
-const selectedTests = ref<string[]>([]);
-const selectedMetric = ref<string>();
-
-const xRangeLimit = ref<[number, number]>([0, 1000]);
-const selectedXRange = ref<[number, number]>([0, 1000]);
-
-let isInitialized = false;
+const rawDataRef = ref<HilDataRow[]>(rawJsonData as HilDataRow[]);
 
 function shuffleArray<T>(array: T[]): T[] {
 	const shuffled = [...array];
@@ -34,45 +27,49 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export const useAnalytics = () => {
-	const pending = ref(false);
-	const error = ref(null);
+	const selectedTests = useState<string[]>("hil-selected-tests", () => []);
+	const selectedMetric = useState<string | undefined>("hil-selected-metric", () => undefined);
+
+	const xRangeLimit = useState<[number, number]>("hil-x-range-limit", () => [0, 1000]);
+	const selectedXRange = useState<[number, number]>("hil-selected-x-range", () => [0, 1000]);
+
+	const isLogX = useState<boolean>("hil-log-x", () => false);
+	const isLogY = useState<boolean>("hil-log-y", () => false);
+
+	const isInitialized = useState<boolean>("hil-is-initialized", () => false);
 
 	const availableTests = computed(() => {
-		const rawData = data.value;
-		if (!rawData) return [];
-		const names = rawData.map(row => `${row.protocol}_${row.router_topology}_${row.payload_b}b`);
+		const names = rawDataRef.value.map(row => `${row.protocol}_${row.router_topology}_${row.payload_b}b`);
 		return [...new Set(names)];
 	});
 
 	const availableMetrics = computed(() => {
-		const firstRow = data.value?.[0];
+		const firstRow = rawDataRef.value?.[0];
 		if (!firstRow) return [];
 		const allKeys = Object.keys(firstRow);
 		const ignoredColumns = ["test_id", "router_topology", "protocol", "freq_hz", "status", "payload_b", "expected_cnt", "pdr_expected", "pdr_received"];
 		return allKeys.filter(key => !ignoredColumns.includes(key));
 	});
 
-	if (!isInitialized && availableTests.value.length > 0 && availableMetrics.value.length > 0) {
+	if (!isInitialized.value && availableTests.value.length > 0 && availableMetrics.value.length > 0) {
 		const shuffledTests = shuffleArray(availableTests.value);
 		selectedTests.value = shuffledTests.slice(0, 5);
 
 		const shuffledMetrics = shuffleArray(availableMetrics.value);
 		selectedMetric.value = shuffledMetrics[0];
 
-		const frequencies = data.value.map(row => Number(row.freq_hz));
+		const frequencies = rawDataRef.value.map(row => Number(row.freq_hz));
 		const minFreq = Math.min(...frequencies);
 		const maxFreq = Math.max(...frequencies);
 
 		xRangeLimit.value = [minFreq, maxFreq];
 		selectedXRange.value = [minFreq, maxFreq];
 
-		isInitialized = true;
+		isInitialized.value = true;
 	}
 
 	const chartData = computed(() => {
-		const rawData = data.value;
-
-		if (!rawData || selectedTests.value.length === 0 || !selectedMetric.value) {
+		if (selectedTests.value.length === 0 || !selectedMetric.value) {
 			return { datasets: [] };
 		}
 
@@ -82,7 +79,7 @@ export const useAnalytics = () => {
 		];
 
 		const datasets = selectedTests.value.map((testName, index) => {
-			const testRows = rawData.filter((row) => {
+			const testRows = rawDataRef.value.filter((row) => {
 				const currentTestName = `${row.protocol}_${row.router_topology}_${row.payload_b}b`;
 				const freq = Number(row.freq_hz);
 				const isInRange = freq >= selectedXRange.value[0] && freq <= selectedXRange.value[1];
@@ -120,9 +117,17 @@ export const useAnalytics = () => {
 	};
 
 	return {
-		pending, error, availableTests, availableMetrics, selectedTests, selectedMetric, chartData, data,
-		selectAllTests, clearAllTests,
+		availableTests,
+		availableMetrics,
+		selectedTests,
+		selectedMetric,
+		chartData,
+		data: rawDataRef,
+		selectAllTests,
+		clearAllTests,
 		xRangeLimit,
 		selectedXRange,
+		isLogX,
+		isLogY,
 	};
 };

@@ -62,6 +62,16 @@ export const useAnalytics = () => {
 		return [...new Set(protocols)];
 	});
 
+	const availableTopologies = computed(() => {
+		const topologies = rawDataRef.value.map(row => row.router_topology);
+		return [...new Set(topologies)];
+	});
+
+	const availablePayloads = computed(() => {
+		const payloads = rawDataRef.value.map(row => Number(row.payload_b));
+		return [...new Set(payloads)].sort((a, b) => a - b);
+	});
+
 	const randomizeSelection = () => {
 		if (availableTests.value.length === 0 || availableMetrics.value.length === 0) return;
 
@@ -136,13 +146,35 @@ export const useAnalytics = () => {
 	};
 
 	const selectByProtocol = (protocol: string) => {
-		selectedTests.value = availableTests.value.filter(test => test.startsWith(`${protocol}_`));
+		const matchingRows = rawDataRef.value.filter((row) => {
+			if (protocol === "SERIAL") {
+				return row.protocol === "SERIAL_BIN" || row.protocol === "SERIAL_STR";
+			}
+			return row.protocol === protocol;
+		});
+
+		const names = matchingRows.map(row => `${row.protocol}_${row.router_topology}_${row.payload_b}b`);
+		selectedTests.value = [...new Set(names)];
+	};
+
+	const selectByTopology = (topology: string) => {
+		const matchingRows = rawDataRef.value.filter(row => row.router_topology === topology);
+		const names = matchingRows.map(row => `${row.protocol}_${row.router_topology}_${row.payload_b}b`);
+		selectedTests.value = [...new Set(names)];
+	};
+
+	const selectByPayload = (payload: number) => {
+		const matchingRows = rawDataRef.value.filter(row => Number(row.payload_b) === payload);
+		const names = matchingRows.map(row => `${row.protocol}_${row.router_topology}_${row.payload_b}b`);
+		selectedTests.value = [...new Set(names)];
 	};
 
 	return {
 		availableTests,
 		availableMetrics,
 		availableProtocols,
+		availableTopologies,
+		availablePayloads,
 		selectedTests,
 		selectedMetric,
 		chartData,
@@ -151,6 +183,8 @@ export const useAnalytics = () => {
 		clearAllTests,
 		randomizeSelection,
 		selectByProtocol,
+		selectByTopology,
+		selectByPayload,
 		xRangeLimit,
 		selectedXRange,
 		isLogX,

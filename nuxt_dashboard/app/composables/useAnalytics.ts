@@ -52,7 +52,13 @@ export const useAnalytics = () => {
 	});
 
 	const availableProtocols = computed(() => {
-		const protocols = rawDataRef.value.map(row => row.protocol);
+		const protocols = rawDataRef.value.map((row) => {
+			if (row.protocol === "SERIAL_BIN" || row.protocol === "SERIAL_STR") {
+				return "SERIAL";
+			}
+			return row.protocol;
+		});
+
 		return [...new Set(protocols)];
 	});
 

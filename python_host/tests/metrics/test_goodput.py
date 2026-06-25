@@ -10,8 +10,9 @@ class TestCalculateGoodput:
         """
         Scenario: 5 packets, 1000 bytes each.
         Test duration: exactly 1 second (from 0 to 1,000,000 us).
-        Expected Goodput: 5000 B/s (because 5 packets were received).
-        Expected Efficiency: 100% (assuming theoretical frequency was 5 Hz).
+        Receiver-side (fencepost-aware):
+        Useful bytes in-window = (5 - 1) * 1000 = 4000 B over 1 s.
+        Expected Efficiency: 80% vs offered load at 5 Hz.
         """
         payload_size = 1000
         frequency_hz = 5.0
@@ -21,10 +22,10 @@ class TestCalculateGoodput:
 
         res = calculate_goodput(received_ids, esp_ts, frequency_hz, payload_size)
 
-        assert res.bytes_per_sec == 5000.0
-        assert res.kilobytes_per_sec == 5000.0 / 1024.0
-        assert res.megabits_per_sec == (5000.0 * 8) / 1_000_000.0
-        assert res.efficiency_percent == 100.0
+        assert res.bytes_per_sec == 4000.0
+        assert res.kilobytes_per_sec == 4000.0 / 1024.0
+        assert res.megabits_per_sec == (4000.0 * 8) / 1_000_000.0
+        assert res.efficiency_percent == 80.0
 
     def test_goodput_ignores_duplicates(self):
         """
@@ -41,14 +42,14 @@ class TestCalculateGoodput:
 
         res = calculate_goodput(received_ids, esp_ts, frequency_hz, payload_size)
 
-        # We have only 3 UNIQUE packets in 1 second window. 3 * 100B = 300 B/s.
-        assert res.bytes_per_sec == 300.0
-        assert res.kilobytes_per_sec == 300.0 / 1024.0
-        assert res.megabits_per_sec == (300.0 * 8) / 1_000_000.0
+        # Fencepost-aware: (3 - 1) * 100B over 1 second = 200 B/s.
+        assert res.bytes_per_sec == 200.0
+        assert res.kilobytes_per_sec == 200.0 / 1024.0
+        assert res.megabits_per_sec == (200.0 * 8) / 1_000_000.0
 
         # Theoretical load: 4 Hz * 100 B * 8 = 3200 bits/sec.
-        # Actual: 300 B/s * 8 = 2400 bits/sec. Efficiency = 2400 / 3200 = 75%.
-        assert res.efficiency_percent == 75.0
+        # Actual: 200 B/s * 8 = 1600 bits/sec. Efficiency = 1600 / 3200 = 50%.
+        assert res.efficiency_percent == 50.0
 
     def test_goodput_out_of_order(self):
         """
@@ -65,14 +66,14 @@ class TestCalculateGoodput:
 
         res = calculate_goodput(received_ids, esp_ts, frequency_hz, payload_size)
 
-        # 3 packets * 50B = 150B. In 0.5s time gives 300 B/s.
-        assert res.bytes_per_sec == 300.0
-        assert res.kilobytes_per_sec == 300.0 / 1024.0
-        assert res.megabits_per_sec == (300.0 * 8) / 1_000_000.0
+        # Fencepost-aware: (3 - 1) * 50B = 100B in 0.5s -> 200 B/s.
+        assert res.bytes_per_sec == 200.0
+        assert res.kilobytes_per_sec == 200.0 / 1024.0
+        assert res.megabits_per_sec == (200.0 * 8) / 1_000_000.0
 
         # Theoretical load: 6 Hz * 50 B * 8 = 2400 bits/sec.
-        # Actual: 300 B/s * 8 = 2400 bits/sec. Efficiency = 100%.
-        assert res.efficiency_percent == 100.0
+        # Actual: 200 B/s * 8 = 1600 bits/sec. Efficiency = 66.666...%.
+        assert res.efficiency_percent == pytest.approx(66.66666666666666)
 
     def test_goodput_insufficient_data(self):
         """

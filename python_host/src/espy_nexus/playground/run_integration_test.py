@@ -1,7 +1,7 @@
 import pandas as pd
 
 from espy_nexus.control_plane.serial_cp import SerialControlPlane
-from espy_nexus.data_plane.serial_dp import SerialDataPlane
+from espy_nexus.data_plane.serial_str_dp import SerialStrDataPlane
 
 from espy_nexus.pipeline.downlink import DownlinkAnalyzer
 
@@ -21,10 +21,12 @@ def main() -> None:
     cp = SerialControlPlane(port=PORT, baudrate=BAUDRATE)
 
     # Strategię Data Plane
-    dp = SerialDataPlane(port=PORT, baudrate=BAUDRATE)
+    dp = SerialStrDataPlane(port=PORT, baudrate=BAUDRATE)
 
     # Analizator
-    analyzer = DownlinkAnalyzer(payload_size_bytes=PAYLOAD_SIZE)
+    analyzer = DownlinkAnalyzer(
+        frequency_hz=FREQUENCY_HZ, payload_size_bytes=PAYLOAD_SIZE
+    )
 
     try:
         cp.connect()

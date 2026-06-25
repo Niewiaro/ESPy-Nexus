@@ -22,23 +22,27 @@ class BatchAnalyzer:
         raw_db_path: str = "hil_raw_data.sqlite",
         analytics_db_path: str | None = "hil_analytics.sqlite",
         output_csv_path: str | None = "hil_analytics.csv",
+        json_csv_path: str | None = "hil_analytics.json",
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.raw_db_path = raw_db_path
         self.analytics_db_path = analytics_db_path
         self.output_csv_path = output_csv_path
+        self.json_csv_path = json_csv_path
 
         if not self.raw_db_path:
             self.logger.critical("Raw DB path is not set. Exiting.")
             raise ValueError("Raw DB path must be provided.")
 
-        if not self.output_csv_path and not self.analytics_db_path:
-            self.logger.critical(
-                "Both output CSV path and Analytics DB path are None. No results will be saved."
-            )
+        if (
+            not self.output_csv_path
+            and not self.analytics_db_path
+            and not self.json_csv_path
+        ):
+            self.logger.critical("All output paths are None. No results will be saved.")
             raise ValueError(
-                "At least one of output_csv_path or analytics_db_path must be provided."
+                "At least one of output_csv_path, analytics_db_path, or json_csv_path must be provided."
             )
 
         self._init_analytics_db()
@@ -330,6 +334,20 @@ class BatchAnalyzer:
                 )
             except Exception as e:
                 self.logger.error(f"Failed to save results to CSV: {e}")
+
+        # JSON
+        if self.json_csv_path is not None:
+            try:
+                df_final_json = df_final.copy()
+                df_final_json.drop(
+                    columns=["ooo_events", "burst_events"], inplace=True
+                )  # Drop complex columns
+                df_final_json.to_json(self.json_csv_path, orient="records", indent=2)
+                self.logger.info(
+                    f"Loaded {len(df_final_json)} rows into JSON file: {self.json_csv_path}"
+                )
+            except Exception as e:
+                self.logger.error(f"Failed to save results to JSON: {e}")
 
 
 if __name__ == "__main__":

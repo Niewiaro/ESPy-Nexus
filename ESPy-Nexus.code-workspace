@@ -11,6 +11,10 @@
         {
             "name": "📊 Dashboard (Nuxt)",
             "path": "nuxt_dashboard"
+        },
+        {
+            "name": "📖 Thesis (LaTeX)",
+            "path": "thesis"
         }
     ],
     "settings": {

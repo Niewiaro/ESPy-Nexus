@@ -1,17 +1,17 @@
 \documentclass[11pt]{extreport}
 
-\usepackage[pdftex,
-            pdfauthor={Jakub Biernat - twórca templatki},
-            pdftitle={Temat pracy dyplomowej w języku polskim},
-            pdfsubject={Temat pracy dyplomowej w języku angielskim}]{hyperref}  % UStawienie parametrów dokumentu pdf
+\usepackage[pdfauthor={Jakub Niewiarowski},
+            pdftitle={Implementacja i porównanie bezprzewodowych protokołów komunikacyjnych z wykorzystaniem systemów wbudowanych},
+            pdfsubject={Implementation and comparison of wireless communication protocols using embedded systems}]{hyperref}  % UStawienie parametrów dokumentu pdf
 
 \input{settings}
 
 \begin{document}
 
 % Dla lepszej wydajności można w trakcie pisania zakomentować obydwa include
-\input{title_page}
-\input{claims_page}
+\input{frontmatter/title_page}
+\restoregeometry
+\input{frontmatter/claims_page}
 \tableofcontents  %Spis treści
 
 \begingroup
@@ -61,6 +61,10 @@ Chwilowa wartość natężenia promieniowania jest parametrem, który wylicza si
 
 \begin{equation}
   G'min = U\underset{L}{}*\frac{\Delta T}{\eta\underset{opt}{} } \tag{3.1}\label{eq:3.1} 
+\end{equation}
+
+\begin{equation}
+  G'_{min} = U_L \cdot \frac{\Delta T}{\eta_{opt}} \label{eq:natezenie} 
 \end{equation}
 
 gdzie: \\

@@ -6,6 +6,16 @@
 \usepackage[T1]{fontenc} % Font encoding
 \usepackage[utf8]{inputenc} % Input encoding
 \usepackage[polish]{babel} % Polish language support
+
+% --- ZAPOBIEGANIE BĘKARTOM I SIEROTOM ---
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+% --- BRAK DZIELENIA WYRAZÓW I TOLERANCJA SPACJI ---
+\usepackage[none]{hyphenat}
+\sloppy
+
 \usepackage{tgtermes} % Times New Roman font
 \usepackage{titlesec} % Customizing section titles
 \usepackage{tocloft} % Customizing table of contents
@@ -30,7 +40,6 @@
   linkcolor=black,%
   urlcolor=black,%
 }
-
 
 % Path to images
 \graphicspath{ {./images/} }
@@ -71,7 +80,6 @@
   baselinestretch=1
 }
 
-
 \makeatletter
 \renewcommand{\@makechapterhead}[1]{%
   {\parindent \z@ \raggedright
@@ -84,7 +92,6 @@
 \makeatother
 
 \addbibresource{bibliografia.bib}
-
 
 \newcommand\blankpage{%
   \null

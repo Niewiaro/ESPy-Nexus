@@ -13,10 +13,10 @@
 \usepackage{indentfirst} % Indent first paragraph of sections
 \usepackage{ragged2e} % Justify text
 \usepackage[format=plain,
-            labelfont=it,
-            textfont=it,
-            labelsep=period,
-            justification=centering]{caption}% Image decription
+  labelfont=it,
+  textfont=it,
+  labelsep=period,
+  justification=centering]{caption}% Image decription
 
 \usepackage{minted} % Code blocks
 \usepackage[style=ieee]{biblatex}
@@ -25,10 +25,10 @@
 \usepackage{amsmath}
 \usepackage{hyperref}
 \hypersetup{colorlinks,%
-citecolor=black,%
-filecolor=black,%
-linkcolor=black,%
-urlcolor=black,%
+  citecolor=black,%
+  filecolor=black,%
+  linkcolor=black,%
+  urlcolor=black,%
 }
 
 
@@ -57,28 +57,28 @@ urlcolor=black,%
 
 % Customizing section font size to 13pt
 \titleformat{\section}
-  {\normalfont\fontsize{13}{15}\bfseries} % Font size and style
-  {\thesection}{1em}{}
+{\normalfont\fontsize{13}{15}\bfseries} % Font size and style
+{\thesection}{1em}{}
 
 % Customizing subsection font size to 12pt
 \titleformat{\subsection}
-  {\normalfont\fontsize{12}{14}\bfseries} % Font size and style
-  {\thesubsection}{1em}{}
-  
+{\normalfont\fontsize{12}{14}\bfseries} % Font size and style
+{\thesubsection}{1em}{}
+
 % Ustawienia bloków kodu 
 \setminted{
   frame=single,
   baselinestretch=1
-  }
+}
 
 
 \makeatletter
 \renewcommand{\@makechapterhead}[1]{%
-  {\parindent \z@ \raggedright 
+  {\parindent \z@ \raggedright
     \ifnum \c@secnumdepth >\m@ne
       \fontsize{14}{16}\bfseries \thechapter\quad
     \fi
-     \fontsize{14}{16} \bfseries #1\par\nobreak
+    \fontsize{14}{16} \bfseries #1\par\nobreak
     \vskip 6\p@
   }}
 \makeatother
@@ -87,10 +87,10 @@ urlcolor=black,%
 
 
 \newcommand\blankpage{%
-    \null
-    \thispagestyle{empty}%
-    \addtocounter{page}{-1}%
-    \newpage}
+  \null
+  \thispagestyle{empty}%
+  \addtocounter{page}{-1}%
+  \newpage}
 
 \let\tempone\itemize
 \let\temptwo\enditemize

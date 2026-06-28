@@ -1,6 +1,6 @@
 \chapter{Układ graficzny pracy}
 
-Przy pisaniu pracy obowiązuje styl bezosobowy tak jak pokazują to poniższe przykłady: 
+Przy pisaniu pracy obowiązuje styl bezosobowy tak jak pokazują to poniższe przykłady:
 Wpływ zachmurzenia na gęstość strumienia promieniowania słonecznego przedstawiono na rysunku 3.1.  – \textbf{poprawnie}
 Wpływ zachmurzenia na gęstość strumienia promieniowania słonecznego przedstawia rysunek 3.1.  – \textbf{poprawnie}
 Wpływ zachmurzenia na gęstość strumienia promieniowania słonecznego przedstawiłem na rysunku 3.1. – \textbf{niepoprawnie}
@@ -15,7 +15,7 @@ Styl RYS, Times New Roman 11, kursywa, odstęp pomiędzy wierszami pojedynczy. W
 
 \section{Wzory} %podrozdział (h2)
 
-Jeżeli występują w tekście wzory należy je numerować oraz podać opis wielkości w nich występujących. Wzory należy wyśrodkowywać a numerowanie worów wyrównywać do prawej krawędzi tak jak przedstawia to poniższy przykład. Zmienne we wzorach powinny być napisane kursywą. Wzór jest częścią zadania, obowiązują w związku z tym zasady interpunkcji.   
+Jeżeli występują w tekście wzory należy je numerować oraz podać opis wielkości w nich występujących. Wzory należy wyśrodkowywać a numerowanie worów wyrównywać do prawej krawędzi tak jak przedstawia to poniższy przykład. Zmienne we wzorach powinny być napisane kursywą. Wzór jest częścią zadania, obowiązują w związku z tym zasady interpunkcji.
 
 \subsection{Natężenia promieniowania } %podrozdział (h3)
 
@@ -23,11 +23,11 @@ Przykład:
 Chwilowa wartość natężenia promieniowania jest parametrem, który wylicza się z zależności:
 
 \begin{equation}
-  G'min = U\underset{L}{}*\frac{\Delta T}{\eta\underset{opt}{} } \tag{3.1}\label{eq:3.1} 
+    G'min = U\underset{L}{}*\frac{\Delta T}{\eta\underset{opt}{} } \tag{3.1}\label{eq:3.1}
 \end{equation}
 
 \begin{equation}
-  G'_{min} = U_L \cdot \frac{\Delta T}{\eta_{opt}} \label{eq:natezenie} 
+    G'_{min} = U_L \cdot \frac{\Delta T}{\eta_{opt}} \label{eq:natezenie}
 \end{equation}
 
 gdzie: \\
@@ -37,7 +37,7 @@ $\Delta T$ - różnica temperatur pomiędzy czynnikiem solarnym a otoczeniem, [K
 
 \section{Rysunki, tabele i bloki kodu}
 
-Rysunki oraz tabele (tylko dobrej jakości, min. 300dpi) występujące w tekście należy wyśrodkowywać. Każdy rysunek oraz tabela musi zawierać numer oraz podpis. Podpis umieszcza się pod rysunkiem oraz nad tabelą, tak jak to przedstawiają poniższe przykłady. Odstęp pomiędzy tekstem a rysunkiem wynosi jedną linię. \textbf{Uwaga!} Nie można wstawiać do pracy rysunków oraz tabel bez ich opisu/komentarza w tekście. Rysunek lub tabela pozbawione komentarzy w tekście są bezwartościowe i obniżają jakość pracy. 
+Rysunki oraz tabele (tylko dobrej jakości, min. 300dpi) występujące w tekście należy wyśrodkowywać. Każdy rysunek oraz tabela musi zawierać numer oraz podpis. Podpis umieszcza się pod rysunkiem oraz nad tabelą, tak jak to przedstawiają poniższe przykłady. Odstęp pomiędzy tekstem a rysunkiem wynosi jedną linię. \textbf{Uwaga!} Nie można wstawiać do pracy rysunków oraz tabel bez ich opisu/komentarza w tekście. Rysunek lub tabela pozbawione komentarzy w tekście są bezwartościowe i obniżają jakość pracy.
 Przykład: Wysokość i azymut Słońca we wszystkich porach roku przedstawia rysunek 2.1. Gęstość strumienia promieniowania zależy od zachmurzenia co ilustruje rys.2.2. \\
 
 \begin{figure}[ht]
@@ -53,18 +53,18 @@ Numeracje rysunków, tabel oraz wzorów przeprowadza się w obrębie głównych 
 \subsection{Tabela manualna}
 
 \begin{table}[ht]
-\centering			          %justowanie całej tabeli na środku strony
-\caption{Przykładowa tabela}  %opis tabeli
-\label{tab:przyklad}		  %etykieta, przyda się do odwołań
-\begin{tabular}{|c|c|c|}      %justowanie c-enter, l-eft, r-ight
-\hline					      %pozioma linia
-Dane 1 & Dane 2 & Dane 3 \\
-\hline                                 % linia pozioma
-Komórka 1 & Komórka 2 & Komórka 3 \\  % & oddziela kolumny
-\hline
-Komórka 4 & Komórka 5 & Komórka 6 \\  % \\ zamyka kolumnę
-\hline
-\end{tabular}
+    \centering			          %justowanie całej tabeli na środku strony
+    \caption{Przykładowa tabela}  %opis tabeli
+    \label{tab:przyklad}		  %etykieta, przyda się do odwołań
+    \begin{tabular}{|c|c|c|}      %justowanie c-enter, l-eft, r-ight
+        \hline					      %pozioma linia
+        Dane 1    & Dane 2    & Dane 3    \\
+        \hline                                 % linia pozioma
+        Komórka 1 & Komórka 2 & Komórka 3 \\  % & oddziela kolumny
+        \hline
+        Komórka 4 & Komórka 5 & Komórka 6 \\  % \\ zamyka kolumnę
+        \hline
+    \end{tabular}
 \end{table}
 
 \subsection{Tabela z pliku csv}
@@ -99,9 +99,9 @@ def trapezoidal(x0,xn,n):
 
 W przypadku cytowania fragmentów tekstów, tabel, rysunków lub wzorów z literatury należy zaznaczyć autora tego cytowania w tekście pracy.
 
-\textbf{Sposób pierwszy:} Cytowanie poprzez umieszczenie odpowiedniego numeru w nawiasie kwadratowym. Powołanie na literaturę umieszcza się po cytowanym fragmencie teksu przed kropką np.: Na skutek procesów zachodzących w atmosferze, do powierzchni Ziemi dociera jedynie 39-45\% promieniowania pozaatmosferycznego w skali roku [10].  - \textbf{poprawnie}    
+\textbf{Sposób pierwszy:} Cytowanie poprzez umieszczenie odpowiedniego numeru w nawiasie kwadratowym. Powołanie na literaturę umieszcza się po cytowanym fragmencie teksu przed kropką np.: Na skutek procesów zachodzących w atmosferze, do powierzchni Ziemi dociera jedynie 39-45\% promieniowania pozaatmosferycznego w skali roku [10].  - \textbf{poprawnie}
 Na skutek procesów zachodzących w atmosferze, do powierzchni Ziemi dociera jedynie 39-45\% promieniowania pozaatmosferycznego w skali roku. [10]  - \textbf{niepoprawnie }
 
-\textbf{Sposób drugi:} Cytowanie poprzez powołanie się na autorów cytowanej pracy oraz roku publikacji pracy np.: Nowak i Kowalski (2009) w swojej pracy prezentują … 
+\textbf{Sposób drugi:} Cytowanie poprzez powołanie się na autorów cytowanej pracy oraz roku publikacji pracy np.: Nowak i Kowalski (2009) w swojej pracy prezentują …
 Jeżeli autorami pracy są więcej niż dwie osoby należy użyć w cytowaniu tylko nazwiska pierwszego autora np.: Nowak i inni (2010) w swojej pracy prezentują …
 Jeżeli ci sami autorzy (lub autor) w jednym roku wydali kilka publikacji, które są w pracy cytowane należy po roku cytowanej publikacji dodać jeszcze literę zgodnie z kolejnością umieszczenia publikacji w wykazie literatury np.: Nowak (2011a) oraz Nowak (2011c) w swoich pracach przedstawia …

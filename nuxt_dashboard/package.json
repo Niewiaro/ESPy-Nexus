@@ -14,6 +14,7 @@
   "dependencies": {
     "@nuxt/eslint": "1.16.0",
     "@nuxt/ui": "4.9.0",
+    "@tanstack/vue-table": "^8.21.3",
     "@tiptap/core": "^3.27.1",
     "@tiptap/extension-bubble-menu": "^3.27.1",
     "@tiptap/extension-code": "^3.27.1",

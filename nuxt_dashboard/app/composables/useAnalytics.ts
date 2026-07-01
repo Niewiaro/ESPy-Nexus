@@ -72,6 +72,21 @@ export const useAnalytics = () => {
 		return [...new Set(payloads)].sort((a, b) => a - b);
 	});
 
+	const hzRange = computed(() => {
+		if (!rawDataRef.value.length) return { min: 0, max: 0 };
+
+		return rawDataRef.value.reduce((acc, row) => {
+			const hz = Number(row.freq_hz) || 0;
+			if (hz < acc.min) acc.min = hz;
+			if (hz > acc.max) acc.max = hz;
+			return acc;
+		}, { min: Infinity, max: -Infinity });
+	});
+
+	const totalPackets = computed(() => {
+		return rawDataRef.value.reduce((sum, row) => sum + (Number(row.expected_cnt) || 0), 0);
+	});
+
 	const randomizeSelection = () => {
 		if (availableTests.value.length === 0 || availableMetrics.value.length === 0) return;
 
@@ -189,5 +204,7 @@ export const useAnalytics = () => {
 		selectedXRange,
 		isLogX,
 		isLogY,
+		hzRange,
+		totalPackets,
 	};
 };

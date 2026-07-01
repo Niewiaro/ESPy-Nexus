@@ -51,22 +51,46 @@
 					/>
 				</div>
 
-				<div class="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 pt-8 border-t border-gray-200/80 dark:border-gray-800/80 text-center w-full max-w-3xl">
+				<div class="mt-12 grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-8 pt-8 border-t border-gray-200/80 dark:border-gray-800/80 text-center w-full max-w-3xl">
 					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-bold text-gray-900 dark:text-white">{{ availableTests.length }}</span>
+						<span class="text-3xl font-bold text-gray-900 dark:text-white">
+							<AnimatedCounter :value="availableTests.length" />
+						</span>
 						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Serie Testów</span>
 					</div>
 					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-bold text-gray-900 dark:text-white">{{ availableProtocols.length }}</span>
+						<span class="text-3xl font-bold text-gray-900 dark:text-white">
+							<AnimatedCounter :value="availableProtocols.length" />
+						</span>
 						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Protokoły</span>
 					</div>
 					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-bold text-gray-900 dark:text-white">{{ availableTopologies.length }}</span>
+						<span class="text-3xl font-bold text-gray-900 dark:text-white">
+							<AnimatedCounter :value="availableTopologies.length" />
+						</span>
 						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Topologie</span>
 					</div>
+
 					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-bold text-gray-900 dark:text-white">{{ data.length }}</span>
-						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Pomiary (Hz)</span>
+						<span class="text-3xl font-bold text-gray-900 dark:text-white">
+							<AnimatedCounter :value="data.length" />
+						</span>
+						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Scenariusze</span>
+					</div>
+
+					<div class="flex flex-col gap-1">
+						<span class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+							<AnimatedCounter :value="hzRange.min" />-<AnimatedCounter :value="hzRange.max" />
+							<span class="text-base sm:text-lg font-semibold ml-0.5">Hz</span>
+						</span>
+						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Zakres analizy</span>
+					</div>
+
+					<div class="flex flex-col gap-1">
+						<span class="text-3xl font-bold text-gray-900 dark:text-white">
+							<AnimatedCounter :value="totalPackets" />
+						</span>
+						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Przesłane pakiety</span>
 					</div>
 				</div>
 			</div>
@@ -75,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-const { availableTests, availableProtocols, availableTopologies, data } = useAnalytics();
+const { availableTests, availableProtocols, availableTopologies, data, hzRange, totalPackets } = useAnalytics();
 
 const scrollToDashboard = () => {
 	document.getElementById("dashboard-section")?.scrollIntoView({ behavior: "smooth" });

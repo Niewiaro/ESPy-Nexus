@@ -120,13 +120,14 @@ const UBadge = resolveComponent("UBadge");
 
 const { data } = useAnalytics();
 type HilDataRow = typeof data.value[0];
+type UColumn = TableColumn<HilDataRow> & { accessorKey?: string };
 
 const table = useTemplateRef("table");
 const globalFilter = ref("");
 const pagination = ref({ pageIndex: 0, pageSize: 15 });
 const columnVisibility = ref<Record<string, boolean>>({});
 
-const metadataColumns: TableColumn<HilDataRow>[] = [
+const metadataColumns: UColumn[] = [
 	{ accessorKey: "test_id", header: "ID" },
 	{ accessorKey: "protocol", header: "Protokół" },
 	{ accessorKey: "router_topology", header: "Topologia" },
@@ -143,14 +144,14 @@ const metadataColumns: TableColumn<HilDataRow>[] = [
 	{ accessorKey: "expected_cnt", header: "Oczekiwane [szt.]" },
 ];
 
-const normalizedColumns: TableColumn<HilDataRow>[] = [
+const normalizedColumns: UColumn[] = [
 	{ accessorKey: "pdr_ratio_percent", header: "PDR [%]", cell: ({ row }) => `${Number(row.getValue("pdr_ratio_percent")).toFixed(2)}%` },
 	{ accessorKey: "jitter_cv_percent", header: "Jitter CV [%]", cell: ({ row }) => `${Number(row.getValue("jitter_cv_percent")).toFixed(4)}%` },
 	{ accessorKey: "goodput_efficiency_percent", header: "Efficiency [%]", cell: ({ row }) => `${Number(row.getValue("goodput_efficiency_percent")).toFixed(2)}%` },
 	{ accessorKey: "timing_bloat_percent", header: "Queue Delay [%]", cell: ({ row }) => `${Number(row.getValue("timing_bloat_percent")).toFixed(4)}%` },
 ];
 
-const rawColumns: TableColumn<HilDataRow>[] = [
+const rawColumns: UColumn[] = [
 	{ accessorKey: "pdr_expected", header: "PDR Expected" },
 	{ accessorKey: "pdr_received", header: "PDR Received" },
 	{ accessorKey: "pdr_lost", header: "PDR Lost" },

@@ -52,7 +52,7 @@
 									color="neutral"
 									variant="ghost"
 									size="sm"
-									@click="isFullscreenModalOpen = true"
+									@click="() => { isFullscreenModalOpen = true }"
 								>
 									Pełny ekran
 								</UButton>

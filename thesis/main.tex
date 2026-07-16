@@ -2,17 +2,19 @@
 
 \usepackage[pdfauthor={Jakub Niewiarowski},
             pdftitle={Implementacja i porównanie bezprzewodowych protokołów komunikacyjnych z wykorzystaniem systemów wbudowanych},
-            pdfsubject={Implementation and comparison of wireless communication protocols using embedded systems}]{hyperref}  % UStawienie parametrów dokumentu pdf
+            pdfsubject={Implementation and comparison of wireless communication protocols using embedded systems}]{hyperref}  % PDF parameters
 
 \input{settings}
 
 \begin{document}
 
-% Dla lepszej wydajności można w trakcie pisania zakomentować obydwa include
+% Comment during development to avoid unnecessary compilation of the title page and claims page
 \input{frontmatter/title_page}
 \restoregeometry
 \input{frontmatter/claims_page}
-\tableofcontents  %Spis treści
+
+% Tabele of contents
+\tableofcontents
 
 \begingroup
 \titleformat{\chapter}[hang]
@@ -21,16 +23,18 @@
 \clearpage
 \phantomsection
 
+% Chapters
 % \input{chapters/wykaz_oznaczen}
-
-\input{chapters/00_chapters}
-% \include{chapters/01_cel_i_zakres}
-% \include{chapters/02_wstep}
+% \include{chapters/00_chapters}
+\include{chapters/01_cel_i_zakres}
+\include{chapters/02_wstep}
 % \include{chapters/03_uklad}
 % \include{chapters/04_wnioski}
 
+% Bibliography
 \printbibliography[title={Literatura}]
 
+% Summary English
 \input{chapters/99_summary}
 
 \end{document}

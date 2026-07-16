@@ -1,0 +1,9 @@
+modifyLineBreaks:
+    oneSentencePerLine:
+        manipulateSentences: 1
+        removeSentenceLineBreaks: 1
+
+noIndentBlock:
+    textitAng:
+        begin: '\\textit\{ang\.'
+        end: '\}'

@@ -123,7 +123,7 @@ class TestEngine:
                 end_dt = start_dt + timedelta(seconds=est_test_duration)
 
                 self.logger.info(
-                    f"[{i}/{len(matrix)}] >>> {config.protocol.value} {config.frequency_hz} Hz"
+                    f"[{i}/{len(matrix)}] >>> {config.protocol.value} | {config.frequency_hz} Hz | {config.payload_size_bytes} B | {config.packet_count} packets"
                 )
                 self.logger.info(
                     f"⏳ Estimated time: {format_duration(est_test_duration, compact=True)} | "

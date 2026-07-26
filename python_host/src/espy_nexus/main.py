@@ -3,6 +3,7 @@ from datetime import datetime
 
 from espy_nexus.core.settings import RunnerSettings
 from espy_nexus.runner.matrix import (
+    generate_smart_rates,
     generate_test_matrix,
     generate_linear_rates,
     generate_exponential_rates,
@@ -53,28 +54,27 @@ def get_active_profile() -> RunnerSettings:
 
     # --- PROFILE B: Full hardware test (HARDWARE) ---
     return RunnerSettings(
-        router_topology=RouterTopology.STA_MOBILE,
+        router_topology=RouterTopology.STA,
         control_plane_type=ControlPlane.SERIAL,
         protocols=[
-            # Protocol.SERIAL_STR,
-            # Protocol.SERIAL_BIN,
+            Protocol.SERIAL_STR,
+            Protocol.SERIAL_BIN,
             Protocol.UDP,
             Protocol.TCP,
             Protocol.WS,
         ],
         control_plane_port="COM3",
         data_plane_serial_port="COM3",
-        # data_plane_ip_address="127.0.0.1",
-        # data_plane_ip_address="192.168.100.167",
-        data_plane_ip_address="10.47.121.155",
-        # data_plane_ip_address="192.168.4.1",
+        data_plane_ip_address="192.168.100.167",
+        # data_plane_ip_address="10.47.121.155",
         baudrate=921600,
         packet_count=1000,
-        rate_type=RateType.LOG,
-        freq_start=0,
+        rate_type=RateType.SMART,
+        payloads_bytes=[4, 16, 256, 1024],
+        freq_start=100,
         freq_stop=10000,
-        freq_step=10,
-        exp_base=10,
+        freq_step=100,
+        exp_base=2,
         exp_max=10000,
         drain_time_s=10,
         cooldown_s=10,
@@ -156,7 +156,7 @@ def build_matrix(config: RunnerSettings) -> list[TestConfig]:
     if config.rate_type == RateType.LINEAR:
         frequencies = generate_linear_rates(
             start=config.freq_start,
-            stop=config.freq_stop,
+            max_val=config.freq_stop,
             step=config.freq_step,
         )
     elif config.rate_type == RateType.EXPONENTIAL:
@@ -165,6 +165,13 @@ def build_matrix(config: RunnerSettings) -> list[TestConfig]:
         )
     elif config.rate_type == RateType.LOG:
         frequencies = generate_log_rates(max_val=config.exp_max)
+    elif config.rate_type == RateType.SMART:
+        frequencies = generate_smart_rates(
+            exp_base=config.exp_base,
+            linear_start=config.freq_start,
+            linear_step=config.freq_step,
+            max_val=config.exp_max,
+        )
     else:
         raise ValueError(f"Unsupported rate type: {config.rate_type}")
 
@@ -172,7 +179,7 @@ def build_matrix(config: RunnerSettings) -> list[TestConfig]:
         router_topology=config.router_topology,
         protocols=config.protocols,
         rates_hz=frequencies,
-        payloads_bytes=[config.payload_size_bytes],
+        payloads_bytes=config.payloads_bytes,
         packet_count=config.packet_count,
         drain_time_s=config.drain_time_s,
         cooldown_s=config.cooldown_s,

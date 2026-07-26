@@ -7,8 +7,8 @@ class UdpDataPlane : public IDataPlane
 {
 private:
     WiFiUDP udp;
-    uint8_t rx_buffer[256];
-    uint16_t rx_index;
+
+    uint8_t rx_buffer[2048];
     bool wifi_connected;
 
 public:

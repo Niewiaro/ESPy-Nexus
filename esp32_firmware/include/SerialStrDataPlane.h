@@ -4,7 +4,7 @@
 class SerialStrDataPlane : public IDataPlane
 {
 private:
-    char rx_buffer[128];
+    char rx_buffer[2048];
     uint16_t rx_index;
 
     inline uint32_t fast_atoi(const char *str);

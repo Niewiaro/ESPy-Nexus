@@ -7,7 +7,10 @@ class TcpDataPlane : public IDataPlane
 private:
     WiFiServer server;
     WiFiClient client;
-    uint8_t rx_buffer[256];
+    
+    uint8_t rx_buffer[2048];
+    uint8_t decoded_payload[2048];
+
     uint16_t rx_index;
     bool server_running;
 

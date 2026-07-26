@@ -7,10 +7,12 @@ bool UdpDataPlane::begin()
 {
     rx_index = 0;
 
-#if IS_ESPY_NEXUS_AP == 1
+#if NETWORK_MODE == 1
     bool networkReady = (WiFi.softAPIP()[0] != 0);
-#else
+#elif NETWORK_MODE == 2
     bool networkReady = (WiFi.status() == WL_CONNECTED);
+#else
+    bool networkReady = false;
 #endif
 
     if (networkReady)

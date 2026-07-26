@@ -223,7 +223,7 @@ void setup()
   // Wi-Fi initialization
   // If ESPy-Nexus is configured to run in Access Point mode, it will create its own Wi-Fi network.
   // Otherwise, it will connect to the specified home Wi-Fi network.
-#if IS_ESPY_NEXUS_AP == 1
+#if NETWORK_MODE == 1
   Serial.printf("\n[Wi-Fi] Starting Access Point mode: %s \n", WIFI_AP_SSID);
 
   WiFi.mode(WIFI_AP); // Set the board to AP mode
@@ -245,7 +245,7 @@ void setup()
       ;
   }
 
-#else
+#elif NETWORK_MODE == 2
   Serial.printf("\n[Wi-Fi] Connecting to home network: %s ", WIFI_STA_SSID);
 
   WiFi.mode(WIFI_STA);

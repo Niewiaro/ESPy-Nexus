@@ -8,3 +8,59 @@ Na bezwzględny czas transmisji danych składa się wiele czynników.
 Zjawiska takie jak opóźnienia w buforach, zmienność opóźnień, czy utrata ciągłości sterowania potrafią doprowadzić do katastrofalnych skutków, na przykład utraty kontroli nad lecącym bezzałogowym statkiem powietrznym.
 Inżynierowie projektujący tego typu rozwiązania nieustannie stają przed dylematem wyboru odpowiedniego medium transmisyjnego oraz protokołu warstwy transportowej lub aplikacyjnej.
 Gwarancja dostarczenia każdego pakietu zazwyczaj wiąże się z niedopuszczalnym w systemach dynamicznych narzutem czasowym, podczas gdy minimalizacja opóźnień wymaga akceptacji nieuchronnego gubienia części danych w eterze.
+
+\section{Problematyka systemów czasu rzeczywistego}
+
+Zgodnie z klasyczną definicją, systemy czasu rzeczywistego to systemy obliczeniowe, które muszą reagować na zdarzenia w środowisku w ramach precyzyjnie określonych ograniczeń czasowych.
+W konsekwencji poprawne zachowanie tych systemów zależy nie tylko od logicznej poprawności samych obliczeń, ale również od czasu, w którym wyniki te są dostarczane \cite{buttazzo2011}.
+
+% W tej sekcji przechodzimy od ogółu do konkretnych dziedzin, w których czas ma znaczenie krytyczne.
+
+\subsection{Sterowanie zdalne a telemetria}
+Omówienie fundamentalnej różnicy między telemetrią (gdzie dopuszczalne są opóźnienia i buforowanie danych z czujników) a twardym sterowaniem zdalnym (gdzie spóźniony pakiet z instrukcją ruchu maszyny jest bezużyteczny lub wręcz niebezpieczny).
+
+\subsection{Wymóg determinizmu w nowoczesnym IoT}
+Zdefiniowanie pojęcia determinizmu czasowego i wyjaśnienie, dlaczego w dynamicznych układach cyberfizycznych przewidywalność dostarczenia pakietu jest ważniejsza niż sama maksymalna przepustowość (przepaść między wymaganiami IoT a klasycznymi sieciami IT).
+
+\section{Motywacja badawcza i uzasadnienie tematu}
+% To jest akademicka wersja Twoich pytań: "po co?", "co?", "jak?", "dlaczego?".
+
+\subsection{Potrzeba ewaluacji protokołów w warunkach brzegowych}
+Uzasadnienie, dlaczego deklaracje producentów sprzętu (teoretyczne przepustowości WiFi/BLE) są niewystarczające przy projektowaniu systemów HIL i dlaczego konieczne jest empiryczne badanie stosów sieciowych pod ekstremalnym obciążeniem.
+
+\subsection{Ograniczenia istniejących narzędzi diagnostycznych}
+Wskazanie luki na rynku polegającej na tym, że popularne narzędzia sieciowe (np.
+iPerf, Ping) nie oddają w pełni charakterystyki małych, gęstych pakietów mikrokontrolerów, co wymusza budowę dedykowanego, sprzętowego systemu analitycznego.
+
+\subsection{Oczekiwane rezultaty i wartość inżynierska}
+Krótkie określenie, że wynikiem przeprowadzonych w pracy badań będzie praktyczny zbiór wytycznych i kompromisów architektonicznych, ułatwiający inżynierom dobór topologii oraz protokołu adekwatnego do wymagań projektowanego systemu osadzonego.
+
+\section{Problematyka systemów czasu rzeczywistego}
+
+\subsection{Definicja i wymóg determinizmu}
+System czasu rzeczywistego (ang.
+Real-Time System - RTS) to system komputerowy, w którym o poprawności działania decyduje nie tylko bezbłędność wypracowanych wyników, ale przede wszystkim rygorystyczny czas ich dostarczenia.
+Wyróżnia się systemy o miękkich ograniczeniach czasowych (ang.
+Soft Real-Time), gdzie spóźnienie danych obniża jakość usługi (np.
+zacięcie się strumienia wideo), oraz o twardych ograniczeniach czasowych (ang.
+Hard Real-Time), gdzie przekroczenie wyznaczonego terminu dostarczenia informacji traktowane jest jako krytyczna awaria całego systemu.
+
+\subsection{Telemetria a sterowanie zdalne}
+W kontekście transmisji danych należy wyraźnie rozróżnić telemetrię od sterowania zdalnego.
+Telemetria, polegająca na cyklicznym raportowaniu stanu czujników (np.
+stacje pogodowe, systemy Smart Home), najczęściej toleruje opóźnienia i pozwala na buforowanie danych.
+Z kolei dynamiczne sterowanie zdalne (np.
+kierowanie pojazdem autonomicznym, robotem przemysłowym czy wielowirnikowcem) reprezentuje twarde wymagania czasowe.
+Spóźniony pakiet z komendą skrętu lub korekty obrotów silnika jest bezużyteczny, a jego wykonanie po terminie może zdestabilizować układ sterowania.
+
+\subsection{Systemy GPOS a RTOS w architekturze badawczej}
+Powszechnie wykorzystywane systemy operacyjne, takie jak Windows, macOS czy dystrybucje GNU/Linux, należą do grupy systemów ogólnego przeznaczenia (ang.
+General Purpose Operating Systems - GPOS).
+Ich planiści (ang.
+schedulers) są zoptymalizowani pod kątem maksymalizacji ogólnej przepustowości oraz responsywności interfejsu użytkownika.
+Oznacza to, że procesy w tle mogą w dowolnym momencie wstrzymać wykonanie wątku wysyłającego dane sieciowe na kilka lub kilkadziesiąt milisekund.
+Choć z perspektywy użytkownika komputera jest to niezauważalne, w systemach wbudowanych stanowi to wieczność.
+
+To fundamentalne ograniczenie sprawia, że do precyzyjnego sterowania oraz mierzenia opóźnień niezbędne są mikrokontrolery pracujące pod kontrolą dedykowanych systemów czasu rzeczywistego (ang.
+Real-Time Operating Systems - RTOS), takich jak FreeRTOS.
+W układach badawczych typu Hardware-in-the-Loop występuje naturalna asymetria: komputer PC pełni rolę symulatora generującego obciążenie (często wprowadzając naturalny szum czasowy), podczas gdy mikrokontroler z systemem RTOS przyjmuje rolę deterministycznego układu pomiarowego, precyzyjnie rejestrującego opóźnienia i defekty wprowadzane zarówno przez stos sieciowy PC, jak i same fizyczne media transmisyjne.

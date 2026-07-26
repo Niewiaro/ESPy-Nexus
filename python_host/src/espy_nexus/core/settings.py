@@ -25,7 +25,7 @@ class RunnerSettings:
 
     # --- Test Parameters ---
     protocols: list[Protocol] = field(default_factory=lambda: [Protocol.MOCK])
-    payload_size_bytes: int = 16
+    payloads_bytes: list[int] = field(default_factory=lambda: [16])
     packet_count: int = 100
 
     # --- Output Configuration ---
@@ -76,11 +76,18 @@ class RunnerSettings:
         elif self.rate_type == RateType.LOG:
             if self.exp_max <= 1:
                 raise ValueError("Logarithmic max must be greater than 1.")
+        elif self.rate_type == RateType.SMART:
+            if self.exp_base < 1:
+                raise ValueError("Exponential base must be at least 1.")
+            if self.freq_start < 0 or self.freq_step <= 0:
+                raise ValueError(
+                    "Linear start must be non-negative and linear step must be positive."
+                )
         else:
             raise ValueError(f"Unsupported rate type: {self.rate_type}")
 
-        if self.payload_size_bytes <= 0:
-            raise ValueError("Payload size must be a positive integer.")
+        if not self.payloads_bytes:
+            raise ValueError("At least one payload size must be specified.")
 
         if self.packet_count <= 0:
             raise ValueError("Packet count must be a positive integer.")

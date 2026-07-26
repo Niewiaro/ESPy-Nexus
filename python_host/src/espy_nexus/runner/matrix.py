@@ -8,14 +8,18 @@ logger = logging.getLogger(__name__)
 
 def generate_linear_rates(
     start: int,
-    stop: int,
+    max_val: int,
     step: int,
 ) -> list[int]:
     """
     Generates linear frequency increase (e.g., 10, 20, 30...).
     Useful for detailed performance profiling across a range.
     """
-    rates = list(range(start, stop + step, step))
+    if step <= 0 or max_val < start:
+        return []
+
+    rates = list(range(start, max_val + 1, step))
+
     if start == 0:
         rates[0] = 1  # Replace zero with one to avoid invalid frequency
     return rates
@@ -26,11 +30,16 @@ def generate_exponential_rates(base: int, max_val: int) -> list[int]:
     Generates exponential increase (e.g., 10, 100, 1000...).
     Useful for finding performance limits.
     """
-    rates = []
-    current = base
-    while current <= max_val:
-        rates.append(int(current))
-        current *= 10
+    if base <= 1 or max_val < 1:
+        return []
+
+    rates: list[int] = []
+    val = 1
+
+    while val <= max_val:
+        rates.append(val)
+        val *= base
+
     return rates
 
 
@@ -55,6 +64,21 @@ def generate_log_rates(max_val: int) -> list[int]:
         magnitude *= 10
 
     return rates
+
+
+def generate_smart_rates(
+    exp_base: int,
+    linear_start: int,
+    linear_step: int,
+    max_val: int,
+) -> list[int]:
+    rates = set()
+    rates.update(generate_log_rates(max_val))
+    rates.update(generate_exponential_rates(exp_base, max_val))
+    rates.update(generate_linear_rates(linear_start, max_val, linear_step))
+
+    # return sorted([r for r in rates if r >= 100])
+    return sorted(list(rates))
 
 
 def generate_test_matrix(
@@ -91,3 +115,15 @@ def generate_test_matrix(
     )
 
     return matrix
+
+
+if __name__ == "__main__":
+    final_rates = generate_smart_rates(
+        exp_base=2,  # exp 2 (1, 2, 4, 8, 16...)
+        linear_start=100,  # start 100
+        linear_step=100,  # step 100 (100, 200, 300...)
+        max_val=10000,  # limit 10k
+    )
+
+    print(f"Number of test configurations: {len(final_rates)}")
+    print(final_rates)

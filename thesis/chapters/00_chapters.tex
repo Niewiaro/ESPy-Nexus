@@ -7,8 +7,6 @@
     \item Interaktywne wizualizacje wyników badań w aplikacji analitycznej.
 \end{itemize}
 
-
-
 \chapter{Wstęp}
 
 \section{Problematyka systemów czasu rzeczywistego}
@@ -28,11 +26,11 @@
     \item ograniczenia i kompromisy
 \end{itemize}
 
-
-
 \chapter{Koncepcja Hardware-in-the-Loop (HIL) i autorski system badaczy}
 \section{Hardware-in-the-Loop (HIL)}
-Czym jest HIL? Dlaczego warto stosować HIL w badaniach systemów wbudowanych? Jakie są zalety i ograniczenia HIL?
+Czym jest HIL?
+Dlaczego warto stosować HIL w badaniach systemów wbudowanych?
+Jakie są zalety i ograniczenia HIL?
 
 Wyjaśnienie zasady działania pętli sprzętowej, w której fizyczne urządzenie "myśli", że steruje realnym obiektem, wymieniając dane z symulatorem.
 
@@ -45,25 +43,17 @@ brutalne, wysokoczęstotliwościowe tłoczenie pakietów
 \section{Akwizycja danych}
 Fetch, ekstrakcja i formaty zapisu
 
-\section{Macierz testowa}
-\subsection{Częstotliwość transmisji}
-\subsection{Topologie sieciowe}
-\subsection{Payload}
-
-
+\section{Macierz testowa} \subsection{Częstotliwość transmisji} \subsection{Topologie sieciowe} \subsection{Payload}
 
 \chapter{Platforma sprzętowa ESP32}
 
-\section{Architektura mikrokontrolera ESP32}
-Opis dwurdzeniowego układu ESP32, jego zasobów sprzętowych, interfejsów radiowych i pamięci operacyjnej.
+\section{Architektura mikrokontrolera ESP32} Opis dwurdzeniowego układu ESP32, jego zasobów sprzętowych, interfejsów radiowych i pamięci operacyjnej.
 
 \section{System czasu rzeczywistego FreeRTOS}
 Wyjaśnienie, w jaki sposób wykorzystano system operacyjny czasu rzeczywistego do priorytetyzacji wątków sieciowych i zagwarantowania dokładności pomiarów.
 
 \section{Ekosystem PlatformIO}
 Opis nowoczesnego podejścia do programowania systemów wbudowanych, zarządzania zależnościami i kompilacji z użyciem PlatformIO (w kontrze do klasycznego Arduino IDE).
-
-
 
 \chapter{Charakterystyka badanych protokołów komunikacyjnych}
 
@@ -77,18 +67,19 @@ Opis najprostszego, niskopoziomowego protokołu, jego zastosowań do twardego st
 Opis bezpołączeniowej natury protokołu "wyślij i zapomnij" oraz jego kluczowej roli w telemetrii i streamingu wideo/audio.
 
 \section{Protokół TCP (Transmission Control Protocol)}
-Wyjaśnienie zasady działania okna przesuwanego i potwierdzeń (ACK). Analiza, dlaczego został stworzony do bezbłędnego transferu plików, a nie do sterowania.
+Wyjaśnienie zasady działania okna przesuwanego i potwierdzeń (ACK).
+Analiza, dlaczego został stworzony do bezbłędnego transferu plików, a nie do sterowania.
 
 \section{WebSocket (WS)}
-Charakterystyka protokołu stałego połączenia nad HTTP. Opis jego zastosowania w nowoczesnych aplikacjach webowych, smart home i interfejsach HMI.
+Charakterystyka protokołu stałego połączenia nad HTTP.
+Opis jego zastosowania w nowoczesnych aplikacjach webowych, smart home i interfejsach HMI.
 
 \section{MQTT (Message Queuing Telemetry Transport)}
-Przedstawienie standardu IoT opartego na architekturze Pub/Sub z centralnym brokerem. Wyjaśnienie różnych poziomów jakości usług (QoS 0, 1, 2).
+Przedstawienie standardu IoT opartego na architekturze Pub/Sub z centralnym brokerem.
+Wyjaśnienie różnych poziomów jakości usług (QoS 0, 1, 2).
 
 \section{Standardy Bluetooth (Classic SPP oraz BLE)}
 Porównanie starszego profilu SPP (symulacja kabla) do nowoczesnego, energooszczędnego BLE, z uwzględnieniem pojęcia "Connection Interval" i jego rynkowych zastosowań (od słuchawek po czujniki tętna).
-
-
 
 \chapter{Metryki oceny jakości transmisji danych (QoS)}
 
@@ -117,8 +108,6 @@ Omówienie parametrów logistycznych skryptu: \texttt{engine\_time\_tx\_theory} 
 \section{Znormalizowane parametry QoS}
 Parametry QoS pozwalające na porównanie różnych protokołów komunikacyjnych w ujednolicony sposób, niezależnie od ich specyfiki i narzutów sieciowych.
 
-
-
 \chapter{Architektura aplikacji analitycznej}
 
 \section{Ekosystem Vue.js i framework Nuxt}
@@ -129,8 +118,6 @@ Krótki opis budowy responsywnego interfejsu użytkownika opartego na nowoczesny
 
 \section{Wizualizacja danych pomiarowych z Chart.js}
 Opis technicznej implementacji interaktywnych wykresów w przeglądarce, zasilanych danymi z wygenerowanej bazy SQLite.
-
-
 
 \chapter{Analiza wyników badań i studium przypadków}
 
@@ -146,15 +133,14 @@ Szczegółowe studium przypadku, pokazujące jak protokół TCP za wszelką cen�
 \section{Porównanie topologii i wpływu wielkości Payload}
 Wykresy ilustrujące różnicę w zarządzaniu pamięcią przez domowy router w stosunku do ESP32 jako punktu dostępowego oraz analiza momentu wysycenia pasma dla dużych ramek.
 
-
-
 \chapter{Wnioski}
 
 \section{Weryfikacja tez badawczych}
 Krótkie zebranie dowodów na to, że nie istnieje protokół idealny i inżynier musi zawsze iść na kompromis między opóźnieniem a rzetelnością.
 
 \section{Rekomendacje aplikacyjne}
-Praktyczny przewodnik po architekturze na bazie wyników, m.in. zalecenie używania UDP/ESP-NOW do dynamicznego sterowania (samochody RC, drony) oraz TCP/WebSocket do systemów powolnych, bezstratnych (stacje pogodowe, loggery).
+Praktyczny przewodnik po architekturze na bazie wyników, m.in.
+zalecenie używania UDP/ESP-NOW do dynamicznego sterowania (samochody RC, drony) oraz TCP/WebSocket do systemów powolnych, bezstratnych (stacje pogodowe, loggery).
 
 \section{Perspektywy dalszego rozwoju projektu}
 Stworzenie dedykowanego kontrolera sprzętowego w C++.

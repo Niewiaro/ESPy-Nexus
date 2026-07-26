@@ -153,14 +153,14 @@ class BatchAnalyzer:
                 results.append(row_dict)
 
                 self.logger.info(
-                    f"Test {test_id:03d} | {protocol:5s} @ {freq:5d} Hz -> "
+                    f"Test {test_id:03d} | {protocol:5s} | {freq:5d} Hz | {payload_size:5d} B -> "
                     f"PDR: {metrics.pdr.ratio_percent:5.1f}% | "
                     f"Bloat: {metrics.timing_trends.max_queuing_delay_us / 1000:7.1f} ms | "
                     f"Jitter CV: {metrics.jitter.cv_percent:5.1f}%"
                 )
             except Exception as e:
                 self.logger.error(
-                    f"[X] Analysis failed for Test {test_id} ({protocol} @ {freq}Hz): {e}"
+                    f"[X] Analysis failed for Test {test_id} ({protocol} | {freq} Hz | {payload_size} B): {e}"
                 )
 
         return results

@@ -34,17 +34,19 @@ bool SerialBinDataPlane::begin()
 {
     rx_index = 0;
     while (Serial.available())
-        Serial.read();
+    {
+        Serial.read(); // Hard reset of the hardware buffer before startup
+    }
     return true;
 }
 
 void SerialBinDataPlane::process(TestRecord *buffer, volatile uint32_t &recordCount, uint32_t maxRecords, QueueHandle_t ctrlQueue)
 {
-
     while (Serial.available() > 0)
     {
         uint8_t c = Serial.read();
 
+        // 1. The COBS binary frame delimiter is the zero byte (0x00)
         if (c == 0x00)
         {
             if (rx_index == 0)
@@ -52,29 +54,32 @@ void SerialBinDataPlane::process(TestRecord *buffer, volatile uint32_t &recordCo
 
             int64_t esp_ts = esp_timer_get_time();
 
-            uint8_t decoded_payload[256];
-            size_t decoded_len = cobs_decode(rx_buffer, rx_index, decoded_payload);
+            // Use the class heap buffer (this->decoded_payload)
+            size_t decoded_len = cobs_decode(rx_buffer, rx_index, this->decoded_payload);
 
             if (decoded_len >= sizeof(uint32_t))
             {
                 if (recordCount < maxRecords)
                 {
                     uint32_t packet_id;
-                    memcpy(&packet_id, decoded_payload, sizeof(uint32_t));
+                    memcpy(&packet_id, this->decoded_payload, sizeof(uint32_t));
 
                     buffer[recordCount].packet_id = packet_id;
                     buffer[recordCount].esp_timestamp_us = esp_ts;
                     recordCount++;
                 }
             }
-            rx_index = 0;
+            rx_index = 0; // Frame decoded, reset the index
         }
         else
         {
+            // 2. Safe buffering in the ELSE block
             if (rx_index < sizeof(rx_buffer) - 1)
             {
                 rx_buffer[rx_index++] = c;
 
+                // Safety check: if a newline appears in the binary stream,
+                // verify whether the PC sent the text STOP command.
                 if (c == '\n' || c == '\r')
                 {
                     rx_buffer[rx_index] = '\0';
@@ -88,6 +93,8 @@ void SerialBinDataPlane::process(TestRecord *buffer, volatile uint32_t &recordCo
             }
             else
             {
+                // CRITICAL: The buffer overflowed without finding 0x00!
+                // Corrupted frame / desynchronization. Reset the index.
                 rx_index = 0;
             }
         }

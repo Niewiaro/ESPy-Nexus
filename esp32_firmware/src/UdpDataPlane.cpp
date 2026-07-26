@@ -1,12 +1,10 @@
 #include "UdpDataPlane.h"
 #include <string.h>
 
-UdpDataPlane::UdpDataPlane() : rx_index(0), wifi_connected(false) {}
+UdpDataPlane::UdpDataPlane() : wifi_connected(false) {}
 
 bool UdpDataPlane::begin()
 {
-    rx_index = 0;
-
 #if NETWORK_MODE == 1
     bool networkReady = (WiFi.softAPIP()[0] != 0);
 #elif NETWORK_MODE == 2
@@ -41,13 +39,16 @@ void UdpDataPlane::process(TestRecord *buffer, volatile uint32_t &recordCount, u
     {
         int64_t esp_ts = esp_timer_get_time();
 
-        int bytesToRead = udp.available();
-        if (bytesToRead > sizeof(rx_buffer))
+        int bytesToRead = packetSize;
+        if (bytesToRead > (int)sizeof(rx_buffer))
+        {
             bytesToRead = sizeof(rx_buffer);
+        }
 
         int len = udp.read(rx_buffer, bytesToRead);
 
-        if (len > 0)
+        // ID has at least 4 bytes, so we can safely extract it from the received data
+        if (len >= (int)sizeof(uint32_t))
         {
             if (recordCount < maxRecords)
             {
@@ -67,4 +68,5 @@ void UdpDataPlane::process(TestRecord *buffer, volatile uint32_t &recordCount, u
 void UdpDataPlane::end()
 {
     udp.stop();
+    wifi_connected = false;
 }

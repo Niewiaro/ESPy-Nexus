@@ -1,4 +1,5 @@
 #include "SerialStrDataPlane.h"
+#include <string.h>
 
 SerialStrDataPlane::SerialStrDataPlane() : rx_index(0) {}
 
@@ -17,7 +18,7 @@ bool SerialStrDataPlane::begin()
     rx_index = 0;
     while (Serial.available())
     {
-        Serial.read();
+        Serial.read(); // Hard reset of the hardware buffer before start
     }
     return true;
 }
@@ -28,15 +29,16 @@ void SerialStrDataPlane::process(TestRecord *buffer, volatile uint32_t &recordCo
     {
         char c = Serial.read();
 
+        // 1. The text frame delimiter is a newline character
         if (c == '\n' || c == '\r')
         {
             if (rx_index == 0)
                 continue;
 
             int64_t esp_ts = esp_timer_get_time();
-
             rx_buffer[rx_index] = '\0';
 
+            // Check whether this is a data packet (e.g. "D,123,XXX...")
             if (rx_buffer[0] == 'D' && rx_buffer[1] == ',')
             {
                 if (recordCount < maxRecords)
@@ -48,16 +50,26 @@ void SerialStrDataPlane::process(TestRecord *buffer, volatile uint32_t &recordCo
             }
             else
             {
+                // If it does not start with "D,", treat it as a command (e.g. STOP)
                 char cmd[32] = {0};
                 strncpy(cmd, rx_buffer, 31);
-
                 xQueueSend(ctrlQueue, &cmd, 0);
             }
-            rx_index = 0;
+            rx_index = 0; // Frame processed, reset the index
         }
-        else if (rx_index < sizeof(rx_buffer) - 1)
+        else
         {
-            rx_buffer[rx_index++] = c;
+            // 2. Safe buffering with an ELSE block
+            if (rx_index < sizeof(rx_buffer) - 1)
+            {
+                rx_buffer[rx_index++] = c;
+            }
+            else
+            {
+                // CRITICAL: The buffer overflowed without finding '\n'!
+                // Drop the corrupted frame to avoid blocking the receiver.
+                rx_index = 0;
+            }
         }
     }
 }

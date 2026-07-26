@@ -9,28 +9,25 @@ WsDataPlane::WsDataPlane() : webSocket(WS_PORT), server_running(false)
 
 void WsDataPlane::webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
-    if (type == WStype_DISCONNECTED || type == WStype_CONNECTED)
+    if (type != WStype_BIN)
     {
         return;
     }
 
-    if (type == WStype_BIN)
+    int64_t esp_ts = esp_timer_get_time();
+
+    if (currentBuffer != nullptr && currentRecordCount != nullptr)
     {
-        int64_t esp_ts = esp_timer_get_time();
-
-        if (currentBuffer != nullptr && currentRecordCount != nullptr)
+        if (length >= sizeof(uint32_t))
         {
-            if (length >= sizeof(uint32_t))
+            if (*currentRecordCount < currentMaxRecords)
             {
-                if (*currentRecordCount < currentMaxRecords)
-                {
-                    uint32_t packet_id;
-                    memcpy(&packet_id, payload, sizeof(uint32_t));
+                uint32_t packet_id;
+                memcpy(&packet_id, payload, sizeof(uint32_t));
 
-                    currentBuffer[*currentRecordCount].packet_id = packet_id;
-                    currentBuffer[*currentRecordCount].esp_timestamp_us = esp_ts;
-                    (*currentRecordCount)++;
-                }
+                currentBuffer[*currentRecordCount].packet_id = packet_id;
+                currentBuffer[*currentRecordCount].esp_timestamp_us = esp_ts;
+                (*currentRecordCount)++;
             }
         }
     }

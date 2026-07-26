@@ -30,6 +30,10 @@ size_t TcpDataPlane::cobs_decode(const uint8_t *input, size_t length, uint8_t *o
 bool TcpDataPlane::begin()
 {
     rx_index = 0;
+    if (client)
+    {
+        client.stop();
+    }
 
 #if NETWORK_MODE == 1
     bool networkReady = (WiFi.softAPIP()[0] != 0);
@@ -41,7 +45,7 @@ bool TcpDataPlane::begin()
 
     if (networkReady)
     {
-        server.begin(TCP_PORT);
+        server.begin();
         server_running = true;
         return true;
     }
@@ -55,50 +59,62 @@ void TcpDataPlane::process(TestRecord *buffer, volatile uint32_t &recordCount, u
     if (!server_running)
         return;
 
+    // 1. TCP session management: if there is no client or it disconnected, look for a new one
     if (!client || !client.connected())
     {
-        client = server.available();
+        WiFiClient newClient = server.available();
+        if (newClient)
+        {
+            client = newClient;
+            // CRITICAL: A new connection means a new stream. Reset the stream index!
+            rx_index = 0;
+        }
     }
 
+    // 2. Receiving and decoding the COBS stream
     if (client && client.connected())
     {
         while (client.available() > 0)
         {
             uint8_t c = client.read();
 
-            // COBS framing algorithm: Detecting the end of a COBS packet
+            // The COBS frame delimiter is the zero byte (0x00)
             if (c == 0x00)
             {
                 if (rx_index == 0)
                     continue;
 
+                // TIMESTAMP: Captured immediately after detecting the end of a complete frame!
                 int64_t esp_ts = esp_timer_get_time();
 
-                uint8_t decoded_payload[256];
-                size_t decoded_len = cobs_decode(rx_buffer, rx_index, decoded_payload);
+                // Safe decoding into the class buffer
+                size_t decoded_len = cobs_decode(rx_buffer, rx_index, this->decoded_payload);
 
                 if (decoded_len >= sizeof(uint32_t))
                 {
                     if (recordCount < maxRecords)
                     {
                         uint32_t packet_id;
-                        memcpy(&packet_id, decoded_payload, sizeof(uint32_t));
+                        memcpy(&packet_id, this->decoded_payload, sizeof(uint32_t));
 
                         buffer[recordCount].packet_id = packet_id;
                         buffer[recordCount].esp_timestamp_us = esp_ts;
                         recordCount++;
                     }
                 }
-                rx_index = 0;
+                rx_index = 0; // Frame decoded successfully, reset the index
             }
             else
             {
+                // Safe buffering with the ELSE block
                 if (rx_index < sizeof(rx_buffer) - 1)
                 {
                     rx_buffer[rx_index++] = c;
                 }
                 else
                 {
+                    // CRITICAL: The 2 KB buffer overflowed before finding 0x00!
+                    // TCP stream desynchronization. Drop the data and start over.
                     rx_index = 0;
                 }
             }
@@ -114,4 +130,5 @@ void TcpDataPlane::end()
     }
     server.end();
     server_running = false;
+    rx_index = 0;
 }

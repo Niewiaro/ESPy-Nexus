@@ -9,7 +9,7 @@ from espy_nexus.core.config import TestConfig, Protocol
 from espy_nexus.control_plane.base import BaseControlPlane
 from espy_nexus.data_plane.base import BaseDataPlane
 
-ROW_SEP_LEN = 74
+ROW_SEP_LEN = 78
 
 
 def format_duration(seconds: float, compact: bool = False) -> str:
@@ -177,7 +177,7 @@ class TestEngine:
             end_str = current_time.strftime("%H:%M:%S")
 
             schedule_rows.append(
-                f"{config.protocol.value:<10} | {config.frequency_hz:<10d} Hz | {format_duration(test_total_s, compact=True):<14} | {start_str:<10} | {end_str:<10}"
+                f"{config.protocol.value:<10} | {config.frequency_hz:<6d} Hz | {config.payload_size_bytes:<6d} B | {format_duration(test_total_s, compact=True):<12} | {start_str:<8} | {end_str:<8}"
             )
             total_duration += test_total_s
 
@@ -185,9 +185,19 @@ class TestEngine:
         self.logger.info("📅 TEST MATRIX SCHEDULE")
         self.logger.info("=" * ROW_SEP_LEN)
         self.logger.info(f"Total tests:\t\t{len(matrix)}")
-        self.logger.info(f"Router topology:\t{matrix[0].router_topology.value}")
-        self.logger.info(f"Payload size:\t\t{matrix[0].payload_size_bytes} B")
-        self.logger.info(f"Packet count:\t\t{matrix[0].packet_count}")
+        self.logger.info(
+            f"Router topologies:\t{', '.join(set(config.router_topology.value for config in matrix))}"
+        )
+        self.logger.info(
+            f"Protocols:\t\t{', '.join(set(config.protocol.value for config in matrix))}"
+        )
+        self.logger.info(
+            f"Payload sizes:\t\t{', '.join(set(str(config.payload_size_bytes) + ' B' for config in matrix))}"
+        )
+        self.logger.info(f"Packet count:\t\t{matrix[0].packet_count} packets per test")
+        self.logger.info(
+            f"Packet count overall:\t{matrix[0].packet_count * len(matrix)} packets"
+        )
         self.logger.info(f"Start time:\t\t{now.strftime('%Y-%m-%d %H:%M:%S')}")
         self.logger.info(
             f"End estimated time:\t{current_time.strftime('%Y-%m-%d %H:%M:%S')}"
@@ -195,11 +205,11 @@ class TestEngine:
         self.logger.info(f"Total estimated time:\t{format_duration(total_duration)}")
         self.logger.info("-" * ROW_SEP_LEN)
         self.logger.info(
-            f"{'#':<3} | {'PROTOCOL':<10} | {'FREQUENCY':<13} | {'DURATION':<14} | {'START':<10} | {'END':<10}"
+            f"{'#':<4} | {'PROTOCOL':<10} | {'FREQUENCY':<9} | {'PAYLOAD':<8} | {'DURATION':<13} | {'START':<8} | {'END':<8}"
         )
         self.logger.info("-" * ROW_SEP_LEN)
         for index, row in enumerate(schedule_rows):
-            self.logger.info(f"{index + 1:3d} | {row}")
+            self.logger.info(f"{index + 1:<4d} | {row}")
         self.logger.info("=" * ROW_SEP_LEN)
 
     # =========================================================================

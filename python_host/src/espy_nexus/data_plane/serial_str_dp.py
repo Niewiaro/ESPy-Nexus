@@ -71,7 +71,8 @@ class SerialStrDataPlane(BaseDataPlane):
         interval_ns = int(1_000_000_000 / frequency_hz)
 
         # Clear the OS transmit buffer.
-        serial_obj.flush()
+        serial_obj.reset_output_buffer()
+        serial_obj.reset_input_buffer()
 
         # Establish the zero point for our very precise hardware clock.
         next_transmission_time = time.perf_counter_ns()

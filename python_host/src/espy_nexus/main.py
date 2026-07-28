@@ -54,18 +54,20 @@ def get_active_profile() -> RunnerSettings:
 
     # --- PROFILE B: Full hardware test (HARDWARE) ---
     return RunnerSettings(
-        router_topology=RouterTopology.STA,
+        router_topology=RouterTopology.AP_ESP,
         control_plane_type=ControlPlane.SERIAL,
         protocols=[
-            Protocol.SERIAL_STR,
-            Protocol.SERIAL_BIN,
-            Protocol.UDP,
-            Protocol.TCP,
+            # Protocol.SERIAL_STR,
+            # Protocol.SERIAL_BIN,
+            # Protocol.UDP,
+            # Protocol.TCP,
             Protocol.WS,
         ],
         control_plane_port="COM3",
         data_plane_serial_port="COM3",
-        data_plane_ip_address="192.168.100.167",
+        data_plane_ip_address="192.168.4.1",
+        # data_plane_ip_address="192.168.68.82",
+        # data_plane_ip_address="192.168.100.167",
         # data_plane_ip_address="10.47.121.155",
         baudrate=921600,
         packet_count=1000,

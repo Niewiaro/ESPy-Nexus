@@ -10,7 +10,7 @@ class RunnerSettings:
     """
 
     # --- Network Configuration ---
-    router_topology: RouterTopology = RouterTopology.AP
+    router_topology: RouterTopology = RouterTopology.AP_ESP
 
     # --- Environment Configuration ---
     control_plane_type: ControlPlane = ControlPlane.MOCK

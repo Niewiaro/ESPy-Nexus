@@ -6,9 +6,10 @@ class RouterTopology(str, Enum):
     """Possible network topologies for ESP32 connectivity."""
 
     NONE = "NONE"
-    AP = "AP"
-    STA = "STA"
-    STA_MOBILE = "STA_MOBILE"
+    AP_ESP = "AP_ESP"
+    AP_ROUTER = "AP_ROUTER"
+    AP_MOBILE = "AP_MOBILE"
+    AP_PC = "AP_PC"
 
 
 class ControlPlane(str, Enum):

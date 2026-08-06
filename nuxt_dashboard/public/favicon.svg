@@ -3,4 +3,4 @@
       <stop offset="0%" stop-color="#3B82F6"></stop>
       <stop offset="100%" stop-color="#F59E0B"></stop>
     </linearGradient>
-  </defs><path d="M 104 40 L 72 40 L 24 128 L 72 216 L 144 216 L 144 172 L 216 172 L 216 128 L 144 128 L 144 84 L 216 84 L 216 40 Z" fill="none" stroke="url(#hilLoop)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+  </defs><path d="M 104 40 L 72 40 L 24 128 L 72 216 L 216 216 L 216 181 L 123 181 L 123 146 L 216 146 L 216 111 L 123 111 L 123 76 L 216 76 L 216 40  Z" fill="none" stroke="url(#hilLoop)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"></path></svg>

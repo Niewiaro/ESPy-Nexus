@@ -36,7 +36,7 @@ export default defineNuxtConfig({
 			linkedInURL: "https://www.linkedin.com/in/jakub-niewiarowski",
 		},
 	},
-	compatibilityDate: "2026-06-22",
+	compatibilityDate: "2026-08-07",
 
 	eslint: {
 		config: {

@@ -1,96 +1,104 @@
 <template>
-	<div class="relative overflow-hidden bg-gray-50 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-800">
+	<div class="relative overflow-hidden bg-linear-to-b from-muted/40 to-default border-b border-muted">
+		<div class="absolute -top-40 -left-40 w-125 h-125 bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
+		<div class="absolute top-20 -right-40 w-125 h-125 bg-secondary/20 rounded-full blur-[120px] pointer-events-none" />
+
 		<div
-			class="absolute inset-0
-    bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)]
-    dark:bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)]
-    bg-size-[24px_24px]
-    mask-[linear-gradient(to_bottom,white,transparent)]
-    [-webkit-mask-image:linear-gradient(to_bottom,white,transparent)]"
+			class="absolute inset-0 z-0
+                   bg-[linear-gradient(to_right,var(--ui-border-muted)_1px,transparent_1px),linear-gradient(to_bottom,var(--ui-border-muted)_1px,transparent_1px)]
+                   bg-size-[24px_24px] opacity-40
+                   mask-[linear-gradient(to_bottom,white,transparent)]
+                   [-webkit-mask-image:linear-gradient(to_bottom,white,transparent)]"
 		/>
-		<UContainer class="relative pt-16 pb-20 sm:pt-24 sm:pb-28">
+
+		<UContainer class="relative z-10 pt-16 pb-20 sm:pt-24 sm:pb-28">
 			<div class="flex flex-col items-center text-center gap-8">
-				<!-- Headline / Badge -->
 				<UBadge
-					color="primary"
+					color="secondary"
 					variant="subtle"
 					size="md"
-					class="rounded-full px-4 py-1.5 font-medium"
+					class="rounded-full px-4 py-1.5 font-medium border border-secondary/30 shadow-sm"
 				>
 					<UIcon
-						name="i-heroicons-cpu-chip"
-						class="w-4 h-4 mr-2"
+						name="heroicons:cpu-chip-solid"
+						class="w-4 h-4 mr-2 animate-pulse"
 					/>
-					Hardware in the Loop Analytics
+					Mikrosekundowa analityka Hardware-in-the-Loop
 				</UBadge>
 
-				<h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white max-w-4xl">
-					Eksploruj wyniki testów z <span class="text-primary">niespotykaną precyzją</span>
+				<h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-highlighted max-w-4xl leading-tight">
+					Rygorystyczne badanie stabilności <br class="hidden sm:block">
+					<span class="bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
+						systemów wbudowanych
+					</span>
 				</h1>
 
-				<p class="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl">
-					Interaktywny dashboard do analizy telemetrii sieciowej. Porównuj wydajność topologii <span class="font-semibold text-gray-800 dark:text-gray-200">AP i STA</span>, analizuj opóźnienia, Jitter oraz PDR w czasie rzeczywistym.
+				<p class="text-lg sm:text-xl text-muted max-w-3xl leading-relaxed">
+					Platforma analizująca determinizm komunikacyjny między komputerem PC (GPOS) a mikrokontrolerem ESP32 (RTOS).
+					Obserwuj <span class="font-semibold text-toned">mikro-zawieszenia planisty</span>, oceniaj asymetryczny <span class="font-semibold text-toned">Jitter</span> i weryfikuj wydajność radiową dla krytycznych aplikacji sterowania.
 				</p>
 
-				<div class="flex flex-wrap items-center justify-center gap-4 mt-4">
+				<div class="flex flex-wrap items-center justify-center gap-4 mt-6">
 					<UButton
-						label="Zacznij analizę"
-						icon="i-heroicons-chart-bar"
-						size="lg"
+						label="Zacznij analizę HIL"
+						icon="heroicons:chart-bar-square"
+						size="xl"
 						color="primary"
 						variant="solid"
 						@click="scrollToDashboard"
 					/>
 					<UButton
-						label="Tabela surowych danych"
-						icon="i-heroicons-table-cells"
-						size="lg"
+						label="Przegląd surowych logów"
+						icon="heroicons:table-cells"
+						size="xl"
 						color="neutral"
 						variant="outline"
 						to="/data"
 					/>
 				</div>
 
-				<div class="mt-12 grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-8 pt-8 border-t border-gray-200/80 dark:border-gray-800/80 text-center w-full max-w-3xl">
-					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-bold text-gray-900 dark:text-white">
+				<div class="mt-16 grid grid-cols-2 sm:grid-cols-3 gap-y-10 gap-x-8 pt-10 border-t border-muted/60 text-center w-full max-w-4xl">
+					<div class="flex flex-col gap-1.5">
+						<span class="text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="availableTests.length" />
 						</span>
-						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Serie Testów</span>
+						<span class="text-xs font-semibold text-dimmed uppercase tracking-wider">Iteracje Testowe</span>
 					</div>
-					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-bold text-gray-900 dark:text-white">
+
+					<div class="flex flex-col gap-1.5">
+						<span class="text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="availableProtocols.length" />
 						</span>
-						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Protokoły</span>
+						<span class="text-xs font-semibold text-dimmed uppercase tracking-wider">Metody Transportu</span>
 					</div>
-					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-bold text-gray-900 dark:text-white">
+
+					<div class="flex flex-col gap-1.5">
+						<span class="text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="availableTopologies.length" />
 						</span>
-						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Topologie</span>
+						<span class="text-xs font-semibold text-dimmed uppercase tracking-wider">Topologie sieciowe</span>
 					</div>
 
-					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-bold text-gray-900 dark:text-white">
+					<div class="flex flex-col gap-1.5">
+						<span class="text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="data.length" />
 						</span>
-						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Scenariusze</span>
+						<span class="text-xs font-semibold text-dimmed uppercase tracking-wider">Scenariusze</span>
 					</div>
 
-					<div class="flex flex-col gap-1">
-						<span class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-							<AnimatedCounter :value="hzRange.min" />-<AnimatedCounter :value="hzRange.max" />
-							<span class="text-base sm:text-lg font-semibold ml-0.5">Hz</span>
+					<div class="flex flex-col gap-1.5">
+						<span class="text-2xl sm:text-3xl font-bold text-highlighted flex justify-center items-baseline gap-1">
+							<AnimatedCounter :value="hzRange.min" /> - <AnimatedCounter :value="hzRange.max" />
+							<span class="text-lg font-semibold text-secondary">Hz</span>
 						</span>
-						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Zakres analizy</span>
+						<span class="text-xs font-semibold text-dimmed uppercase tracking-wider">Częstotliwość próbkowania</span>
 					</div>
 
-					<div class="flex flex-col gap-1">
-						<span class="text-3xl font-bold text-gray-900 dark:text-white">
+					<div class="flex flex-col gap-1.5">
+						<span class="text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="totalPackets" />
 						</span>
-						<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Przesłane pakiety</span>
+						<span class="text-xs font-semibold text-dimmed uppercase tracking-wider">Przesłane pakiety</span>
 					</div>
 				</div>
 			</div>

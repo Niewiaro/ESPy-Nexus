@@ -72,7 +72,7 @@
 						<span class="text-2xl sm:text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="availableProtocols.length" />
 						</span>
-						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">Transport</span>
+						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">Protokoły</span>
 					</div>
 
 					<div class="flex flex-col gap-1.5">

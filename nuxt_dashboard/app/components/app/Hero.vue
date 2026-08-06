@@ -23,19 +23,22 @@
 						name="heroicons:cpu-chip-solid"
 						class="w-4 h-4 mr-2 animate-pulse"
 					/>
-					Mikrosekundowa analityka Hardware-in-the-Loop
+					Mikrosekundowa analityka HIL
 				</UBadge>
 
 				<h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-highlighted max-w-4xl leading-tight">
-					Rygorystyczne badanie stabilności <br class="hidden sm:block">
+					Determinizm embedded <br class="hidden sm:block">
 					<span class="bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent pb-1">
-						systemów wbudowanych
+						Hardware-in-the-Loop
 					</span>
 				</h1>
 
 				<p class="text-lg sm:text-xl text-muted max-w-3xl leading-relaxed px-2 sm:px-0">
-					Platforma analizująca determinizm komunikacyjny między komputerem PC (GPOS) a mikrokontrolerem ESP32 (RTOS).
-					Obserwuj <span class="font-semibold text-toned">mikro-zawieszenia planisty</span>, oceniaj asymetryczny <span class="font-semibold text-toned">Jitter</span> i weryfikuj wydajność radiową dla krytycznych aplikacji sterowania.
+					Platforma analizująca determinizm komunikacyjny między komputerem PC (<i class="text-primary font-mono">GPOS</i>),
+					a mikrokontrolerem ESP32 (<i class="text-secondary font-mono">RTOS</i>).
+					Obserwuj <span class="font-semibold text-toned">mikro-zawieszenia planisty</span>,
+					oceniaj asymetryczny <span class="font-semibold text-toned">Jitter</span>
+					i weryfikuj wydajność radiową dla krytycznych aplikacji sterowania.
 				</p>
 
 				<div class="flex flex-wrap items-center justify-center gap-4 mt-6">

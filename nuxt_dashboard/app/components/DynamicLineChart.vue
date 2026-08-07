@@ -2,31 +2,43 @@
 	<div class="flex flex-col gap-4 w-full h-full flex-1 min-h-100">
 		<div
 			v-if="chartData.datasets.length"
-			class="flex flex-wrap justify-end gap-6 px-2"
+			class="flex flex-wrap justify-end gap-6 px-4"
 		>
 			<UCheckbox
 				v-model="isLogX"
 				name="logX"
-				label="Skala logarytmiczna (Oś X)"
+				label="Oś X (Logarytmiczna)"
+				color="primary"
 			/>
 			<UCheckbox
 				v-model="isLogY"
 				name="logY"
-				label="Skala logarytmiczna (Oś Y)"
+				label="Oś Y (Logarytmiczna)"
+				color="secondary"
 			/>
 		</div>
 
 		<div class="flex-1 w-full relative">
+			<!-- Płótno wykresu -->
 			<Line
 				v-if="chartData.datasets.length"
 				:data="chartData"
 				:options="chartOptions"
 			/>
+
+			<!-- Profesjonalny Empty State (Brak Danych) -->
 			<div
 				v-else
-				class="flex h-full items-center justify-center text-gray-500 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg p-6 text-center"
+				class="flex flex-col h-full items-center justify-center text-dimmed border-2 border-dashed border-muted rounded-xl p-6 text-center bg-muted/10"
 			>
-				Wybierz co najmniej jeden test i metrykę w panelu bocznym...
+				<UIcon
+					name="heroicons:presentation-chart-line"
+					class="w-12 h-12 mb-3 opacity-40"
+				/>
+				<span class="font-semibold text-toned text-lg">Oczekiwanie na parametryzację</span>
+				<span class="text-sm mt-1 max-w-sm">
+					Wybierz z panelu bocznego iterację testową oraz badaną metrykę (np. Queuing Delay), aby wyrenderować charakterystykę częstotliwościową.
+				</span>
 			</div>
 		</div>
 	</div>
@@ -36,47 +48,119 @@
 import { computed } from "vue";
 import { Line } from "vue-chartjs";
 import {
-	Chart as ChartJS, CategoryScale, LinearScale, LogarithmicScale,
-	PointElement, LineElement, Title, Tooltip, Legend, type ChartOptions,
+	Chart,
+	Interaction,
+	CategoryScale,
+	LinearScale,
+	LogarithmicScale,
+	PointElement,
+	LineElement,
+	Title,
+	Tooltip,
+	Legend,
+} from "chart.js";
+import type {
+	InteractionOptions,
+	Chart as ChartJS,
+	ChartOptions,
+	ChartEvent,
+	ActiveElement,
 } from "chart.js";
 
-ChartJS.register(CategoryScale, LinearScale, LogarithmicScale, PointElement, LineElement, Title, Tooltip, Legend);
+declare module "chart.js" {
+	interface InteractionModeMap {
+		hilMode: (chart: ChartJS, e: ChartEvent, options: InteractionOptions, useFinalPosition?: boolean) => ActiveElement[];
+	}
+}
+
+const MAX_TOOLTIP_DISTANCE_Y = 20;
+const TOOLTIP_OVERLAP_TOLERANCE_Y = 5;
+
+Interaction.modes.hilMode = function (
+	chart: ChartJS,
+	e: ChartEvent,
+	options: InteractionOptions,
+	useFinalPosition?: boolean,
+): ActiveElement[] {
+	const indexItems = Interaction.modes.index(chart, e, options, useFinalPosition);
+	if (!indexItems || indexItems.length === 0) return [];
+
+	let minDistanceY = Number.POSITIVE_INFINITY;
+
+	const eventY = e.y ?? 0;
+
+	indexItems.forEach((item: ActiveElement) => {
+		const distanceY = Math.abs(item.element.y - eventY);
+		if (distanceY < minDistanceY) {
+			minDistanceY = distanceY;
+		}
+	});
+
+	if (minDistanceY > MAX_TOOLTIP_DISTANCE_Y) return [];
+
+	return indexItems.filter((item: ActiveElement) => {
+		const distanceY = Math.abs(item.element.y - eventY);
+		return Math.abs(distanceY - minDistanceY) <= TOOLTIP_OVERLAP_TOLERANCE_Y;
+	});
+};
+
+Chart.register(
+	CategoryScale, LinearScale, LogarithmicScale,
+	PointElement, LineElement, Title, Tooltip, Legend,
+);
 
 const { chartData, selectedMetric, isLogX, isLogY } = useAnalytics();
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 
 const chartOptions = computed<ChartOptions<"line">>(() => {
-	const textColor = isDark.value ? "#9ca3af" : "#4b5563";
-	const gridColor = isDark.value ? "#374151" : "#e5e7eb";
+	const textColor = isDark.value ? "#94a3b8" : "#475569";
+	const gridColor = isDark.value ? "#334155" : "#e2e8f0";
+	const tooltipBg = isDark.value ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.95)";
+	const tooltipText = isDark.value ? "#f8fafc" : "#0f172a";
+	const tooltipBorder = isDark.value ? "#475569" : "#cbd5e1";
 
 	return {
 		responsive: true,
 		maintainAspectRatio: false,
-		interaction: { mode: "index", intersect: false },
+		interaction: {
+			mode: "hilMode",
+			intersect: false,
+		},
 		elements: {
-			point: { radius: 2, hoverRadius: 6 },
+			point: { radius: 1.414, hitRadius: 8, hoverRadius: 7 },
 			line: { borderWidth: 2, cubicInterpolationMode: "monotone" },
 		},
 		scales: {
 			x: {
 				type: isLogX.value ? "logarithmic" : "linear",
-				title: { display: true, text: "Częstotliwość [Hz]", color: textColor, font: { weight: "bold" } },
-				ticks: { color: textColor }, grid: { color: gridColor },
+				title: { display: true, text: "Częstotliwość [Hz]", color: textColor, font: { weight: "bold", family: "system-ui" } },
+				ticks: { color: textColor, font: { family: "monospace" } },
+				grid: { color: gridColor },
 			},
 			y: {
 				type: isLogY.value ? "logarithmic" : "linear",
-				title: { display: !!selectedMetric.value, text: selectedMetric.value || "", color: textColor, font: { weight: "bold" } },
-				ticks: { color: textColor }, grid: { color: gridColor },
+				title: { display: !!selectedMetric.value, text: selectedMetric.value || "", color: textColor, font: { weight: "bold", family: "system-ui" } },
+				ticks: { color: textColor, font: { family: "monospace" } },
+				grid: { color: gridColor },
 			},
 		},
 		plugins: {
-			legend: { position: "bottom" as const, labels: { color: textColor, usePointStyle: true, boxWidth: 8 } },
+			legend: {
+				position: "bottom" as const,
+				labels: { color: textColor, usePointStyle: true, boxWidth: 8, font: { family: "system-ui" } },
+			},
 			tooltip: {
-				backgroundColor: isDark.value ? "rgba(17, 24, 39, 0.9)" : "rgba(255, 255, 255, 0.9)",
-				titleColor: isDark.value ? "#f3f4f6" : "#111827",
-				bodyColor: isDark.value ? "#d1d5db" : "#374151",
-				borderColor: gridColor, borderWidth: 1, padding: 12,
+				backgroundColor: tooltipBg,
+				titleColor: tooltipText,
+				bodyColor: tooltipText,
+				borderColor: tooltipBorder,
+				borderWidth: 1,
+				padding: 12,
+				cornerRadius: 8,
+				titleFont: { family: "system-ui", size: 14, weight: "bold" },
+				bodyFont: { family: "monospace", size: 13 },
+				itemSort: (a, b) => (b.parsed.y ?? 0) - (a.parsed.y ?? 0),
 			},
 		},
 	};

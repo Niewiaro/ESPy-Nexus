@@ -87,8 +87,6 @@
 useSeoMeta({
 	title: "Platforma Analityczna",
 	description: "Interaktywny panel analizy układów RTOS i GPOS. Porównuj wydajność topologii i dekoduj zachowanie planisty systemowego w czasie rzeczywistym.",
-	ogTitle: "Platforma Analityczna | ESPy-Nexus",
-	ogDescription: "Przeglądaj znormalizowane wyniki pomiarów PDR, Jittera i Goodputu. Profesjonalne narzędzie analityczne do zastosowań Hardware-in-the-Loop.",
 });
 
 const { selectedMetric } = useAnalytics();

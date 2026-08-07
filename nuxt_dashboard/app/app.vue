@@ -15,11 +15,13 @@
 </template>
 
 <script setup lang="ts">
-const config = useRuntimeConfig();
-
 useSeoMeta({
-	ogImage: config.public.appURL + "/og-image.png",
-	twitterCard: "summary_large_image",
-	themeColor: "#3b82f6",
+	description: "Profesjonalna platforma analityczna dla testów Hardware-in-the-Loop na mikrokontrolerach ESP32.",
+	ogType: "website",
+	ogImage: "/og-image.png",
+	ogTitle: "Platforma Analityczna | ESPy-Nexus",
+	ogDescription: "Przeglądaj znormalizowane wyniki pomiarów PDR, Jittera i Goodputu. Profesjonalne narzędzie analityczne do zastosowań Hardware-in-the-Loop.",
+	author: "Jakub Niewiarowski",
+	themeColor: "#0f172a",
 });
 </script>

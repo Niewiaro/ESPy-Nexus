@@ -12,14 +12,14 @@ const formatNumber = (num: number): string => {
 const source = ref(0);
 const output = useTransition(source, {
 	duration: 1500,
-	transition: TransitionPresets.easeOutCubic,
+	transition: TransitionPresets.easeOutExpo,
 });
 
 onMounted(() => {
 	source.value = props.value;
 });
 
-const displayValue = computed(() => formatNumber(Math.floor(output.value)));
+const displayValue = computed(() => formatNumber(output.value));
 </script>
 
 <template>

@@ -19,14 +19,12 @@
 		</div>
 
 		<div class="flex-1 w-full relative">
-			<!-- Płótno wykresu -->
 			<Line
 				v-if="chartData.datasets.length"
 				:data="chartData"
 				:options="chartOptions"
 			/>
 
-			<!-- Profesjonalny Empty State (Brak Danych) -->
 			<div
 				v-else
 				class="flex flex-col h-full items-center justify-center text-dimmed border-2 border-dashed border-muted rounded-xl p-6 text-center bg-muted/10"

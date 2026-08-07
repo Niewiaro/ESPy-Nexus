@@ -1,5 +1,5 @@
 <template>
-	<div class="flex flex-col gap-4 w-full h-full flex-1 min-h-100">
+	<div class="flex flex-col gap-4 w-full h-full flex-1 min-h-150">
 		<div
 			v-if="chartData.datasets.length"
 			class="flex flex-wrap justify-end gap-6 px-4"

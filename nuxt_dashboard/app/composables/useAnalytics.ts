@@ -117,11 +117,6 @@ export const useAnalytics = () => {
 			return { datasets: [] };
 		}
 
-		const chartColors = [
-			"#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6",
-			"#ec4899", "#06b6d4", "#84cc16", "#f97316", "#6366f1",
-		];
-
 		const datasets = selectedTests.value.map((testName, index) => {
 			const testRows = rawDataRef.value.filter((row) => {
 				const currentTestName = `${row.protocol}_${row.router_topology}_${row.payload_b}b`;
@@ -138,7 +133,12 @@ export const useAnalytics = () => {
 
 			dataPoints.sort((a: ChartPoint, b: ChartPoint) => a.x - b.x);
 
-			const color = chartColors[index % chartColors.length];
+			const hue = (index * 137.508) % 360;
+
+			const saturation = 70 + (index % 3) * 10;
+			const lightness = 45 + (index % 4) * 5;
+
+			const color = `hsl(${Math.round(hue)}, ${saturation}%, ${lightness}%)`;
 
 			return {
 				label: testName,
@@ -146,6 +146,7 @@ export const useAnalytics = () => {
 				tension: 0.2,
 				borderColor: color,
 				backgroundColor: color,
+				borderWidth: 2,
 			};
 		});
 

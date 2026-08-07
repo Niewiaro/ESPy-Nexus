@@ -99,18 +99,20 @@ export const useAnalytics = () => {
 		selectedXRange.value = [...xRangeLimit.value];
 	};
 
-	if (!isInitialized.value && availableTests.value.length > 0 && availableMetrics.value.length > 0) {
-		randomizeSelection();
+	onMounted(() => {
+		if (!isInitialized.value && availableTests.value.length > 0 && availableMetrics.value.length > 0) {
+			randomizeSelection();
 
-		const frequencies = rawDataRef.value.map(row => Number(row.freq_hz));
-		const minFreq = Math.min(...frequencies);
-		const maxFreq = Math.max(...frequencies);
+			const frequencies = rawDataRef.value.map(row => Number(row.freq_hz));
+			const minFreq = Math.min(...frequencies);
+			const maxFreq = Math.max(...frequencies);
 
-		xRangeLimit.value = [minFreq, maxFreq];
-		selectedXRange.value = [minFreq, maxFreq];
+			xRangeLimit.value = [minFreq, maxFreq];
+			selectedXRange.value = [minFreq, maxFreq];
 
-		isInitialized.value = true;
-	}
+			isInitialized.value = true;
+		}
+	});
 
 	const chartData = computed(() => {
 		if (selectedTests.value.length === 0 || !selectedMetric.value) {

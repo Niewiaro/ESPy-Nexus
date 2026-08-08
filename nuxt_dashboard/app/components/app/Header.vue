@@ -19,12 +19,55 @@
 		<template #right>
 			<UColorModeButton />
 
+			<UDrawer>
+				<UButton
+					icon="heroicons:language"
+					color="neutral"
+					variant="ghost"
+					:aria-label="t('i18n.selectLanguage')"
+				/>
+
+				<template #content>
+					<div class="flex flex-col gap-3 p-6 max-w-md mx-auto w-full">
+						<div class="flex items-center justify-between mb-2">
+							<h3 class="text-xl font-semibold text-highlighted">
+								{{ t('i18n.selectLanguage') }}
+							</h3>
+							<div class="rounded-full border border-muted/70 bg-muted/40 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-dimmed">
+								{{ locales.length }}
+							</div>
+						</div>
+
+						<NuxtLink
+							v-for="l in locales"
+							:key="l.code"
+							:to="switchLocalePath(l.code)"
+							class="flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition-all duration-200"
+							:class="l.code === locale
+								? 'border-primary/30 bg-primary/10 text-highlighted shadow-sm'
+								: 'border-muted/70 bg-default/70 text-muted hover:border-primary/20 hover:bg-muted/40 hover:text-highlighted'"
+						>
+							<div class="flex flex-col">
+								<span class="text-lg font-medium">{{ l.name }}</span>
+								<span class="text-sm uppercase tracking-[0.24em] text-dimmed">{{ l.code }}</span>
+							</div>
+
+							<UIcon
+								v-if="l.code === locale"
+								name="heroicons:check"
+								class="shrink-0 size-5 text-primary"
+							/>
+						</NuxtLink>
+					</div>
+				</template>
+			</UDrawer>
+
 			<UButton
 				color="neutral"
 				variant="ghost"
 				:to="config.public.gitURL"
 				target="_blank"
-				icon="i-simple-icons-github"
+				icon="simple-icons:github"
 				aria-label="GitHub"
 			/>
 		</template>
@@ -47,18 +90,21 @@ import type { NavigationMenuItem } from "@nuxt/ui";
 const config = useRuntimeConfig();
 const route = useRoute();
 
+const { locale, locales, t } = useI18n();
+const switchLocalePath = useSwitchLocalePath();
+
 const navItems = computed<NavigationMenuItem[]>(() => [
 	{
-		label: "Dashboard",
-		icon: "i-heroicons-chart-pie",
+		label: t("nav.dashboard"),
+		icon: "heroicons:chart-pie",
 		to: "/",
-		active: route.path === "/",
+		active: route.path === "/" || route.path === "/en",
 	},
 	{
-		label: "Surowe Dane",
-		icon: "i-heroicons-table-cells",
+		label: t("nav.rawData"),
+		icon: "heroicons:table-cells",
 		to: "/data",
-		active: route.path.startsWith("/data"),
+		active: route.path.startsWith("/data") || route.path.startsWith("/en/data"),
 	},
 ]);
 </script>

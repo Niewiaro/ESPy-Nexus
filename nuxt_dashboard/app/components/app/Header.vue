@@ -47,9 +47,16 @@
 								? 'border-primary/30 bg-primary/10 text-highlighted shadow-sm'
 								: 'border-muted/70 bg-default/70 text-muted hover:border-primary/20 hover:bg-muted/40 hover:text-highlighted'"
 						>
-							<div class="flex flex-col">
-								<span class="text-lg font-medium">{{ l.name }}</span>
-								<span class="text-sm uppercase tracking-[0.24em] text-dimmed">{{ l.code }}</span>
+							<div class="flex items-center gap-3">
+								<UBadge
+									:label="l.code"
+									size="md"
+									variant="subtle"
+									:color="l.code === locale ? 'primary' : 'neutral'"
+									class="uppercase tracking-widest font-mono"
+								/>
+
+								<span class="text-base font-medium">{{ l.name }}</span>
 							</div>
 
 							<UIcon

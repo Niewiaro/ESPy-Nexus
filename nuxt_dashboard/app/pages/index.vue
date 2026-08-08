@@ -15,7 +15,7 @@
 									name="heroicons:adjustments-horizontal-solid"
 									class="w-5 h-5 text-primary"
 								/>
-								Parametryzacja HIL
+								{{ t('home.hilParameters') }}
 							</div>
 						</template>
 						<DataExplorerFilters />
@@ -35,7 +35,7 @@
 											name="heroicons:presentation-chart-line-solid"
 											class="w-6 h-6 text-primary"
 										/>
-										Charakterystyka częstotliwościowa
+										{{ t('home.frequencyResponse') }}
 									</h2>
 									<UBadge
 										v-if="selectedMetric"
@@ -55,7 +55,7 @@
 									size="sm"
 									@click="() => { isFullscreenModalOpen = true }"
 								>
-									Pełny ekran
+									{{ t('home.fullscreen') }}
 								</UButton>
 							</div>
 						</template>
@@ -73,7 +73,7 @@
 		<UModal
 			v-model:open="isFullscreenModalOpen"
 			fullscreen
-			title="Szczegółowa charakterystyka częstotliwościowa"
+			:title="t('home.fullscreenModalTitle')"
 			:ui="{ body: 'flex flex-col flex-1 min-h-0 bg-default p-4' }"
 		>
 			<template #body>
@@ -84,9 +84,11 @@
 </template>
 
 <script setup lang="ts">
+const { t } = useI18n();
+
 useSeoMeta({
-	title: "Platforma Analityczna",
-	description: "Interaktywny panel analizy układów RTOS i GPOS. Porównuj wydajność topologii i dekoduj zachowanie planisty systemowego w czasie rzeczywistym.",
+	title: () => t("seo.title"),
+	description: () => t("seo.description"),
 });
 
 const { selectedMetric } = useAnalytics();

@@ -17,17 +17,17 @@
 <script setup lang="ts">
 import * as locales from "@nuxt/ui/locale";
 
+const { locale, t } = useI18n();
+
 useSeoMeta({
-	description: "Profesjonalna platforma analityczna dla testów Hardware-in-the-Loop na mikrokontrolerach ESP32.",
+	description: () => t("seo.description"),
+	ogTitle: () => t("seo.title"),
+	ogDescription: () => t("seo.descriptionLong"),
 	ogType: "website",
 	ogImage: "/og-image.png",
-	ogTitle: "Platforma Analityczna | ESPy-Nexus",
-	ogDescription: "Profesjonalne narzędzie analityczne do zastosowań Hardware-in-the-Loop. Przeglądaj znormalizowane wyniki pomiarów PDR, Jittera, Goodputu i wielu innych parametrów.",
 	author: "Jakub Niewiarowski",
 	themeColor: "#0f172a",
 });
-
-const { locale } = useI18n();
 
 const i18nHead = useLocaleHead({ seo: true });
 

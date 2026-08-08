@@ -1,4 +1,9 @@
 {
+    "seo": {
+        "title": "Platforma Analityczna",
+        "description": "Profesjonalna platforma analityczna dla testów Hardware-in-the-Loop na mikrokontrolerach ESP32.",
+        "descriptionLong": "Profesjonalne narzędzie analityczne do zastosowań Hardware-in-the-Loop. Przeglądaj znormalizowane wyniki pomiarów PDR, Jittera, Goodputu i wielu innych parametrów."
+    },
     "i18n": {
         "selectLanguage": "Wybierz język"
     },
@@ -41,6 +46,12 @@
             "onlyPayloadSize": "Tylko rozmiar paczki",
             "metricPlaceholder": "np. jitter_mean_iat_us"
         }
+    },
+    "home": {
+        "hilParameters": "Parametryzacja HIL",
+        "frequencyResponse": "Charakterystyka częstotliwościowa",
+        "fullscreen": "Pełny ekran",
+        "fullscreenModalTitle": "Szczegółowa charakterystyka częstotliwościowa"
     },
     "hero": {
         "badge": "Mikrosekundowa analityka HIL",

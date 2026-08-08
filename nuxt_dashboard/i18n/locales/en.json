@@ -1,4 +1,9 @@
 {
+    "seo": {
+        "title": "Analytics Platform | ESPy-Nexus",
+        "description": "Professional analytics platform for Hardware-in-the-Loop tests on ESP32 microcontrollers.",
+        "descriptionLong": "A professional analytical tool for Hardware-in-the-Loop applications. Explore normalized PDR, Jitter, Goodput, and many other measurement metrics."
+    },
     "i18n": {
         "selectLanguage": "Select Language"
     },
@@ -41,6 +46,12 @@
             "onlyPayloadSize": "Only packet size",
             "metricPlaceholder": "e.g. jitter_mean_iat_us"
         }
+    },
+    "home": {
+        "hilParameters": "HIL parameterization",
+        "frequencyResponse": "Frequency response",
+        "fullscreen": "Full screen",
+        "fullscreenModalTitle": "Detailed frequency response"
     },
     "hero": {
         "badge": "Microsecond HIL analytics",

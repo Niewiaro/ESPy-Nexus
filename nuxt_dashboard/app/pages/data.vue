@@ -112,7 +112,7 @@ import { getPaginationRowModel } from "@tanstack/vue-table";
 
 useSeoMeta({
 	title: "Eksplorator Danych HIL",
-	description: "Surowa baza pomiarów i testów sieciowych. Filtruj tysiące rekordów telemetrii i analizuj ukryte anomalie.",
+	description: "Surowa baza pomiarów i testów sieciowych. Filtruj miliony rekordów telemetrii i analizuj ukryte anomalie.",
 });
 
 const UBadge = resolveComponent("UBadge");

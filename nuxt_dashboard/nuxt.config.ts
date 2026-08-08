@@ -1,4 +1,5 @@
 const appName = "ESPy-Nexus";
+const appURL = "https://espy-nexus.niewiaro.cc";
 
 export default defineNuxtConfig({
 	modules: ["@nuxt/eslint", "@nuxt/ui", "@nuxtjs/i18n"],
@@ -7,7 +8,7 @@ export default defineNuxtConfig({
 	app: {
 		head: {
 			title: appName,
-			titleTemplate: `%s - ${appName}`,
+			titleTemplate: `%s | ${appName}`,
 
 			meta: [
 				{ name: "apple-mobile-web-app-title", content: appName },
@@ -27,7 +28,7 @@ export default defineNuxtConfig({
 	runtimeConfig: {
 		public: {
 			appName: appName,
-			appURL: "https://espy-nexus.niewiaro.cc",
+			appURL: appURL,
 			gitURL: "https://github.com/Niewiaro",
 			gitRepoURL: "https://github.com/Niewiaro/ESPy-Nexus",
 			linkedInURL: "https://www.linkedin.com/in/jakub-niewiarowski",
@@ -48,11 +49,30 @@ export default defineNuxtConfig({
 
 	i18n: {
 		locales: [
-			{ code: "pl", name: "Polski" },
-			{ code: "en", name: "English" },
+			{
+				code: "pl",
+				name: "Polski",
+				language: "pl-PL",
+				file: "pl.json",
+				isCatchallLocale: true,
+			},
+			{
+				code: "en",
+				name: "English",
+				language: "en-US",
+				file: "en.json",
+			},
 		],
 		defaultLocale: "pl",
 		strategy: "no_prefix",
+		baseUrl: appURL,
+
+		detectBrowserLanguage: {
+			useCookie: true,
+			cookieKey: "i18n_redirected",
+			redirectOn: "root",
+			fallbackLocale: "en",
+		},
 	},
 
 	icon: {

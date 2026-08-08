@@ -63,8 +63,9 @@ export default defineNuxtConfig({
 				file: "en.json",
 			},
 		],
+
 		defaultLocale: "pl",
-		strategy: "no_prefix",
+		strategy: "prefix_except_default",
 		baseUrl: appURL,
 
 		detectBrowserLanguage: {

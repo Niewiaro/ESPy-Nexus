@@ -8,15 +8,15 @@
 							name="heroicons:arrows-right-left-solid"
 							class="w-4 h-4 text-primary"
 						/>
-						Pasmo analizy
+						{{ $t('xRange.title') }}
 					</h3>
 					<p class="text-xs text-dimmed mt-0.5">
-						Zawężaj widmo częstotliwości, aby izolować anomalie.
+						{{ $t('xRange.description') }}
 					</p>
 				</div>
 
 				<UButton
-					label="Resetuj"
+					:label="$t('xRange.reset')"
 					icon="heroicons:arrow-path"
 					color="neutral"
 					variant="ghost"
@@ -38,7 +38,7 @@
 			</div>
 
 			<div class="flex items-center justify-between gap-3 w-full lg:w-auto shrink-0">
-				<UFormField label="Min. Hz">
+				<UFormField :label="$t('xRange.minHz')">
 					<UInputNumber
 						v-model="selectedXRange[0]"
 						:min="xRangeLimit[0]"
@@ -51,7 +51,7 @@
 
 				<span class="text-muted mt-6 font-bold">-</span>
 
-				<UFormField label="Max. Hz">
+				<UFormField :label="$t('xRange.maxHz')">
 					<UInputNumber
 						v-model="selectedXRange[1]"
 						:min="selectedXRange[0]"

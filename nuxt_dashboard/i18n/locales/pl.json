@@ -6,6 +6,42 @@
         "dashboard": "Dashboard",
         "rawData": "Surowe Dane"
     },
+    "chart": {
+        "axes": {
+            "logX": "Oś X (logarytmiczna)",
+            "logY": "Oś Y (logarytmiczna)"
+        },
+        "axisLabels": {
+            "frequencyHz": "Częstotliwość [Hz]"
+        },
+        "emptyState": {
+            "title": "Oczekiwanie na parametryzację",
+            "description": "Wybierz z panelu bocznego iterację testową oraz badaną metrykę (np. Queuing Delay), aby wyrenderować charakterystykę częstotliwościową."
+        }
+    },
+    "xRange": {
+        "title": "Pasmo analizy",
+        "description": "Zawężaj widmo częstotliwości, aby izolować anomalie.",
+        "reset": "Resetuj",
+        "minHz": "Min. Hz",
+        "maxHz": "Max. Hz"
+    },
+    "dataExplorer": {
+        "accordion": {
+            "tests": "Wybór testów",
+            "metric": "Metryka (Oś Y)",
+            "presets": "Szybkie filtry"
+        },
+        "filters": {
+            "all": "Wszystkie",
+            "none": "Żadne",
+            "random": "Losowe ({count})",
+            "onlyProtocol": "Tylko protokół",
+            "onlyTopology": "Tylko topologia",
+            "onlyPayloadSize": "Tylko rozmiar paczki",
+            "metricPlaceholder": "np. jitter_mean_iat_us"
+        }
+    },
     "hero": {
         "badge": "Mikrosekundowa analityka HIL",
         "titleLine1": "Determinizm embedded",

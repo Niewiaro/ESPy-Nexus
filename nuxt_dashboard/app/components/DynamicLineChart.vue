@@ -7,13 +7,13 @@
 			<UCheckbox
 				v-model="isLogX"
 				name="logX"
-				label="Oś X (Logarytmiczna)"
+				:label="$t('chart.axes.logX')"
 				color="primary"
 			/>
 			<UCheckbox
 				v-model="isLogY"
 				name="logY"
-				label="Oś Y (Logarytmiczna)"
+				:label="$t('chart.axes.logY')"
 				color="secondary"
 			/>
 		</div>
@@ -33,9 +33,9 @@
 					name="heroicons:presentation-chart-line"
 					class="w-12 h-12 mb-3 opacity-40"
 				/>
-				<span class="font-semibold text-toned text-lg">Oczekiwanie na parametryzację</span>
+				<span class="font-semibold text-toned text-lg">{{ $t('chart.emptyState.title') }}</span>
 				<span class="text-sm mt-1 max-w-sm">
-					Wybierz z panelu bocznego iterację testową oraz badaną metrykę (np. Queuing Delay), aby wyrenderować charakterystykę częstotliwościową.
+					{{ $t('chart.emptyState.description') }}
 				</span>
 			</div>
 		</div>
@@ -108,6 +108,7 @@ Chart.register(
 );
 
 const { chartData, selectedMetric, isLogX, isLogY } = useAnalytics();
+const { t } = useI18n();
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 
@@ -132,7 +133,7 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
 		scales: {
 			x: {
 				type: isLogX.value ? "logarithmic" : "linear",
-				title: { display: true, text: "Częstotliwość [Hz]", color: textColor, font: { weight: "bold", family: "system-ui" } },
+				title: { display: true, text: t("chart.axisLabels.frequencyHz"), color: textColor, font: { weight: "bold", family: "system-ui" } },
 				ticks: { color: textColor, font: { family: "monospace" } },
 				grid: { color: gridColor },
 			},

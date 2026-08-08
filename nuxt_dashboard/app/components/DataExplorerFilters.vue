@@ -21,7 +21,7 @@
 			<div class="flex flex-col gap-4 my-3 px-1 max-h-[60vh] overflow-y-auto scrollbar-thin">
 				<div class="grid grid-cols-2 gap-2">
 					<UButton
-						label="Wszystkie"
+						:label="$t('dataExplorer.filters.all')"
 						icon="heroicons:check-circle"
 						color="primary"
 						variant="soft"
@@ -29,7 +29,7 @@
 						@click="selectAllTests"
 					/>
 					<UButton
-						label="Żadne"
+						:label="$t('dataExplorer.filters.none')"
 						icon="heroicons:x-circle"
 						color="neutral"
 						variant="outline"
@@ -37,7 +37,7 @@
 						@click="clearAllTests"
 					/>
 					<UButton
-						label="Losowe (5)"
+						:label="$t('dataExplorer.filters.random', { count: 5 })"
 						icon="heroicons:sparkles"
 						color="warning"
 						variant="subtle"
@@ -50,7 +50,7 @@
 
 				<div>
 					<div class="text-xs font-semibold text-dimmed uppercase tracking-wider mb-2 px-1">
-						Tylko protokół
+						{{ $t('dataExplorer.filters.onlyProtocol') }}
 					</div>
 					<div class="grid grid-cols-2 gap-2">
 						<UButton
@@ -70,7 +70,7 @@
 
 				<div>
 					<div class="text-xs font-semibold text-dimmed uppercase tracking-wider mb-2 px-1">
-						Tylko topologia
+						{{ $t('dataExplorer.filters.onlyTopology') }}
 					</div>
 					<div class="grid grid-cols-2 gap-2">
 						<UButton
@@ -90,7 +90,7 @@
 
 				<div>
 					<div class="text-xs font-semibold text-dimmed uppercase tracking-wider mb-2 px-1">
-						Tylko rozmiar paczki
+						{{ $t('dataExplorer.filters.onlyPayloadSize') }}
 					</div>
 					<div class="grid grid-cols-2 gap-2">
 						<UButton
@@ -114,7 +114,7 @@
 					v-model="selectedMetric"
 					:items="availableMetrics"
 					searchable
-					placeholder="np. jitter_mean_iat_us"
+					:placeholder="$t('dataExplorer.filters.metricPlaceholder')"
 					class="w-full"
 				/>
 			</div>
@@ -139,9 +139,11 @@ const {
 	selectByPayload,
 } = useAnalytics();
 
+const { t } = useI18n();
+
 const accordionItems = [
-	{ label: "Wybór testów", icon: "heroicons:beaker", value: "tests", slot: "tests" },
-	{ label: "Metryka (Oś Y)", icon: "heroicons:chart-bar-square", value: "metric", slot: "metric" },
-	{ label: "Szybkie filtry", icon: "heroicons:bolt", value: "presets", slot: "presets" },
+	{ label: t("dataExplorer.accordion.tests"), icon: "heroicons:beaker", value: "tests", slot: "tests" },
+	{ label: t("dataExplorer.accordion.metric"), icon: "heroicons:chart-bar-square", value: "metric", slot: "metric" },
+	{ label: t("dataExplorer.accordion.presets"), icon: "heroicons:bolt", value: "presets", slot: "presets" },
 ];
 </script>

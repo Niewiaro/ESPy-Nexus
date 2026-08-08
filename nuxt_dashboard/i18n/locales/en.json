@@ -1,0 +1,32 @@
+{
+    "i18n": {
+        "selectLanguage": "Select Language"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "rawData": "Raw Data"
+    },
+    "hero": {
+        "badge": "Microsecond HIL analytics",
+        "titleLine1": "Embedded determinism",
+        "titleLine2": "Hardware-in-the-Loop",
+        "description": {
+            "1": "A platform for analyzing communication determinism between a PC",
+            "2": "and an ESP32 microcontroller",
+            "3": "Observe",
+            "4": "scheduler micro-stalls",
+            "5": "evaluate asymmetric",
+            "6": "and verify radio performance for critical control applications."
+        },
+        "ctaStart": "Start HIL analysis",
+        "ctaLogs": "Browse logs",
+        "stats": {
+            "iterations": "Test iterations",
+            "protocols": "Protocols",
+            "topologies": "Topologies",
+            "scenarios": "Scenarios",
+            "sampling": "Sampling",
+            "transmittedPackets": "Packets transmitted"
+        }
+    }
+}

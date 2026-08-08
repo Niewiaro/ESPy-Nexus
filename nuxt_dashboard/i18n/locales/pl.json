@@ -1,0 +1,32 @@
+{
+    "i18n": {
+        "selectLanguage": "Wybierz język"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "rawData": "Surowe Dane"
+    },
+    "hero": {
+        "badge": "Mikrosekundowa analityka HIL",
+        "titleLine1": "Determinizm embedded",
+        "titleLine2": "Hardware-in-the-Loop",
+        "description": {
+            "1": "Platforma analizująca determinizm komunikacyjny między komputerem PC",
+            "2": "a mikrokontrolerem ESP32",
+            "3": "Obserwuj",
+            "4": "mikro-zawieszenia planisty",
+            "5": "oceniaj asymetryczny",
+            "6": "i weryfikuj wydajność radiową dla krytycznych aplikacji sterowania."
+        },
+        "ctaStart": "Zacznij analizę HIL",
+        "ctaLogs": "Przegląd logów",
+        "stats": {
+            "iterations": "Iteracje Testowe",
+            "protocols": "Protokoły",
+            "topologies": "Topologie",
+            "scenarios": "Scenariusze",
+            "sampling": "Próbkowanie",
+            "transmittedPackets": "Przesłane pakiety"
+        }
+    }
+}

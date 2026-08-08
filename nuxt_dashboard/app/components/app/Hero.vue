@@ -23,27 +23,27 @@
 						name="heroicons:cpu-chip-solid"
 						class="w-4 h-4 mr-2 animate-pulse"
 					/>
-					Mikrosekundowa analityka HIL
+					{{ $t("hero.badge") }}
 				</UBadge>
 
 				<h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-highlighted max-w-4xl leading-tight">
-					Determinizm embedded <br class="hidden sm:block">
+					{{ $t("hero.titleLine1") }} <br class="hidden sm:block">
 					<span class="bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent pb-1">
-						Hardware-in-the-Loop
+						{{ $t("hero.titleLine2") }}
 					</span>
 				</h1>
 
 				<p class="text-lg sm:text-xl text-muted max-w-3xl leading-relaxed px-2 sm:px-0">
-					Platforma analizująca determinizm komunikacyjny między komputerem PC (<i class="text-primary font-mono">GPOS</i>),
-					a mikrokontrolerem ESP32 (<i class="text-secondary font-mono">RTOS</i>).
-					Obserwuj <span class="font-semibold text-toned">mikro-zawieszenia planisty</span>,
-					oceniaj asymetryczny <span class="font-semibold text-toned">Jitter</span>
-					i weryfikuj wydajność radiową dla krytycznych aplikacji sterowania.
+					{{ $t("hero.description.1") }} (<i class="text-primary font-mono">GPOS</i>),
+					{{ $t("hero.description.2") }} (<i class="text-secondary font-mono">RTOS</i>).
+					{{ $t("hero.description.3") }} <span class="font-semibold text-toned">{{ $t("hero.description.4") }}</span>,
+					{{ $t("hero.description.5") }} <span class="font-semibold text-toned">Jitter</span>
+					{{ $t("hero.description.6") }}
 				</p>
 
 				<div class="flex flex-wrap items-center justify-center gap-4 mt-6">
 					<UButton
-						label="Zacznij analizę HIL"
+						:label="$t('hero.ctaStart')"
 						icon="heroicons:chart-bar-square"
 						size="xl"
 						color="primary"
@@ -51,7 +51,7 @@
 						@click="scrollToDashboard"
 					/>
 					<UButton
-						label="Przegląd logów"
+						:label="$t('hero.ctaLogs')"
 						icon="heroicons:table-cells"
 						size="xl"
 						color="neutral"
@@ -65,28 +65,28 @@
 						<span class="text-2xl sm:text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="availableTests.length" />
 						</span>
-						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">Iteracje Testowe</span>
+						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">{{ $t("hero.stats.iterations") }}</span>
 					</div>
 
 					<div class="flex flex-col gap-1.5">
 						<span class="text-2xl sm:text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="availableProtocols.length" />
 						</span>
-						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">Protokoły</span>
+						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">{{ $t("hero.stats.protocols") }}</span>
 					</div>
 
 					<div class="flex flex-col gap-1.5">
 						<span class="text-2xl sm:text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="availableTopologies.length" />
 						</span>
-						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">Topologie</span>
+						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">{{ $t("hero.stats.topologies") }}</span>
 					</div>
 
 					<div class="flex flex-col gap-1.5">
 						<span class="text-2xl sm:text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="data.length" />
 						</span>
-						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">Scenariusze</span>
+						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">{{ $t("hero.stats.scenarios") }}</span>
 					</div>
 
 					<div class="flex flex-col gap-1.5">
@@ -94,14 +94,14 @@
 							<AnimatedCounter :value="hzRange.min" /> - <AnimatedCounter :value="hzRange.max" />
 							<span class="text-sm sm:text-lg font-semibold text-secondary">Hz</span>
 						</span>
-						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">Próbkowanie</span>
+						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">{{ $t("hero.stats.sampling") }}</span>
 					</div>
 
 					<div class="flex flex-col gap-1.5">
 						<span class="text-2xl sm:text-3xl font-bold text-highlighted">
 							<AnimatedCounter :value="totalPackets" />
 						</span>
-						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">Przesłane pakiety</span>
+						<span class="text-[10px] sm:text-xs font-semibold text-dimmed uppercase tracking-wider">{{ $t("hero.stats.transmittedPackets") }}</span>
 					</div>
 				</div>
 			</div>

@@ -1,7 +1,7 @@
 const appName = "ESPy-Nexus";
 
 export default defineNuxtConfig({
-	modules: ["@nuxt/eslint", "@nuxt/ui"],
+	modules: ["@nuxt/eslint", "@nuxt/ui", "@nuxtjs/i18n"],
 	devtools: { enabled: true },
 
 	app: {
@@ -9,9 +9,6 @@ export default defineNuxtConfig({
 			title: appName,
 			titleTemplate: `%s - ${appName}`,
 
-			htmlAttrs: {
-				lang: "pl",
-			},
 			meta: [
 				{ name: "apple-mobile-web-app-title", content: appName },
 			],
@@ -47,6 +44,15 @@ export default defineNuxtConfig({
 				indent: "tab",
 			},
 		},
+	},
+
+	i18n: {
+		locales: [
+			{ code: "pl", name: "Polski" },
+			{ code: "en", name: "English" },
+		],
+		defaultLocale: "pl",
+		strategy: "no_prefix",
 	},
 
 	icon: {

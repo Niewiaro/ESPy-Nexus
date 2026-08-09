@@ -10,4 +10,7 @@ noIndentBlock:
     np:
         begin: '\bnp\.'
         end: ' '
+    min:
+        begin: '\bm\.'
+        end: 'in\. '
         

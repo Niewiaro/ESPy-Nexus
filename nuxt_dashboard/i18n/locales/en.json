@@ -53,6 +53,41 @@
         "fullscreen": "Full screen",
         "fullscreenModalTitle": "Detailed frequency response"
     },
+    "dataPage": {
+        "seo": {
+            "title": "HIL Data Explorer",
+            "description": "Raw telemetry measurement database. Filter logs and analyze hidden anomalies."
+        },
+        "hero": {
+            "headline": "Log Database",
+            "title": "HIL Data Explorer",
+            "description": "Browse, filter, and search raw telemetry test results from the HIL machine. Switch view profiles to uncover anomalies at microsecond scale.",
+            "backToAnalyzer": "Back to analyzer"
+        },
+        "toolbar": {
+            "searchPlaceholder": "Filter logs (e.g. UDP, SERIAL, 1000Hz)...",
+            "viewProfiles": "View profiles",
+            "columns": "Columns",
+            "records": "Records",
+            "presets": {
+                "basicViews": "Basic views",
+                "metadataOnly": "Metadata only",
+                "normalized": "Normalized (Standard)",
+                "fullDatabase": "Full database (All data)",
+                "sectionAnalysis": "Section analysis",
+                "hideAll": "Hide all"
+            }
+        },
+        "columns": {
+            "testId": "ID",
+            "protocol": "Protocol",
+            "topology": "Topology",
+            "freqHz": "Freq [Hz]",
+            "status": "Status",
+            "payloadB": "Payload [B]",
+            "expectedPackets": "Packets [Expected]"
+        }
+    },
     "hero": {
         "badge": "Microsecond HIL analytics",
         "titleLine1": "Embedded determinism",

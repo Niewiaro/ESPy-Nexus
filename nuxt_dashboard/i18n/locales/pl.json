@@ -53,6 +53,40 @@
         "fullscreen": "Pełny ekran",
         "fullscreenModalTitle": "Szczegółowa charakterystyka częstotliwościowa"
     },
+    "dataPage": {
+        "seo": {
+            "title": "Eksplorator Danych HIL",
+            "description": "Surowa baza pomiarów i testów sieciowych. Filtruj rekordy telemetrii i analizuj ukryte anomalie."
+        },
+        "hero": {
+            "headline": "Baza Logów",
+            "title": "Eksplorator Danych HIL",
+            "description": "Przeglądaj, filtruj i przeszukuj surowe wyniki testów telemetrii z maszyny HIL. Przełączaj profile widoku, aby odkrywać anomalie na poziomie mikrosekundowym.",
+            "backToAnalyzer": "Wróć do analizatora"
+        },
+        "toolbar": {
+            "searchPlaceholder": "Filtruj logi (np. UDP, SERIAL, 1000Hz)...",
+            "viewProfiles": "Profile widoku",
+            "columns": "Kolumny",
+            "records": "Rekordy",
+            "presets": {
+                "basicViews": "Podstawowe widoki",
+                "metadataOnly": "Tylko Metadane",
+                "normalized": "Znormalizowane (Standard)",
+                "fullDatabase": "Pełna baza (Wszystkie dane)",
+                "sectionAnalysis": "Analiza sekcyjna",
+                "hideAll": "Ukryj wszystko"
+            }
+        },
+        "columns": {
+            "protocol": "Protokół",
+            "topology": "Topologia",
+            "freqHz": "Częstotliwość [Hz]",
+            "status": "Status",
+            "payloadB": "Payload [B]",
+            "expectedPackets": "Pakiety [Oczekiwane]"
+        }
+    },
     "hero": {
         "badge": "Mikrosekundowa analityka HIL",
         "titleLine1": "Determinizm embedded",

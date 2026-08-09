@@ -4,12 +4,12 @@
 			<div class="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[24px_24px] mask-[linear-gradient(to_bottom,white,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,white,transparent)]" />
 
 			<UPageHero
-				headline="Baza Logów"
-				title="Eksplorator Danych HIL"
-				description="Przeglądaj, filtruj i przeszukuj surowe wyniki testów telemetrii z maszyny HIL. Przełączaj profile widoku, aby odkrywać anomalie na poziomie mikrosekundowym."
+				:headline="t('dataPage.hero.headline')"
+				:title="t('dataPage.hero.title')"
+				:description="t('dataPage.hero.description')"
 				:links="[
 					{
-						label: 'Wróć do analizatora',
+						label: t('dataPage.hero.backToAnalyzer'),
 						icon: 'heroicons:arrow-left-solid',
 						to: '/',
 						color: 'neutral',
@@ -32,7 +32,7 @@
 					<UInput
 						v-model="globalFilter"
 						icon="heroicons:magnifying-glass-solid"
-						placeholder="Filtruj logi (np. UDP, SERIAL, 1000Hz)..."
+						:placeholder="t('dataPage.toolbar.searchPlaceholder')"
 						class="w-full sm:max-w-sm font-mono text-sm"
 						color="neutral"
 					/>
@@ -43,7 +43,7 @@
 							:content="{ align: 'end' }"
 						>
 							<UButton
-								label="Profile widoku"
+								:label="t('dataPage.toolbar.viewProfiles')"
 								color="primary"
 								variant="soft"
 								icon="heroicons:bookmark-solid"
@@ -64,7 +64,7 @@
 							:content="{ align: 'end' }"
 						>
 							<UButton
-								label="Kolumny"
+								:label="t('dataPage.toolbar.columns')"
 								color="neutral"
 								variant="outline"
 								icon="heroicons:view-columns-solid"
@@ -91,7 +91,7 @@
 
 				<div class="flex items-center justify-between border-t border-muted bg-muted/10 p-4">
 					<div class="text-sm text-dimmed font-medium">
-						Rekordy: <span class="font-bold text-highlighted">{{ table?.tableApi?.getRowModel().rows.length || 0 }}</span> / {{ table?.tableApi?.getFilteredRowModel().rows.length || 0 }}
+						{{ t('dataPage.toolbar.records') }}: <span class="font-bold text-highlighted">{{ table?.tableApi?.getRowModel().rows.length || 0 }}</span> / {{ table?.tableApi?.getFilteredRowModel().rows.length || 0 }}
 					</div>
 					<UPagination
 						:page="(table?.tableApi?.getState().pagination.pageIndex || 0) + 1"
@@ -110,9 +110,11 @@ import { h, resolveComponent, ref } from "vue";
 import type { TableColumn, DropdownMenuItem } from "@nuxt/ui";
 import { getPaginationRowModel } from "@tanstack/vue-table";
 
+const { t } = useI18n();
+
 useSeoMeta({
-	title: "Eksplorator Danych HIL",
-	description: "Surowa baza pomiarów i testów sieciowych. Filtruj miliony rekordów telemetrii i analizuj ukryte anomalie.",
+	title: () => t("dataPage.seo.title"),
+	description: () => t("dataPage.seo.description"),
 });
 
 const UBadge = resolveComponent("UBadge");
@@ -129,20 +131,20 @@ const columnVisibility = ref<Record<string, boolean>>({});
 const renderMono = (value: string | number) => h("span", { class: "font-mono text-xs" }, value);
 
 const metadataColumns: UColumn[] = [
-	{ accessorKey: "test_id", header: "ID", cell: ({ row }) => renderMono(row.getValue("test_id")) },
-	{ accessorKey: "protocol", header: "Protokół" },
-	{ accessorKey: "router_topology", header: "Topologia" },
-	{ accessorKey: "freq_hz", header: "Freq [Hz]", cell: ({ row }) => renderMono(`${row.getValue("freq_hz")}`) },
+	{ accessorKey: "test_id", header: t("dataPage.columns.testId"), cell: ({ row }) => renderMono(row.getValue("test_id")) },
+	{ accessorKey: "protocol", header: t("dataPage.columns.protocol") },
+	{ accessorKey: "router_topology", header: t("dataPage.columns.topology") },
+	{ accessorKey: "freq_hz", header: t("dataPage.columns.freqHz"), cell: ({ row }) => renderMono(`${row.getValue("freq_hz")}`) },
 	{
 		accessorKey: "status",
-		header: "Status",
+		header: t("dataPage.columns.status"),
 		cell: ({ row }) => {
 			const status = row.getValue("status") as string;
 			return h(UBadge, { variant: "soft", size: "sm", color: status === "OK" ? "success" : "error" }, () => status);
 		},
 	},
-	{ accessorKey: "payload_b", header: "Payload [B]", cell: ({ row }) => renderMono(`${row.getValue("payload_b")}`) },
-	{ accessorKey: "expected_cnt", header: "Pakiety [Oczekiwane]", cell: ({ row }) => renderMono(row.getValue("expected_cnt")) },
+	{ accessorKey: "payload_b", header: t("dataPage.columns.payloadB"), cell: ({ row }) => renderMono(`${row.getValue("payload_b")}`) },
+	{ accessorKey: "expected_cnt", header: t("dataPage.columns.expectedPackets"), cell: ({ row }) => renderMono(row.getValue("expected_cnt")) },
 ];
 
 const normalizedColumns: UColumn[] = [
@@ -239,13 +241,13 @@ const applyPreset = (presetType: "metadata" | "normalized" | "all" | "none" | "s
 
 const presetItems = ref<DropdownMenuItem[][]>([
 	[
-		{ type: "label", label: "Podstawowe widoki" },
-		{ label: "Tylko Metadane", icon: "heroicons:identification-solid", onSelect: () => applyPreset("metadata") },
-		{ label: "Znormalizowane (Standard)", icon: "heroicons:star-solid", onSelect: () => applyPreset("normalized") },
-		{ label: "Pełna baza (Wszystkie dane)", icon: "heroicons:circle-stack-solid", onSelect: () => applyPreset("all") },
+		{ type: "label", label: t("dataPage.toolbar.presets.basicViews") },
+		{ label: t("dataPage.toolbar.presets.metadataOnly"), icon: "heroicons:identification-solid", onSelect: () => applyPreset("metadata") },
+		{ label: t("dataPage.toolbar.presets.normalized"), icon: "heroicons:star-solid", onSelect: () => applyPreset("normalized") },
+		{ label: t("dataPage.toolbar.presets.fullDatabase"), icon: "heroicons:circle-stack-solid", onSelect: () => applyPreset("all") },
 	],
 	[
-		{ type: "label", label: "Analiza sekcyjna" },
+		{ type: "label", label: t("dataPage.toolbar.presets.sectionAnalysis") },
 		{ label: "PDR", icon: "heroicons:arrow-trending-up-solid", onSelect: () => applyPreset("section-pdr") },
 		{ label: "Jitter", icon: "heroicons:bolt-solid", onSelect: () => applyPreset("section-jitter") },
 		{ label: "Burst", icon: "heroicons:sparkles-solid", onSelect: () => applyPreset("section-burst") },
@@ -255,7 +257,7 @@ const presetItems = ref<DropdownMenuItem[][]>([
 		{ label: "Engine", icon: "heroicons:cog-6-tooth-solid", onSelect: () => applyPreset("section-engine") },
 	],
 	[
-		{ label: "Ukryj wszystko", icon: "heroicons:eye-slash-solid", color: "error", onSelect: () => applyPreset("none") },
+		{ label: t("dataPage.toolbar.presets.hideAll"), icon: "heroicons:eye-slash-solid", color: "error", onSelect: () => applyPreset("none") },
 	],
 ]);
 

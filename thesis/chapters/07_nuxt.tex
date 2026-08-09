@@ -1,0 +1,25 @@
+\chapter{Architektura i implementacja webowego środowiska analitycznego}
+
+Rozbudowana matryca badawcza, składająca się z wielu wariantów obciążeniowych, wykorzystanych protokołów komunikacyjnych oraz topologii sieci radiowej, wymagała opracowania dedykowanego środowiska analitycznego.
+Praca układu doprowadzająca do saturacji sieci pasma radiowego generowała miliony danych pomiarowych, które należało w sposób uporządkowany rejestrować, agregować i wizualizować.
+W tym celu powstała autorska platforma analityczna, której architektura i implementacja zostaną omówione w niniejszym rozdziale.
+
+O ile zaimplementowany w języku Python moduł głównego silnika testowego (TestEngine) doskonale radzi sobie z rygorystyczną orkiestracją cyklu życia testów i akwizycją danych, a analizator wsadowy (BatchAnalyzer) umożliwia wydajną obróbkę stempli czasowych zgodnie z wzorcem projektowym ETL (\textit{ang. Extract, Transform, Load}), to rezultatem tych operacji jest ogromna baza danych lub zbiór płaskich plików CSV, które w tej postaci nie sprzyjają interpretacji i są mało dostępne dla użytkownika końcowego.
+Analiza wyników w postaci tabelarycznej jest procesem nieefektywnym i podatnym na błędy interpretacyjne.
+Aby umożliwić sprawną ocenę wydajności badanych protokołów konieczne stało się zaprojektowanie dedykowanego, graficznego interfejsu użytkownika (\textit{ang. GUI -- Graphical User Interface}), który w sposób interaktywny i wizualny prezentowałby wyniki pomiarów.
+
+Python oferuje wiele bibliotek umożliwiających tworzenie wizualizacji danych, takich jak \textit{matplotlib} \cite{matplotlib}, \textit{seaborn} \cite{seaborn} czy \textit{plotly} \cite{plotly}.
+Interaktywne wizualizacje i aplikacje wykorzystujące dane można natomiast tworzyć m.in. z wykorzystaniem \textit{Jupyter Notebook} \cite{jupyter} oraz \textit{Streamlit} \cite{streamlit}.
+Choć narzędzia te dobrze sprawdzają się w tworzeniu i prezentacji wizualizacji danych, to jednak w kontekście niniejszej pracy, której celem jest opracowanie narzędzia analitycznego dla inżynierów systemów wbudowanych, ich możliwości okazują się niewystarczające.
+Kryteria doboru narzędzia wizualizacyjnego obejmowały przede wszystkim:
+\begin{itemize}
+    \item dostępność w przeglądarce internetowej, bez konieczności instalowania dodatkowego oprogramowania,
+    \item możliwość zdalnego dostępu do wyników pomiarów z dowolnego miejsca na świecie,
+    \item interaktywność wizualizacji, umożliwiająca dynamiczne filtrowanie, dostosowywanie zakresu badanych częstotliwości i porównywanie danych,
+    \item możliwość łatwej integracji z istniejącym silnikiem testowym i analizatorem wsadowym,
+    \item rygorystyczna separacja warstwy prezentacji od logiki biznesowej, umożliwiająca niezależny rozwój i utrzymanie obu komponentów (skrypty w środowisku Python oraz mikrokontroler ESP32 odpowiadają wyłącznie za brutalną komunikację sieciową, kontrolę pętli HIL oraz wyliczanie metryk).
+\end{itemize}
+
+To właśnie te wymagania sprawiły, że narzędzia dostępne w ekosystemie Pythona okazały się niewystarczające, a konieczne stało się opracowanie dedykowanej platformy analitycznej w oparciu o nowoczesny framework webowy.
+Dostępność wyników analizy pomiarów w oparciu o silnik przeglądarkowy, w dobie dzisiejszej technologii, jest standardem nie tylko w aplikacjach biznesowych, ale także w narzędziach inżynierskich.
+Pozwala to na szybkie porównywanie wyników, współdzielenie ich z innymi członkami zespołu, a także z biznesowymi interesariuszami projektu wykorzystując powszechnie dostępne przeglądarki zarówno na komputerach stacjonarnych, jak i urządzeniach mobilnych.

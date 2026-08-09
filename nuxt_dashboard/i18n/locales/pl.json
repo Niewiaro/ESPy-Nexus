@@ -2,7 +2,7 @@
     "seo": {
         "title": "Platforma Analityczna",
         "description": "Profesjonalna platforma analityczna dla testów Hardware-in-the-Loop na mikrokontrolerach ESP32.",
-        "descriptionLong": "Profesjonalne narzędzie analityczne do zastosowań Hardware-in-the-Loop. Przeglądaj znormalizowane wyniki pomiarów PDR, Jittera, Goodputu i wielu innych parametrów."
+        "descriptionLong": "Profesjonalne narzędzie analityczne Hardware-in-the-Loop. Przeglądaj znormalizowane wyniki PDR, Jittera, Goodputu i innych."
     },
     "i18n": {
         "selectLanguage": "Wybierz język"

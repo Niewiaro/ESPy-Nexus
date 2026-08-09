@@ -2,7 +2,7 @@
     "seo": {
         "title": "Analytics Platform | ESPy-Nexus",
         "description": "Professional analytics platform for Hardware-in-the-Loop tests on ESP32 microcontrollers.",
-        "descriptionLong": "A professional analytical tool for Hardware-in-the-Loop applications. Explore normalized PDR, Jitter, Goodput, and many other measurement metrics."
+        "descriptionLong": "A professional analytical tool for Hardware-in-the-Loop. Explore normalized PDR, Jitter, Goodput, and other metrics."
     },
     "i18n": {
         "selectLanguage": "Select Language"

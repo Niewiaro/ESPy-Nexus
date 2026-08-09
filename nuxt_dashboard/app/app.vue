@@ -17,12 +17,14 @@
 <script setup lang="ts">
 import * as locales from "@nuxt/ui/locale";
 
+const config = useRuntimeConfig();
 const { locale, t } = useI18n();
 
 useSeoMeta({
 	description: () => t("seo.description"),
 	ogTitle: () => t("seo.title"),
 	ogDescription: () => t("seo.descriptionLong"),
+	ogSiteName: config.public.appName,
 	ogType: "website",
 	ogImage: "/og-image.png",
 	author: "Jakub Niewiarowski",

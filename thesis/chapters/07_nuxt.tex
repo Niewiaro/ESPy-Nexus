@@ -24,3 +24,35 @@ Kryteria doboru docelowego narzędzia wizualizacyjnego obejmowały przede wszyst
 Powyższe wymagania sprawiły, że natywne narzędzia dostępne w ekosystemie języka Python ustąpiły miejsca nowoczesnemu frameworkowi webowemu.
 Dostępność wyników analizy bezpośrednio w silniku przeglądarki jest współcześnie standardem nie tylko w systemach biznesowych, ale i w specjalistycznych narzędziach inżynierskich.
 Rozwiązanie to pozwala na błyskawiczne porównywanie wyników i bezproblemowe współdzielenie wniosków z pozostałymi członkami zespołu oraz interesariuszami projektu, wykorzystując powszechnie dostępne przeglądarki na urządzeniach stacjonarnych i mobilnych.
+
+\section{Stos technologiczny aplikacji webowej}
+
+\subsection{Środowisko wykonawcze Python}
+
+Projektując interaktywne narzędzie do analizy wyników z systemu Hardware-in-the-Loop, rozważono kilka możliwych podejść architektonicznych.
+Pierwszym i najbardziej naturalnym podejściem, ze względu na wykorzystanie języka Python w głównym silniku testowym, było zastosowanie jego ekosystemu.
+Narzędzia takie jak \textit{Streamlit}, \textit{Dash} (oparty na bibliotece Plotly) czy \textit{Panel} pozwalają na szybkie prototypowanie interfejsów analitycznych bez konieczności bezpośredniego tworzenia warstwy interfejsu z wykorzystaniem technologii webowych, takich jak HTML, CSS czy JavaScript.
+
+Mimo licznych zalet, rozwiązania te posiadają ograniczenia architektoniczne istotne z punktu widzenia docelowej aplikacji.
+Frameworki te wykorzystują architekturę klient--serwer, w której część logiki aplikacji wykonywana jest po stronie serwera.
+W przypadku \textit{Streamlit} interakcja użytkownika z elementami interfejsu może powodować ponowne wykonanie skryptu Python, co w przypadku kosztownych operacji na dużych zbiorach danych może wpływać na responsywność interfejsu.
+Mechanizmy takie jak buforowanie wyników oraz zarządzanie stanem sesji pozwalają ograniczyć ten problem, jednak nie zmieniają podstawowego modelu wykonywania aplikacji.
+
+Istotnym ograniczeniem z perspektywy projektowanego narzędzia jest również konieczność utrzymywania środowiska wykonawczego po stronie serwera.
+Aplikacja wykorzystująca Python nie może zostać wdrożona jako wyłącznie statyczna aplikacja webowa, ponieważ jej logika wymaga uruchomionego interpretera Python oraz serwera obsługującego komunikację z klientem.
+W konsekwencji rozwiązanie tego typu wymaga infrastruktury serwerowej, podczas gdy aplikacja zaprojektowana z myślą o wykonywaniu logiki bezpośrednio w przeglądarce może zostać wdrożona jako zbiór statycznych zasobów i dystrybuowana za pośrednictwem sieci CDN.
+
+\subsection{HTML z JavaScript}
+
+Drugim rozważanym podejściem było zrezygnowanie z frameworka aplikacyjnego i implementacja interfejsu z wykorzystaniem HTML oraz natywnego języka JavaScript (\textit{ang. Vanilla JS}).
+Ponieważ warstwa wizualizacyjna wykorzystuje bibliotekę Chart.js, a dane wejściowe są przechowywane w plikach JSON, możliwe byłoby zrealizowanie całej aplikacji z wykorzystaniem podstawowych interfejsów programistycznych przeglądarki, w tym DOM API.
+
+Podejście to jest jednak mniej korzystne wraz ze wzrostem złożoności interfejsu.
+Projektowane narzędzie wymaga obsługi wielu wzajemnie zależnych elementów interaktywnych, obejmujących m.in. grupowanie danych, przyciski szybkiego wyboru, dynamiczne ukrywanie serii oraz osobną zakładkę z tabelarycznym zestawieniem wyników.
+W przypadku implementacji bez wykorzystania frameworka programista musi samodzielnie zarządzać stanem aplikacji oraz synchronizacją tego stanu z warstwą prezentacji.
+Oznacza to konieczność ręcznej obsługi zmian interfejsu, aktualizacji wykresów oraz zależności pomiędzy poszczególnymi elementami widoku.
+Wraz ze wzrostem liczby takich zależności zwiększa się złożoność kodu oraz ryzyko powstawania trudnych w utrzymaniu zależności i niespójności stanu.
+
+Dodatkowym problemem jest konieczność samodzielnego zarządzania cyklem życia elementów interfejsu.
+W przypadku wielokrotnie tworzonych i usuwanych instancji wykresów niepoprawne zarządzanie ich zasobami, podobnie jak niewłaściwe usuwanie rejestratorów zdarzeń, może prowadzić do niepotrzebnego utrzymywania obiektów w pamięci i w konsekwencji do wycieków pamięci.
+Zastosowanie frameworka aplikacyjnego pozwala uporządkować te aspekty poprzez wykorzystanie mechanizmów reaktywności, komponentyzacji oraz zarządzania cyklem życia komponentów.

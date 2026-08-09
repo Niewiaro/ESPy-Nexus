@@ -21,12 +21,20 @@ const config = useRuntimeConfig();
 const { locale, t } = useI18n();
 
 useSeoMeta({
+	// basic
 	description: () => t("seo.description"),
+
+	// og
 	ogTitle: () => t("seo.title"),
 	ogDescription: () => t("seo.descriptionLong"),
 	ogSiteName: config.public.appName,
 	ogType: "website",
 	ogImage: "/og-image.png",
+
+	// X
+	twitterCard: "summary_large_image",
+
+	// other
 	author: "Jakub Niewiarowski",
 	themeColor: "#0f172a",
 });

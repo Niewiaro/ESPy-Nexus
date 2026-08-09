@@ -79,6 +79,7 @@
             }
         },
         "columns": {
+            "testId": "ID",
             "protocol": "Protokół",
             "topology": "Topologia",
             "freqHz": "Częstotliwość [Hz]",

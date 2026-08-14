@@ -14,11 +14,11 @@ Interaktywne panele i aplikacje oparte na danych można z kolei budować m.in. z
 Choć narzędzia te doskonale sprawdzają się w fazie prototypowania i eksploracji danych, to w kontekście niniejszej pracy, której celem jest dostarczenie wydajnego narzędzia analitycznego dla inżynierów systemów wbudowanych, ich możliwości architektoniczne okazały się niewystarczające.
 Kryteria doboru docelowego narzędzia wizualizacyjnego obejmowały przede wszystkim:
 \begin{itemize}
-    \item pełną dostępność w przeglądarce internetowej, bez konieczności konfiguracji środowiska uruchomieniowego czy instalacji dodatkowego oprogramowania na stacji roboczej,
-    \item możliwość zdalnego dostępu do wyników pomiarów,
-    \item wysoką interaktywność wizualizacji, umożliwiającą dynamiczne filtrowanie serii danych, elastyczne dostosowywanie zakresu badanych częstotliwości i natychmiastowe porównywanie topologii,
-    \item elastyczną integrację z istniejącym silnikiem testowym i analizatorem wsadowym,
-    \item rygorystyczną separację warstwy prezentacji od logiki biznesowej (\textit{ang. Separation of Concerns}), gwarantującą niezależny rozwój i utrzymanie obu komponentów (skrypty w środowisku Python oraz mikrokontroler ESP32 odpowiadają w tym modelu wyłącznie za wysokoczęstotliwościową komunikację sieciową, kontrolę pętli HIL oraz deterministyczne wyliczanie metryk).
+      \item pełną dostępność w przeglądarce internetowej, bez konieczności konfiguracji środowiska uruchomieniowego czy instalacji dodatkowego oprogramowania na stacji roboczej,
+      \item możliwość zdalnego dostępu do wyników pomiarów,
+      \item wysoką interaktywność wizualizacji, umożliwiającą dynamiczne filtrowanie serii danych, elastyczne dostosowywanie zakresu badanych częstotliwości i natychmiastowe porównywanie topologii,
+      \item elastyczną integrację z istniejącym silnikiem testowym i analizatorem wsadowym,
+      \item rygorystyczną separację warstwy prezentacji od logiki biznesowej (\textit{ang. Separation of Concerns}), gwarantującą niezależny rozwój i utrzymanie obu komponentów (skrypty w środowisku Python oraz mikrokontroler ESP32 odpowiadają w tym modelu wyłącznie za wysokoczęstotliwościową komunikację sieciową, kontrolę pętli HIL oraz deterministyczne wyliczanie metryk).
 \end{itemize}
 
 Powyższe wymagania sprawiły, że natywne narzędzia dostępne w ekosystemie języka Python ustąpiły miejsca nowoczesnemu frameworkowi webowemu.
@@ -34,7 +34,7 @@ Pierwszym i najbardziej naturalnym podejściem, ze względu na wykorzystanie ję
 Narzędzia takie jak \textit{Streamlit}, \textit{Dash} (oparty na bibliotece Plotly) czy \textit{Panel} pozwalają na szybkie prototypowanie interfejsów analitycznych bez konieczności bezpośredniego tworzenia warstwy interfejsu z wykorzystaniem technologii webowych, takich jak HTML, CSS czy JavaScript.
 
 Mimo licznych zalet, rozwiązania te posiadają ograniczenia architektoniczne istotne z punktu widzenia docelowej aplikacji.
-Frameworki te wykorzystują architekturę klient--serwer, w której część logiki aplikacji wykonywana jest po stronie serwera.
+W typowej konfiguracji rozwiązania te wykorzystują architekturę klient--serwer, w której logika aplikacji napisana w Pythonie jest wykonywana po stronie serwera, natomiast przeglądarka odpowiada za prezentację interfejsu i obsługę interakcji użytkownika.
 W przypadku \textit{Streamlit} interakcja użytkownika z elementami interfejsu może powodować ponowne wykonanie skryptu Python, co w przypadku kosztownych operacji na dużych zbiorach danych może wpływać na responsywność interfejsu.
 Mechanizmy takie jak buforowanie wyników oraz zarządzanie stanem sesji pozwalają ograniczyć ten problem, jednak nie zmieniają podstawowego modelu wykonywania aplikacji.
 
@@ -44,15 +44,109 @@ W konsekwencji rozwiązanie tego typu wymaga infrastruktury serwerowej, podczas 
 
 \subsection{HTML z JavaScript}
 
-Drugim rozważanym podejściem było zrezygnowanie z frameworka aplikacyjnego i implementacja interfejsu z wykorzystaniem HTML oraz natywnego języka JavaScript (\textit{ang. Vanilla JS}).
-Ponieważ warstwa wizualizacyjna wykorzystuje bibliotekę Chart.js, a dane wejściowe są przechowywane w plikach JSON, możliwe byłoby zrealizowanie całej aplikacji z wykorzystaniem podstawowych interfejsów programistycznych przeglądarki, w tym DOM API.
+Drugim rozważanym podejściem było zrezygnowanie z aplikacji serwerowej i implementacja interfejsu z wykorzystaniem języka JavaScript bez dodatkowej warstwy abstrakcji w postaci frameworka (ang.
+Vanilla JS).
+Ponieważ warstwa wizualizacyjna wykorzystuje bibliotekę Chart.js, a dane wejściowe są przechowywane w plikach JSON, możliwe byłoby zrealizowanie całej aplikacji z wykorzystaniem standardowych interfejsów programistycznych udostępnianych przez przeglądarkę.
 
 Podejście to jest jednak mniej korzystne wraz ze wzrostem złożoności interfejsu.
-Projektowane narzędzie wymaga obsługi wielu wzajemnie zależnych elementów interaktywnych, obejmujących m.in. grupowanie danych, przyciski szybkiego wyboru, dynamiczne ukrywanie serii oraz osobną zakładkę z tabelarycznym zestawieniem wyników.
-W przypadku implementacji bez wykorzystania frameworka programista musi samodzielnie zarządzać stanem aplikacji oraz synchronizacją tego stanu z warstwą prezentacji.
+Projektowane narzędzie wymaga obsługi wielu wzajemnie zależnych elementów interaktywnych, obejmujących między innymi grupowanie danych, przyciski szybkiego wyboru, dynamiczne ukrywanie serii oraz odrębną zakładkę z tabelarycznym zestawieniem wyników.
+W przypadku implementacji bez wykorzystania frameworka programista musi samodzielnie zaprojektować mechanizmy zarządzania stanem aplikacji oraz synchronizacji tego stanu z warstwą prezentacji.
 Oznacza to konieczność ręcznej obsługi zmian interfejsu, aktualizacji wykresów oraz zależności pomiędzy poszczególnymi elementami widoku.
-Wraz ze wzrostem liczby takich zależności zwiększa się złożoność kodu oraz ryzyko powstawania trudnych w utrzymaniu zależności i niespójności stanu.
+Wraz ze wzrostem liczby takich zależności zwiększa się złożoność kodu, a także ryzyko powstawania trudnych w utrzymaniu zależności i niespójności stanu aplikacji.
 
-Dodatkowym problemem jest konieczność samodzielnego zarządzania cyklem życia elementów interfejsu.
-W przypadku wielokrotnie tworzonych i usuwanych instancji wykresów niepoprawne zarządzanie ich zasobami, podobnie jak niewłaściwe usuwanie rejestratorów zdarzeń, może prowadzić do niepotrzebnego utrzymywania obiektów w pamięci i w konsekwencji do wycieków pamięci.
-Zastosowanie frameworka aplikacyjnego pozwala uporządkować te aspekty poprzez wykorzystanie mechanizmów reaktywności, komponentyzacji oraz zarządzania cyklem życia komponentów.
+Dodatkowym aspektem jest konieczność samodzielnego zarządzania cyklem życia dynamicznie tworzonych elementów interfejsu oraz powiązanych z nimi zasobów.
+Dotyczy to między innymi instancji wykresów oraz rejestratorów zdarzeń.
+Niepoprawne usuwanie listenerów lub utrzymywanie niepotrzebnych referencji do obiektów może prowadzić do ich pozostawania w pamięci dłużej, niż jest to wymagane, a w określonych przypadkach do wycieków pamięci.
+Wykorzystanie frameworka aplikacyjnego może ułatwić zarządzanie tymi aspektami poprzez komponentyzację, mechanizmy reaktywności oraz zdefiniowane mechanizmy zarządzania cyklem życia.
+
+Z tego względu implementacja z wykorzystaniem Vanilla JS, mimo że jest technicznie możliwa, wiązałaby się w przypadku projektowanego narzędzia z koniecznością samodzielnego rozwiązania problemów związanych z zarządzaniem stanem i zależnościami pomiędzy elementami interfejsu.
+Wraz ze wzrostem złożoności aplikacji zwiększałoby to nakład pracy związany z jej rozwojem i utrzymaniem.
+
+\subsection{Technologie i frameworki webowe}
+
+W celu wyboru optymalnego fundamentu dla interfejsu użytkownika, konieczne było przeanalizowanie wiodących rozwiązań na rynku technologii front-endowych.
+Współczesny ekosystem aplikacji webowych zdominowany jest przez cztery główne technologie: React, Angular, Vue.js oraz Svelte.
+Aby decyzja architektoniczna opierała się na obiektywnych przesłankach, przeanalizowano długoterminowe trendy popularności oraz satysfakcji programistów na podstawie dwóch największych, globalnych badań społeczności IT: \textit{Stack Overflow Developer Survey} z lat 2018--2025 \cite{so_survey_2018, so_survey_2019, so_survey_2020, so_survey_2021, so_survey_2022, so_survey_2023, so_survey_2024, so_survey_2025} oraz \textit{JetBrains The State of Developer Ecosystem} z lat 2017--2023 \cite{jb_survey_2017, jb_survey_2018, jb_survey_2019, jb_survey_2020, jb_survey_2021, jb_survey_2022, jb_survey_2023}.
+
+Analiza historyczna danych ze \textit{Stack Overflow} ukazuje wyraźną ewolucję rynku na przestrzeni lat.
+W 2018 roku dominującą technologią był Angular (36,9\%), wyprzedzający bibliotekę React (27,8\%).
+W kolejnych latach trend ten uległ silnemu odwróceniu -- React odnotowywał stały wzrost, osiągając w 2025 roku pozycję bezapelacyjnego lidera z wynikiem 44,7\% wskazań w kategorii najpopularniejszych frameworków i technologii webowych.
+Angular, po początkowych spadkach, ustabilizował swoją pozycję rynkową na poziomie 17--18\%.
+Równolegle, niezwykle silną pozycję ugruntował framework Vue.js, który według badań Stack Overflow wykazuje niemal identyczną adopcję co Angular (17,6\% w 2025 r.)
+.
+Z kolei raporty \textit{JetBrains}, skupiające się na realnym, codziennym wykorzystywaniu technologii w projektach, pozycjonują Vue.js jeszcze wyżej -- w latach 2021--2023 framework ten był deklarowany przez 32--43\% respondentów, stabilnie zajmując drugie miejsce na rynku, deklasując tym samym Angulara (17--20\%).
+Na szczególną uwagę zasługuje również Svelte.
+Choć jego rynkowy udział pozostaje relatywnie niewielki (7,2\% według Stack Overflow w 2025 r.)
+, od kilku lat niezmiennie przoduje on w rankingach satysfakcji i podziwu (kategorie \textit{Loved/Admired}), osiągając w 2025 roku najwyższy wskaźnik aprobaty na poziomie 62,4\%.
+
+\begin{figure}[ht]
+      \centering
+      \includegraphics[width=0.80\linewidth]{images/web_frameworks/stackoverflow-dev-survey-2025-technology-admired-and-desired-da-webframe-webframe-desire-admire-social.png}
+      \caption{Stack Overflow Developer Survey 2025 -- Web frameworks and technologies - Admired and Desired \cite{so_survey_2025_frameworks} }
+      \label{fig:stackoverflow-dev-survey-2025-technology-admired-and-desired-da-webframe-webframe-desire-admire-social}
+\end{figure}
+
+Sama popularność rynkowa nie stanowi jednak wystarczającego kryterium doboru w inżynierii oprogramowania.
+Porównanie wymienionych technologii wymaga przede wszystkim uwzględnienia różnic w ich modelu programistycznym, koncepcji zarządzania stanem oraz poziomie oferowanej abstrakcji architektonicznej.
+Jednym z podstawowych elementów środowiska aplikacji webowych jest Obiektowy Model Dokumentu (\textit{ang. DOM - Document Object Model}), stanowiący programistyczną reprezentację dokumentu HTML w postaci hierarchicznej struktury węzłów.
+DOM definiuje sposób reprezentowania oraz programowego odczytywania i modyfikowania elementów dokumentu, umożliwiając między innymi zmianę jego zawartości i struktury za pomocą skryptów \cite{dom_spec}.
+Sposób, w jaki poszczególne technologie abstrahują dostęp do DOM oraz zarządzają aktualizacją interfejsu, stanowi jedną z istotnych różnic pomiędzy analizowanymi rozwiązaniami.
+W analizie uwzględniono następujące technologie:
+
+\begin{itemize}
+      \item \textbf{React} -- w ścisłym ujęciu architektonicznym nie jest frameworkiem, lecz deklaratywną biblioteką służącą do budowy interfejsów użytkownika, rozwijaną pierwotnie przez firmę Meta (dawniej Facebook).
+            Wykorzystuje składnię JSX (rozszerzenie języka łączące logikę JavaScript ze strukturą HTML) oraz mechanizm wirtualnego modelu DOM (\textit{ang. Virtual DOM}).
+            React skupia się wyłącznie na warstwie widoku, wymagając od programisty samodzielnego doboru zewnętrznych narzędzi do zarządzania trasowaniem (\textit{ang. routing}) czy stanem globalnym, co z jednej strony daje swobodę, a z drugiej utrudnia standaryzację kodu \cite{react_dev_learn}.
+
+      \item \textbf{Angular} -- potężny, monolityczny framework aplikacyjny wspierany przez firmę Google.
+            Jest to rozwiązanie typu zawierające baterie w zestawie (\textit{ang. batteries-included}), dostarczające pełen zestaw wbudowanych narzędzi do budowy złożonych systemów.
+            Narzuca rygorystyczną architekturę opartą na języku TypeScript, programowaniu zorientowanym obiektowo (klasy, dekoratory) oraz wbudowanym mechanizmie wstrzykiwania zależności (\textit{ang. Dependency Injection}).
+            Charakteryzuje się bardzo stromą krzywą uczenia oraz dużym narzutem początkowym \cite{angular_overview}.
+
+      \item \textbf{Vue.js} -- progresywny framework webowy, który wyewoluował jako synteza najlepszych cech Angulara i Reacta.
+            Wprowadza elegancką architekturę plików jednokomponentowych (SFC -- \textit{Single-File Components}), w których widok (HTML), style (CSS) i logika (JavaScript/TypeScript) są wyraźnie odseparowane w ramach jednego spójnego pliku.
+            Wersja 3 frameworka oferuje zaawansowany i wysoce zoptymalizowany system reaktywności (\textit{Composition API}), pozwalający na automatyczne śledzenie zależności i aktualizowanie interfejsu przy pracy na dużych zbiorach danych, przy jednoczesnym zachowaniu niskiego progu wejścia \cite{vuejs_guide_introduction}.
+
+      \item \textbf{Svelte} -- framework proponujący radykalnie odmienne podejście do budowy interfejsów, całkowicie odrzucając koncepcję wirtualnego modelu DOM.
+            Svelte działa jako kompilator, który podczas fazy budowania aplikacji (\textit{ang. build step}) analizuje kod i tłumaczy go na wysoce zoptymalizowane, natywne operacje JavaScript aktualizujące bezpośrednio rzeczywisty model DOM.
+            Gwarantuje to ekstremalnie wysoką wydajność, jednak ekosystem dostępnych bibliotek analitycznych i gotowych komponentów pozostaje wyraźnie mniejszy w porównaniu do wyżej wymienionych technologii \cite{svelte_welcome}.
+\end{itemize}
+
+\subsection{Meta-frameworki i mechanizmy renderowania}
+
+Przeanalizowane w poprzednim podrozdziale technologie, takie jak React czy Vue.js, dostarczają potężnych narzędzi do budowy komponentów i zarządzania stanem interfejsu.
+W praktyce inżynierskiej, stworzenie pełnoprawnej aplikacji webowej wymaga jednak implementacji dodatkowych warstw infrastrukturalnych -- w tym systemu routingu, mechanizmów pobierania danych, czy zaawansowanego procesu budowania i optymalizacji zasobów (z wykorzystaniem narzędzi takich jak Webpack czy Vite).
+Konieczność ręcznej integracji i konfiguracji tych elementów nierzadko prowadzi do powstawania niespójnych architektonicznie rozwiązań.
+
+Odpowiedzią na te wyzwania architektoniczne jest zastosowanie meta-frameworków -- wysoce ustrukturyzowanych środowisk zbudowanych na fundamencie podstawowych bibliotek, narzucających ustandaryzowaną architekturę zgodnie z paradygmatem \textit{konwencja ponad konfiguracją} (\textit{ang. Convention over Configuration}).
+Do dominujących rozwiązań w tej kategorii należą \textbf{Next.js} (zbudowany wokół biblioteki React) oraz \textbf{Nuxt} (oparty na frameworku Vue.js).
+
+Kluczową przewagą zastosowania meta-frameworków, o fundamentalnym znaczeniu dla projektowanej aplikacji analitycznej, jest elastyczność w doborze trybu renderowania aplikacji.
+Tradycyjne środowiska implementują zazwyczaj pojedynczy model dystrybucji, co może stanowić istotne ograniczenie.
+Meta-frameworki pozwalają natomiast na per-stronnicowe lub globalne definiowanie strategii budowania:
+
+\begin{itemize}
+      \item \textbf{CSR (\textit{ang. Client-Side Rendering}):}
+            Klasyczne podejście wykorzystywane w aplikacjach typu jednostronicowych (\textit{ang. SPA - Single Page Application}).
+            Przeglądarka pobiera pusty dokument HTML oraz skompilowany plik JavaScript.
+            Cały proces rysowania interfejsu i pobierania danych odbywa się na urządzeniu końcowym (po stronie klienta).
+            Pozwala to na maksymalną interaktywność i płynność działania aplikacji (co jest kluczowe przy obsłudze dynamicznych wykresów analitycznych).
+
+      \item \textbf{SSR (\textit{ang. Server-Side Rendering}):}
+            Dokument HTML jest generowany dynamicznie przez serwer w odpowiedzi na każde żądanie użytkownika.
+            Choć optymalne z punktu widzenia widoczności w wyszukiwarkach (\textit{ang. SEO - Search Engine Optimization}), podejście to wymaga utrzymywania aktywnej infrastruktury backendowej (Node.js) i nie jest optymalne dla narzędzi zamkniętych (np. w laboratoriach analitycznych).
+
+      \item \textbf{SSG (\textit{ang. Static Site Generation}):}
+            Cała aplikacja, wraz z danymi, jest renderowana do statycznych plików HTML, CSS i JS wyłącznie w momencie procesu budowania (\textit{ang. build time}).
+            Gotowe zasoby mogą być następnie błyskawicznie i tanio serwowane (hostowane) z wykorzystaniem mechanizmów CDN (\textit{ang. Content Delivery Network}).
+
+      \item \textbf{Renderowanie Uniwersalne (\textit{ang. Universal Rendering}) z procesem uwadniania (\textit{ang. Hydration}):}
+            Podejście hybrydowe, natywnie wspierane przez framework Nuxt.
+            Pozwala ono na wygenerowanie kompletnego, statycznego kodu HTML (często w trybie SSG) gwarantującego błyskawiczny czas początkowego ładowania.
+            Natychmiast po załadowaniu w przeglądarce, skrypty frameworka wykonują proces \textit{uwadniania} (\textit{ang. hydration}), podłączając mechanizmy reaktywności i obsługi zdarzeń.
+            Od tego momentu dokument funkcjonuje jako pełnoprawna aplikacja SPA, oferująca maksymalną wydajność bez konieczności odpytywania serwera przy kolejnych interakcjach.
+\end{itemize}
+
+Rozbudowane meta-frameworki rozwiązują również problemy zarządzania zasobami i automatycznej strukturyzacji projektu (np. mapowanie struktury folderów bezpośrednio na adresy URL, automatyczny import komponentów), co znacząco obniża dług techniczny i redukuje czas potrzebny na wdrożenie aplikacji.
+
+Zdolność płynnego przejścia ze statycznie wygenerowanej struktury wstępnej (zoptymalizowanej pod szybki start) w wysoce interaktywną aplikację jednostronicową sprawiła, że mechanizmy oferowane przez meta-frameworki stały się pożądanym kierunkiem rozwoju architektury projektowanego narzędzia.

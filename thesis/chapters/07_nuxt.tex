@@ -150,3 +150,20 @@ Meta-frameworki pozwalają natomiast na per-stronnicowe lub globalne definiowani
 Rozbudowane meta-frameworki rozwiązują również problemy zarządzania zasobami i automatycznej strukturyzacji projektu (np. mapowanie struktury folderów bezpośrednio na adresy URL, automatyczny import komponentów), co znacząco obniża dług techniczny i redukuje czas potrzebny na wdrożenie aplikacji.
 
 Zdolność płynnego przejścia ze statycznie wygenerowanej struktury wstępnej (zoptymalizowanej pod szybki start) w wysoce interaktywną aplikację jednostronicową sprawiła, że mechanizmy oferowane przez meta-frameworki stały się pożądanym kierunkiem rozwoju architektury projektowanego narzędzia.
+
+\section{Architektura aplikacji analitycznej w środowisku Nuxt}
+
+Na podstawie przeprowadzonego porównania technologii, jako fundament warstwy aplikacyjnej wybrano meta-framework \textbf{Nuxt.js}.
+Rozwiązanie to pozwoliło w pełni wykorzystać potencjał oraz elastyczność ekosystemu Vue.js, eliminując jednocześnie konieczność manualnego konfigurowania środowiska budowania (zintegrowanego z narzędziem \textbf{Vite} \cite{vite_guide}, którego autorem jest \textbf{Evan You} - twórca \textbf{Vue.js}) oraz infrastruktury trasowania.
+Kluczowym argumentem przemawiającym za wyborem Nuxta, z punktu widzenia wzorca \textit{konwencja ponad konfiguracją}, była możliwość zautomatyzowania powtarzalnych procesów deweloperskich.
+Obejmuje to między innymi mechanizm automatycznego wczytywania modułów i komponentów (\textit{ang. auto-imports}) oraz natywne wsparcie dla silnego typowania w języku TypeScript bez wymogu tworzenia dodatkowych plików konfiguracyjnych.
+
+Jednym z najważniejszych aspektów infrastrukturalnych, który zdeterminował wybór tego frameworka, była jego zdolność do obsługi renderowania hybrydowego (\textit{Hybrid Rendering}) dostarczana przez wbudowany silnik serwerowy \textbf{Nitro}.
+W odróżnieniu od klasycznych aplikacji SPA, w których przeglądarka pobiera pusty szkielet i musi samodzielnie zainicjować pobieranie skryptów, aplikacja zrealizowana w środowisku Nuxt generuje kompletny dokument HTML już po stronie serwera docelowego.
+Takie podejście znacząco przyspiesza początkowy czas renderowania (\textit{ang. Initial Page Load}) i optymalizuje widoczność narzędzia dla wyszukiwarek (SEO).
+Jednak natychmiast po załadowaniu pierwszego widoku w przeglądarce klienta, skrypty frameworka wykonują proces uwadniania (\textit{ang. Hydration}), podłączając mechanizmy reaktywności do statycznego dotąd dokumentu.
+Od tego momentu aplikacja płynnie transformuje się w pełnoprawną aplikację jednostronicową (SPA), co gwarantuje natychmiastową reakcję na interakcje użytkownika i elastyczną nawigację bez przeładowywania strony.
+
+Możliwości silnika Nitro pozwoliły na bezproblemowe wdrożenie (\textit{ang. deployment}) środowiska analitycznego w architekturze brzegowej (\textit{ang. Edge Computing}), z wykorzystaniem globalnej infrastruktury \textbf{Cloudflare}.
+Dzięki temu pliki konfiguracyjne JSON z wynikami testów oraz sama logika interfejsu mogą być serwowane z fizycznych serwerów zlokalizowanych możliwie najbliżej użytkownika końcowego.
+Taka architektura pozwala zachować rygorystyczne oddzielenie ciężkich operacji transformacyjnych i renderowania interaktywnych wykresów Chart.js w pamięci lokalnej klienta od wydajnego dostarczania początkowej struktury widoków, gwarantując maksymalną wydajność całego systemu analitycznego.

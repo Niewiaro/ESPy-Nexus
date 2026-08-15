@@ -27,11 +27,25 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export const useAnalytics = () => {
-	const selectedTests = useState<string[]>("hil-selected-tests", () => []);
-	const selectedMetric = useState<string | undefined>("hil-selected-metric", () => undefined);
+	const selectedTests = useState<string[]>(
+		"hil-selected-tests",
+		() => [],
+	);
 
-	const xRangeLimit = useState<[number, number]>("hil-x-range-limit", () => [0, 1000]);
-	const selectedXRange = useState<[number, number]>("hil-selected-x-range", () => [0, 1000]);
+	const selectedMetric = useState<string | undefined>(
+		"hil-selected-metric",
+		() => undefined,
+	);
+
+	const xRangeLimit = useState<[number, number]>(
+		"hil-x-range-limit",
+		() => [0, 1000],
+	);
+
+	const selectedXRange = useState<[number, number]>(
+		"hil-selected-x-range",
+		() => [0, 1000],
+	);
 
 	const isLogX = useState<boolean>("hil-log-x", () => true);
 	const isLogY = useState<boolean>("hil-log-y", () => false);
@@ -39,7 +53,9 @@ export const useAnalytics = () => {
 	const isInitialized = useState<boolean>("hil-is-initialized", () => false);
 
 	const availableTests = computed(() => {
-		const names = rawDataRef.value.map(row => `${row.protocol}_${row.router_topology}_${row.payload_b}b`);
+		const names = rawDataRef.value.map(
+			row => `${row.protocol}_${row.router_topology}_${row.payload_b}b`,
+		);
 		return [...new Set(names)];
 	});
 
@@ -63,7 +79,9 @@ export const useAnalytics = () => {
 	});
 
 	const availableTopologies = computed(() => {
-		const topologies = rawDataRef.value.map(row => row.router_topology);
+		const topologies = rawDataRef.value.map(
+			row => row.router_topology,
+		);
 		return [...new Set(topologies)];
 	});
 

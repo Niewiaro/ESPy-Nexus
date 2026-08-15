@@ -294,3 +294,103 @@ Wyniki te zostały zmagazynowane jako statyczny zestaw wpisów i osadzone bezpo�
 
 Takie rozwiązanie inżynierskie eliminuje obciążenie związane z opóźnieniami sieciowymi przy asynchronicznym żądaniu i pobieraniu danych.
 Narzędzie kompilujące Vite natywnie rozwiązuje tę ścieżkę importu już w fazie tworzenia paczki, efektywnie wplatając zbiory surowych wyników bezpośrednio do wykonywalnej warstwy logiki klienckiej.
+
+\subsection{Zarządzanie stanem i reaktywna logika biznesowa}
+\label{sec:zarzadzanie_stanem}
+
+W architekturze nowoczesnych aplikacji klasy SPA wysoce niewskazane jest osadzanie logiki odpowiedzialnej za przekształcanie, filtrowanie czy agregację danych bezpośrednio w kodzie renderującym interfejs graficzny (tj.
+wewnątrz definicji komponentów \texttt{Vue}).
+Takie sprzężenie (ang.
+\textit{tight coupling}) drastycznie obniża testowalność kodu i prowadzi do wielokrotnego powielania tych samych bloków operacyjnych.
+
+W ramach implementacji panelu analitycznego \textit{ESPy-Nexus}, problem ten rozwiązano poprzez całkowite wyabstrahowanie logiki biznesowej do warstwy tzw.
+\textit{Composables}.
+Korzystając z mechanizmów \textit{Composition API} dostarczanych przez bibliotekę Vue 3, zaprojektowano wyizolowany, reaktywny stan globalny, hermetycznie zamknięty wewnątrz własnego API: \texttt{useAnalytics()}.
+
+Zdefiniowany w katalogu \texttt{composables/} moduł analityczny przechowuje i udostępnia wszystkim komponentom w systemie kompletny model stanu aplikacji (np. listę wyselekcjonowanych do analizy protokołów, aktualnie wybrany zakres częstotliwości czy rodzaj topologii sieciowej).
+Oparcie logiki na funkcyjnym API znacząco podnosi jakość i spójność struktury.
+
+Zamiast implementacji skomplikowanych bibliotek do zarządzania stanem globalnym (takich jak Pinia \cite{pinia_introduction}), framework Nuxt oferuje zoptymalizowane, natywne rozwiązanie -- komendę \texttt{useState()}.
+Pozwala ona na zdefiniowanie współdzielonego, reaktywnego obszaru pamięci na bazie unikalnego identyfikatora klucza, gwarantując przy tym ciągłość i stabilność w procesie uwadniania strony (\textit{SSR Hydration}).
+Uproszczony wycinek definicji głównego rejestru analitycznego wraz ze wczytaniem danych zaprezentowano na Listingu \ref{lst:use_analytics_state}.
+
+\begin{listing}[htbp]
+      \caption{Wyizolowany moduł analityczny definiujący globalny stan z wykorzystaniem funkcji \texttt{useState} (\texttt{useAnalytics.ts})}
+      \label{lst:use_analytics_state}
+      \begin{minted}[fontsize=\footnotesize, linenos]{typescript}
+import rawJsonData from "~/assets/data.json";
+
+export interface HilDataRow {
+    test_id: number;
+    router_topology: string;
+    protocol: string;
+    freq_hz: number;
+    status: string;
+    payload_b: number;
+    [key: string]: string | number;
+}
+
+// Inicjalizacja referencji do wielomegabajtowej tablicy wyników
+const rawDataRef = ref<HilDataRow[]>(rawJsonData as HilDataRow[]);
+
+// Współdzielone instancje stanu globalnego (Filtry interfejsu)
+export const useAnalytics = () => {
+		const selectedTests = useState<string[]>(
+		"hil-selected-tests",
+		() => [],
+	);
+
+	const selectedMetric = useState<string | undefined>(
+		"hil-selected-metric",
+		() => undefined,
+	);
+
+	const xRangeLimit = useState<[number, number]>(
+		"hil-x-range-limit",
+		() => [0, 1000],
+            // Wartości domyślne dla zakresu osi X (częstotliwość w Hz)
+            // Zakres ten jest dynamicznie aktualizowany podczas montowania
+            // komponentu w oparciu o zbiór danych wejściowych
+	);
+
+	const selectedXRange = useState<[number, number]>(
+		"hil-selected-x-range",
+		() => [0, 1000],
+	);
+      // [...]
+}
+    
+\end{minted}
+\end{listing}
+
+Drugim z kluczowych mechanizmów architektonicznych wprowadzonych na poziomie kontrolera \texttt{useAnalytics} były \textit{Własności Obliczane} (\textit{ang. Computed Properties}).
+Ze względu na fakt, że plik wejściowy JSON może zawierać dziesiątki tysięcy rekordów o wielu stopniach parametryzacji, klasyczne i powtarzalne iterowanie przez całą tablicę podczas zmiany wybranego filtra stanowiłoby ogromne obciążenie dla procesora maszyny klienckiej.
+
+Reaktywny mechanizm \texttt{computed()} wykorzystany w architekturze Vue buduje wewnętrzny układ zależności (tzw.
+graf drzewa stanów).
+Pule z dostępnymi dla inżyniera opcjami wyboru testów (np. \texttt{availableTopologies} czy \texttt{availableProtocols}) są obliczane wyłącznie jeden raz w momencie wczytania struktury JSON, a wyniki te zostają zbuforowane ( \textit{ang. cached}) w wewnętrznej pamięci podręcznej frameworka.
+Dopóki macierz danych podstawowych (\texttt{rawDataRef}) nie ulegnie modyfikacji, co w środowisku statycznym nie następuje, silnik omija bezcelowe przeliczanie list filtrów (Listing \ref{lst:use_analytics_computed}).
+Oszczędność cykli obliczeniowych w środowiskach wykonawczych JavaScript jest warunkiem koniecznym do poprawnego wyrenderowania wykresów HIL w częstotliwości 60 klatek na sekundę.
+
+\begin{listing}[htbp]
+      \caption{Mechanika agregacji i buforowania danych słownikowych (\texttt{useAnalytics.ts})}
+      \label{lst:use_analytics_computed}
+      \begin{minted}[fontsize=\footnotesize, linenos]{typescript}
+	const availableTests = computed(() => {
+		const names = rawDataRef.value.map(
+			row => `${row.protocol}_${row.router_topology}_${row.payload_b}b`
+		);
+		return [...new Set(names)];
+	});
+
+    	const availableTopologies = computed(() => {
+		const topologies = rawDataRef.value.map(
+			row => row.router_topology,
+		);
+		return [...new Set(topologies)];
+	});
+\end{minted}
+\end{listing}
+
+Przeniesienie całkowitej odpowiedzialności za selekcję rekordów, przeliczanie osi dla wykresów oraz definiowanie domyślnych opcji (\textit{Presets}) do scentralizowanego pliku logiki biznesowej pozwala zachować spójność strukturalną interfejsu.
+Komponenty wizualne zajmują się w efekcie wyłącznie rysowaniem zadeklarowanych stanów.

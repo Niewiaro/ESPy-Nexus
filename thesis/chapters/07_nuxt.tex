@@ -167,3 +167,130 @@ Od tego momentu aplikacja płynnie transformuje się w pełnoprawną aplikację 
 Możliwości silnika Nitro pozwoliły na bezproblemowe wdrożenie (\textit{ang. deployment}) środowiska analitycznego w architekturze brzegowej (\textit{ang. Edge Computing}), z wykorzystaniem globalnej infrastruktury \textbf{Cloudflare}.
 Dzięki temu pliki konfiguracyjne JSON z wynikami testów oraz sama logika interfejsu mogą być serwowane z fizycznych serwerów zlokalizowanych możliwie najbliżej użytkownika końcowego.
 Taka architektura pozwala zachować rygorystyczne oddzielenie ciężkich operacji transformacyjnych i renderowania interaktywnych wykresów Chart.js w pamięci lokalnej klienta od wydajnego dostarczania początkowej struktury widoków, gwarantując maksymalną wydajność całego systemu analitycznego.
+
+\begin{figure}[ht]
+      \centering
+      \includegraphics[width=0.80\linewidth]{images/nuxt/hero.png}
+      \caption{ESPy-Nexus -- Strona główna \cite{espy_nexus_main} }
+      \label{fig:espy-nexus-hero}
+\end{figure}
+
+\subsection{Zgodność ze wzorcem Separation of Concerns (Struktura projektu)}
+\label{sec:struktura_projektu}
+
+Jednym z kluczowych wyzwań przy projektowaniu rozbudowanych paneli analitycznych (tzw.
+\textit{Dashboards}) jest narastająca złożoność kodu źródłowego.
+Połączenie w jednym pliku procesów manipulacji danymi JSON z deklaracją znaczników wizualnych HTML niemal zawsze prowadzi do degradacji architektury (tzw.
+\textit{Spaghetti Code}).
+Framework Nuxt narzuca strukturalne rozwiązanie tego problemu, implementując paradygmat podziału odpowiedzialności \textit{ang. Separation of Concerns} poprzez dedykowaną architekturę systemu plików.
+
+W niniejszym projekcie główne procesy aplikacyjne zostały rygorystycznie podzielone na niezależne i odseparowane od siebie katalogi robocze, których poprawne zdefiniowanie automatycznie aktywuje odpowiednie mechanizmy środowiska Nuxt.
+
+Tradycyjne aplikacje SPA (\textit{Single Page Application}) wymagają manualnego konfigurowania modułu trasowania (tzw.
+routera) i wiązania ścieżek URL z konkretnymi widokami.
+W projektowanej aplikacji analitycznej zrezygnowano z tego obciążenia na rzecz wbudowanego systemu \textit{File-based routing}.
+Każdy plik z rozszerzeniem \texttt{.vue} w katalogu \texttt{pages/} automatycznie staje się oddzielną, w pełni nawigowalną trasą aplikacji.
+System analityczny podzielono na dwie podstawowe domeny zadaniowe:
+\begin{itemize}
+      \item \textbf{Panel wizualizacyjny (\texttt{pages/index.vue}):}
+            Widok domyślny pod adresem głównym (\texttt{/}), stanowiący centrum dowodzenia eksperymentem (Rys.
+            \ref{fig:espy-nexus-chart}).
+            Odpowiada za agregację wszystkich narzędzi filtrujących oraz rysowanie interaktywnych instancji wykresów biblioteki Chart.js.
+
+      \item \textbf{Eksplorator surowych danych (\texttt{pages/data.vue}):}
+            Dedykowany widok pod ścieżką \texttt{/data}, zapewniający szybki, tabelaryczny dostęp do kompletnej matrycy wyników analizy (Rys.
+            \ref{fig:espy-nexus-data}).
+            Został on zaprojektowany jako element asystujący w celach debugowania warstwy analitycznej.
+
+\end{itemize}
+
+\begin{figure}[H]
+      \centering
+      \includegraphics[width=0.80\linewidth]{images/nuxt/chart.png}
+      \caption{ESPy-Nexus -- Panel wizualizacyjny \cite{espy_nexus_main} }
+      \label{fig:espy-nexus-chart}
+\end{figure}
+
+\begin{figure}[H]
+      \centering
+      \includegraphics[width=0.80\linewidth]{images/nuxt/data.png}
+      \caption{ESPy-Nexus -- Eksplorator danych HIL \cite{espy_nexus_data} }
+      \label{fig:espy-nexus-data}
+\end{figure}
+
+Obydwa widoki docelowe są osadzane w głównym szablonie aplikacji zdefiniowanym w pliku \texttt{app.vue}.
+Szablon ten (Listing \ref{lst:app_vue}) zapewnia jednolitą strukturę otaczającą obejmującą zunifikowany nagłówek z możliwością wyboru języka interfejsu (moduł \texttt{@nuxtjs/i18n}), nawigację, stopkę oraz ustandaryzowaną konfigurację metatagów optymalizacyjnych dla wyszukiwarek sieciowych (\textit{SEO}).
+
+\begin{listing}[htbp]
+      \caption{Szablon główny aplikacji integrujący system trasowania Nuxt (\texttt{app.vue})}
+      \label{lst:app_vue}
+      \begin{minted}[fontsize=\footnotesize, linenos]{html}
+<template>
+	<UApp :locale="locales[locale]">
+		<NuxtRouteAnnouncer />
+
+		<AppHeader />
+
+		<UMain>
+			<NuxtLayout>
+				<NuxtPage />
+			</NuxtLayout>
+		</UMain>
+
+		<AppFooter />
+	</UApp>
+</template>
+
+<script setup lang="ts">
+import * as locales from "@nuxt/ui/locale";
+
+const config = useRuntimeConfig();
+const { locale, t } = useI18n();
+
+useSeoMeta({
+	// basic
+	description: () => t("seo.description"),
+
+	// og
+	ogTitle: () => t("seo.title"),
+	ogDescription: () => t("seo.descriptionLong"),
+	ogSiteName: config.public.appName,
+	ogType: "website",
+	ogImage: "/og-image.png",
+
+	// X
+	twitterCard: "summary_large_image",
+
+	// other
+	author: "Jakub Niewiarowski",
+	themeColor: "#0f172a",
+});
+
+const i18nHead = useLocaleHead({ seo: true });
+
+useHead(() => ({
+	htmlAttrs: {
+		lang: i18nHead.value.htmlAttrs!.lang,
+		dir: i18nHead.value.htmlAttrs!.dir,
+	},
+	link: [...(i18nHead.value.link || [])],
+	meta: [...(i18nHead.value.meta || [])],
+}));
+</script>
+
+\end{minted}
+\end{listing}
+
+Warstwa ostatecznej prezentacji oraz mechanika interakcji z użytkownikiem zostały wyizolowane z głównych widoków przy użyciu komponentów oprogramowanych w katalogu \texttt{components/}.
+Zgodnie ze standardem biblioteki Vue.js, każdy z komponentów implementuje architekturę plików jednokomponentowych (\textit{ang. SFC -Single-File Components}).
+Wzorzec ten hermetycznie grupuje deklarację interfejsu w bloku \texttt{<template>}, logikę sprzężoną z tym widokiem w bloku \texttt{<script setup>} oraz opcjonalne style kaskadowe w wyizolowanym zakresie \texttt{<style scoped>}.
+
+Takie podejście umożliwiło rozbicie potężnego interfejsu panelu analitycznego na serię drobnych, łatwych w testowaniu klocków.
+Doskonałym przykładem jest komponent filtrów sterujących osią częstotliwości, który można bez modyfikacji kodu wykorzystywać wielokrotnie w obrębie całego projektu.
+Framework Nuxt dokonuje ich asynchronicznego importu.
+
+Wyniki ewaluaanalizy przeprowadzanych przez moduł \texttt{TestEngine} tworzą obszerny zbiór danych w formie bazy danych, ale także pliku \texttt{JSON}.
+Wyniki te zostały zmagazynowane jako statyczny zestaw wpisów i osadzone bezpośrednio wewnątrz struktury projektu (w dedykowanym katalogu zasobów statycznych \texttt{assets/data.json}).
+
+Takie rozwiązanie inżynierskie eliminuje obciążenie związane z opóźnieniami sieciowymi przy asynchronicznym żądaniu i pobieraniu danych.
+Narzędzie kompilujące Vite natywnie rozwiązuje tę ścieżkę importu już w fazie tworzenia paczki, efektywnie wplatając zbiory surowych wyników bezpośrednio do wykonywalnej warstwy logiki klienckiej.

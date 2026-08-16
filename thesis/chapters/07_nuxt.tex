@@ -176,7 +176,6 @@ Taka architektura pozwala zachować rygorystyczne oddzielenie ciężkich operacj
 \end{figure}
 
 \subsection{Zgodność ze wzorcem Separation of Concerns (Struktura projektu)}
-\label{sec:struktura_projektu}
 
 Jednym z kluczowych wyzwań przy projektowaniu rozbudowanych paneli analitycznych (tzw.
 \textit{Dashboards}) jest narastająca złożoność kodu źródłowego.
@@ -222,7 +221,7 @@ Obydwa widoki docelowe są osadzane w głównym szablonie aplikacji zdefiniowany
 Szablon ten (Listing \ref{lst:app_vue}) zapewnia jednolitą strukturę otaczającą obejmującą zunifikowany nagłówek z możliwością wyboru języka interfejsu (moduł \texttt{@nuxtjs/i18n}), nawigację, stopkę oraz ustandaryzowaną konfigurację metatagów optymalizacyjnych dla wyszukiwarek sieciowych (\textit{SEO}).
 
 \begin{listing}[htbp]
-      \caption{Szablon główny aplikacji integrujący system trasowania Nuxt (\texttt{app.vue})}
+      \caption{Szablon główny aplikacji integrujący system trasowania Nuxt (\texttt{app.vue}) \cite{espy_nexus_nuxt_dashboard}.}
       \label{lst:app_vue}
       \begin{minted}[fontsize=\footnotesize, linenos]{html}
 <template>
@@ -296,7 +295,6 @@ Takie rozwiązanie inżynierskie eliminuje obciążenie związane z opóźnienia
 Narzędzie kompilujące Vite natywnie rozwiązuje tę ścieżkę importu już w fazie tworzenia paczki, efektywnie wplatając zbiory surowych wyników bezpośrednio do wykonywalnej warstwy logiki klienckiej.
 
 \subsection{Zarządzanie stanem i reaktywna logika biznesowa}
-\label{sec:zarzadzanie_stanem}
 
 W architekturze nowoczesnych aplikacji klasy SPA wysoce niewskazane jest osadzanie logiki odpowiedzialnej za przekształcanie, filtrowanie czy agregację danych bezpośrednio w kodzie renderującym interfejs graficzny (tj.
 wewnątrz definicji komponentów \texttt{Vue}).
@@ -315,7 +313,7 @@ Pozwala ona na zdefiniowanie współdzielonego, reaktywnego obszaru pamięci na 
 Uproszczony wycinek definicji głównego rejestru analitycznego wraz ze wczytaniem danych zaprezentowano na Listingu \ref{lst:use_analytics_state}.
 
 \begin{listing}[htbp]
-      \caption{Wyizolowany moduł analityczny definiujący globalny stan z wykorzystaniem funkcji \texttt{useState} (\texttt{useAnalytics.ts})}
+      \caption{Wyizolowany moduł analityczny definiujący globalny stan z wykorzystaniem funkcji \texttt{useState} (\texttt{useAnalytics.ts}) \cite{espy_nexus_nuxt_dashboard}.}
       \label{lst:use_analytics_state}
       \begin{minted}[fontsize=\footnotesize, linenos]{typescript}
 import rawJsonData from "~/assets/data.json";
@@ -373,7 +371,7 @@ Dopóki macierz danych podstawowych (\texttt{rawDataRef}) nie ulegnie modyfikacj
 Oszczędność cykli obliczeniowych w środowiskach wykonawczych JavaScript jest warunkiem koniecznym do poprawnego wyrenderowania wykresów HIL w częstotliwości 60 klatek na sekundę.
 
 \begin{listing}[htbp]
-      \caption{Mechanika agregacji i buforowania danych słownikowych (\texttt{useAnalytics.ts})}
+      \caption{Mechanika agregacji i buforowania danych słownikowych (\texttt{useAnalytics.ts}) \cite{espy_nexus_nuxt_dashboard}.}
       \label{lst:use_analytics_computed}
       \begin{minted}[fontsize=\footnotesize, linenos]{typescript}
 	const availableTests = computed(() => {
@@ -394,3 +392,104 @@ Oszczędność cykli obliczeniowych w środowiskach wykonawczych JavaScript jest
 
 Przeniesienie całkowitej odpowiedzialności za selekcję rekordów, przeliczanie osi dla wykresów oraz definiowanie domyślnych opcji (\textit{Presets}) do scentralizowanego pliku logiki biznesowej pozwala zachować spójność strukturalną interfejsu.
 Komponenty wizualne zajmują się w efekcie wyłącznie rysowaniem zadeklarowanych stanów.
+
+\subsection{Projektowanie warstwy prezentacyjnej (Interfejs Użytkownika)}
+
+W tradycyjnym procesie budowania interfejsów webowych, deweloperzy latami polegali na kaskadowych arkuszach stylów (CSS) organizowanych w zewnętrznych plikach.
+Z biegiem czasu, w celu przyspieszenia prac nad powtarzalnymi elementami aplikacji, standardem branżowym stało się wykorzystywanie potężnych bibliotek komponentów, z których najpopularniejszą jest \textbf{Bootstrap} \cite{bootstrap_getting_started}.
+Zrewolucjonizował on podejście do projektowania oferując gotowe zestawy klas (np. \texttt{btn btn-primary}) oraz zintegrowane skrypty JavaScript obsługujące logikę komponentów (np. modali czy siatek responsywnych), które można wdrożyć błyskawicznie z wykorzystaniem sieci CDN.
+Jednakże, monolityczny charakter takich bibliotek często prowadzi do problemów związanych z generycznością komponentów, nadpisywaniem stylów w obrębie projektu oraz trudnościami w dostosowywaniu gotowych elementów do indywidualnych potrzeb projektowych.
+
+Odpowiedzią na te problemy stało się wprowadzenie metodologii \textit{Utility-First}, spopularyzowanej przez kompilator \textbf{Tailwind CSS} \cite{tailwindcss_installation_vite}.
+Dostarcza on potężny zestaw niskopoziomowych klas narzędziowych (np. \texttt{flex, text-center, bg-red-500}), które aplikuje się bezpośrednio w strukturze znaczników HTML.
+podobnie jak w przypadku styli Bootstrap.
+Takie podejście drastycznie zwiększa elastyczność i eliminuje problem globalnego nakładania się stylów, ponieważ style komponentu są zdefiniowane i zamknięte w miejscu jego występowania.
+Co niezwykle istotne, Tailwind działa w oparciu o mechanizm JIT (\textit{ang. Just-In-Time compilation}) -- silnik skanuje pliki źródłowe, wykrywając użyte klasy, i generuje plik CSS zawierający wyłącznie ten kod, który faktycznie został użyty.
+Gwarantuje to niezwykle niską wagę paczki wynikowej aplikacji produkcyjnej (tzw.
+zero-runtime).
+
+O ile Tailwind rozwiązuje problem stylizacji graficznej, o tyle nie dostarcza on biblioteki komponentów, mechanizmów dostępności cyfrowej (\textit{Accessibility}) ani obsługi zdarzeń dla złożonych elementów nawigacyjnych.
+Z tego względu jako docelowy fundament warstwy wizualnej środowiska \textit{ESPy-Nexus} wybrano \textbf{Nuxt UI}.
+Jest to natywna, wszechstronna biblioteka interfejsu (współpracująca również z czystym środowiskiem Vue), dostarczająca ponad 125 gotowych do użycia, wysoce responsywnych komponentów.
+Łączy ona w sobie swobodę projektowania graficznego z kompilatora Tailwind CSS z rygorystycznymi standardami inżynierii oprogramowania \cite{nuxt_ui_getting_started}.
+
+Kluczowym aspektem architektury Nuxt UI jest zastosowanie silnika \textbf{Reka UI} jako warstwy fundamentalnej (\textit{ang. primitive layer}).
+Warto nadmienić, że mechanika ta wywodzi się historycznie z popularnego w ekosystemie React projektu \textit{Radix UI}, z którego następnie wydzielono dedykowaną implementację zoptymalizowaną specjalnie pod system reaktywności frameworka Vue (Reka UI).
+Integracja ta gwarantuje natywną dostępność projektowanego panelu:
+\begin{itemize}
+      \item \textbf{Zgodność ze standardem WAI-ARIA:}
+            Komponenty Nuxt UI posiadają wbudowaną semantykę ról, co pozwala na bezproblemową nawigację czytnikom ekranowym (\textit{ang. Screen Readers}).
+      \item \textbf{Inteligentne zarządzanie fokusem:}
+            Komponenty złożone, takie jak okna dialogowe (\texttt{UModal}) czy akordeony (\texttt{UAccordion}), automatycznie zarządzają przenoszeniem uwagi (fokusu) po ich aktywacji, co znacząco poprawia komfort nawigacji z poziomu klawiatury.
+      \item \textbf{Keyboard Navigation:}
+            Wbudowane wsparcie klawiatury dla złożonych komponentów, takich jak zakładki i okna dialogowe.
+\end{itemize}
+
+Wykorzystanie pakietu Nuxt UI pozwoliło wdrożyć spójny system projektowy oparty na palecie siedmiu kolorów semantycznych (\textit{primary, secondary, success, info, warning, error, neutral}).
+Eliminuje to konieczność używania bezpośrednich wartości kolorystycznych (tzw.
+\textit{Hardcoding}) i gwarantuje płynną obsługę wbudowanego trybu ciemnego i jasnego (\textit{Color Mode}).
+Przykład wykorzystania gotowych kontrolerów do budowy zaawansowanego panelu filtrów, prezentujący deklaratywną integrację przycisków (\texttt{UButton}) oraz grupy checkboxów (\texttt{UCheckboxGroup}), wplecione w menu akordeonowege (\texttt{UAccordion}), został zaprezentowany na Listingu \ref{lst:data_explorer_filters}.
+
+\begin{listing}[htbp]
+      \caption{Deklaratywna budowa interfejsu sterującego z użyciem zoptymalizowanych komponentów Nuxt UI (\texttt{DataExplorerFilters.vue}) \cite{espy_nexus_nuxt_dashboard}.}
+      \label{lst:data_explorer_filters}
+      \begin{minted}[fontsize=\footnotesize, linenos]{html}
+<template>
+	<UAccordion
+		:items="accordionItems"
+		type="multiple"
+		:default-value="['tests', 'presets', 'metric']"
+		class="w-full"
+	>
+		<template #tests>
+			<div class="max-h-72 overflow-y-auto p-1 mt-1 mb-2
+                  scrollbar-thin">
+				<UCheckboxGroup
+					v-model="selectedTests"
+					:items="availableTests"
+					variant="table"
+					size="sm"
+					color="primary"
+				/>
+			</div>
+		</template>
+
+		<template #presets>
+			<div class="flex flex-col gap-4 my-3 px-1 max-h-[60vh]
+                  overflow-y-auto scrollbar-thin">
+				<div class="grid grid-cols-2 gap-2">
+					<UButton
+						:label="$t('dataExplorer.filters.all')"
+						icon="heroicons:check-circle"
+						color="primary"
+						variant="soft"
+						class="justify-center"
+						@click="selectAllTests"
+					/>
+                        <!-- [...] -->
+\end{minted}
+\end{listing}
+
+Dzięki natywnemu wsparciu dla języka TypeScript, aplikacja korzysta z pełnej kontroli typów (w tym bezpieczeństwa przy podawaniu własności komponentów w szablonach), a programista jest wspierany przez wbudowane mechanizmy autouzupełniania (\textit{IntelliSense}) we wszystkich elementach struktury GUI.
+
+Integralną częścią aplikacji jest podstrona \texttt{/data}, pełniąca rolę deweloperskiej przestrzeni weryfikacyjnej. Wymagała ona zaimplementowania mechanizmu prezentacji w postaci tabelarycznej tysięcy połączonych rekordów wyników uzyskanych w toku analizy, obejmujących między innymi parametry związane ze zjawiskiem jitteru oraz pomiarem przepustowości PDR. Wykorzystanie standardowego elementu HTML \texttt{<table>} nie zapewnia mechanizmów takich jak filtrowanie, sortowanie czy paginacja, dlatego ich implementacja wymagałaby stworzenia dodatkowej logiki aplikacyjnej.
+
+Problem rozwiązano z wykorzystaniem biblioteki TanStack Table (\texttt{@tanstack/vue-table}) - bezgłowego (ang. headless) silnika do obsługi tabel. Podejście headless oznacza, że biblioteka dostarcza logikę, stan oraz interfejs programistyczny odpowiedzialny za operacje na danych, takie jak filtrowanie, sortowanie i paginacja, nie narzucając jednocześnie struktury HTML ani warstwy wizualnej komponentu. Dzięki temu sposób prezentacji danych pozostaje w pełni kontrolowany przez aplikację. Wykorzystane w implementacji modele wierszy umożliwiają kolejne przekształcanie zbioru danych, między innymi poprzez filtrowanie, sortowanie oraz paginację, a następnie przekazanie wynikowego zbioru wierszy do warstwy prezentacji.
+\begin{listing}[htbp]
+      \caption{Deklaratywne podłączanie silnika TanStack Table do interfejsu wizualnego Nuxt UI (\texttt{data.vue}) \cite{espy_nexus_nuxt_dashboard}.}
+      \label{lst:data_vue_table}
+      \begin{minted}[fontsize=\footnotesize, linenos]{html}
+<UTable
+	ref="table"
+	v-model:pagination="pagination"
+	v-model:global-filter="globalFilter"
+	v-model:column-visibility="columnVisibility"
+	:data="data"
+	:columns="columns"
+	:pagination-options="{
+		getPaginationRowModel: getPaginationRowModel(),
+	}"
+	class="flex-1"
+/>
+\end{minted}
+\end{listing}

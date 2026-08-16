@@ -505,3 +505,75 @@ Rozwiązanie to jest w pełni zintegrowane z komponentem Nuxt UI \texttt{<UTable
 />
 \end{minted}
 \end{listing}
+
+\subsection{Wizualizacja wyników i rozszerzanie natywnych bibliotek (Chart.js)}
+
+Zasadniczym celem stworzonego środowiska webowego jest sprawna i interaktywna wizualizacja parametrów pracy sieci bezprzewodowych.
+Wymagało to zastosowania biblioteki graficznej zdolnej do natychmiastowego renderowania tysięcy punktów czasowych w przeglądarce, bez znaczącego spadku wydajności interfejsu (utrzymanie \textit{framerate'u} na poziomie 60 klatek na sekundę).
+W tym celu zaimplementowano bibliotekę \textbf{Chart.js} \cite{chartjs_documentation} -- wiodące rozwiązanie wykorzystujące element HTML5 \texttt{<canvas>}.
+
+Integracja zewnętrznej, natywnej biblioteki JavaScript z nowoczesnym cyklem życia frameworka Vue (\textit{Component Lifecycle}) została zrealizowana przy pomocy lekkiego mechanizmu pośredniczącego (\textit{ang. wrapper}) dostarczonego przez pakiet \texttt{vue-chartjs}.
+Pozwala to na automatyczne nasłuchiwanie zmian w danych wejściowych i płynną re-alokację pamięci na obiekcie \texttt{<canvas>}, co całkowicie eliminuje niebezpieczeństwo wycieków pamięci podczas częstego przerysowywania widoków.
+
+Wizualizacja wyników z pętli testów typu Hardware-in-the-Loop obnażyła istotny problem ergonomiczny.
+Przy włączeniu podglądu dla wielu topologii sieciowych i jednoczesnym przedstawieniu tysięcy wyników analizy na jednym wykresie, punkty danych znajdują się blisko siebie na osi X (częstotliwości) w domyślnym trybie interakcji biblioteki Chart.js \texttt{nearest} ukaże wartość dla punktu jedynie podczas fizycznego najechania kursorem na jego obszar.
+Alternatywnie, tryb \texttt{index} umożliwia wyświetlenie wszystkich punktów w danej kolumnie.
+Żaden z tych trybów nie jest jednak w pełni ergonomiczny, ponieważ w przypadku gęsto upakowanych danych, szczególnie gdy wartości przebiegów nakładają się, najechanie kursorem na obszar wykresu albo ukaże jedynie pojedynczy punkt, albo \texttt{tooltip} zostanie wyświetlony dla wszystkich punktów w kolumnie, co całkowicie zaciemnia widok.
+W celu poprawy komfortu analizy wizualnej, wprowadzono niestandardowy tryb interakcji o nazwie \texttt{hilMode}, który łączy zalety obu natywnych trybów.
+W tym trybie, po najechaniu kursorem na obszar wykresu, algorytm wyszukuje punkt danych leżący najbliżej kursora w osi Y (opóźnienie) i wyświetla jego etykietę informacyjną.
+Jak zaprezentowano na Listingu \ref{lst:chartjs_hilmode}.
+mechanizm ten modyfikuje natywną funkcję \texttt{Interaction.modes.index}, wprowadzając matematyczną tolerancję i progi zderzeń (stałe \texttt{MAX\_TOOLTIP\_DISTANCE\_Y} oraz \texttt{TOOLTIP\_OVERLAP\_TOLERANCE\_Y}).
+Dzięki tej ingerencji, po najechaniu kursorem na gęsto upakowany obszar, etykiety informacyjne aktywowane są wyłącznie dla tych przebiegów sygnału, których fizyczna wartość osi Y znajduje się w akceptowalnej bliskości położenia wskaźnika myszy (wartość \texttt{eventY}).
+Pozostałe punkty leżące w tej samej kolumnie (na osi X), lecz oddalone na osi Y, są odrzucane z tablicy aktywnych elementów.
+
+\begin{listing}[htbp]
+      \caption{Przeciążenie przestrzeni nazw Chart.js i implementacja zaawansowanego algorytmu kolizyjnego dla Tooltipów (\texttt{DynamicLineChart.vue})}
+      \label{lst:chartjs_hilmode}
+      \begin{minted}[fontsize=\footnotesize, linenos]{typescript}
+// Rozszerzenie deklaracji typów biblioteki zewnętrznej
+declare module "chart.js" {
+	interface InteractionModeMap {
+		hilMode: (
+                  chart: ChartJS, 
+                  e: ChartEvent, 
+                  options: InteractionOptions, 
+                  useFinalPosition?: boolean) => ActiveElement[];
+	}
+}
+
+const MAX_TOOLTIP_DISTANCE_Y = 20;
+const TOOLTIP_OVERLAP_TOLERANCE_Y = 5;
+
+// Nadpisanie zachowania natywnego w silniku Chart.js
+Interaction.modes.hilMode = function (
+	chart: ChartJS,
+	e: ChartEvent,
+	options: InteractionOptions,
+	useFinalPosition?: boolean,
+): ActiveElement[] {
+	const indexItems = Interaction.modes.index(chart, e, options, useFinalPosition);
+	if (!indexItems || indexItems.length === 0) return [];
+
+	let minDistanceY = Number.POSITIVE_INFINITY;
+
+	const eventY = e.y ?? 0;
+
+      // Krok 1: Wyszukiwanie punktu danych położonego najbliżej kursora w osi Y
+	indexItems.forEach((item: ActiveElement) => {
+		const distanceY = Math.abs(item.element.y - eventY);
+		if (distanceY < minDistanceY) {
+			minDistanceY = distanceY;
+		}
+	});
+
+      // Jeżeli najbliższy punkt leży poza strefą akceptacji, nie wyświetlaj podglądu
+	if (minDistanceY > MAX_TOOLTIP_DISTANCE_Y) return [];
+
+      // Krok 2: Filtracja odrzucająca punkty, które nakładałyby się na ekranie
+	return indexItems.filter((item: ActiveElement) => {
+		const distanceY = Math.abs(item.element.y - eventY);
+		return Math.abs(distanceY - minDistanceY) <= TOOLTIP_OVERLAP_TOLERANCE_Y;
+	});
+};
+\end{minted}
+\end{listing}

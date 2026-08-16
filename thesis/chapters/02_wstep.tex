@@ -1,7 +1,7 @@
 \chapter{Wstęp}
 
-We współczesnym świecie, zdominowanym przez koncepcję Internetu Rzeczy (\textit{ang. Iot -- Internet of Things}), robotykę oraz pojazdy autonomiczne, transmisja danych na odległość stała się zagadnieniem powszechnym.
-O ile klasyczne przesyłanie informacji, takie jak pobieranie plików, czy też przeglądanie aplikacji i stron internetowych, opiera się na gwarancji bezbłędności transmisji niezależnie od czasu trwania tego procesu, o tyle telemetria i zdalne sterowanie wprowadzają radykalnie odmienny paradygmat.
+We współczesnym świecie zdominowanym przez koncepcję Internetu Rzeczy (\textit{ang. Iot -- Internet of Things}), robotykę oraz pojazdy autonomiczne transmisja danych na odległość stała się zagadnieniem powszechnym.
+O ile klasyczne przesyłanie informacji, takie jak pobieranie plików, czy przeglądanie aplikacji i stron internetowych, opiera się na gwarancji bezbłędności transmisji niezależnie od czasu trwania tego procesu, o tyle telemetria i zdalne sterowanie wprowadzają radykalnie odmienny paradygmat.
 W systemach czasu rzeczywistego (\textit{ang. Real-Time Systems}) wartość informacji drastycznie spada wraz z upływem czasu.
 
 Na bezwzględny czas transmisji danych składa się wiele czynników.
@@ -11,7 +11,7 @@ Gwarancja dostarczenia każdego pakietu zazwyczaj wiąże się z niedopuszczalny
 
 \section{Problematyka systemów czasu rzeczywistego}
 
-Zgodnie z klasyczną definicją, systemy czasu rzeczywistego to systemy obliczeniowe, które muszą reagować na zdarzenia w środowisku w ramach precyzyjnie określonych ograniczeń czasowych.
+Zgodnie z klasyczną definicją systemy czasu rzeczywistego to systemy obliczeniowe, które muszą reagować na zdarzenia w środowisku w ramach precyzyjnie określonych ograniczeń czasowych.
 W konsekwencji poprawne zachowanie tych systemów zależy nie tylko od logicznej poprawności samych obliczeń, ale również od czasu, w którym wyniki te są dostarczane \cite{buttazzo2011}.
 
 Flagowym przykładem systemu o twardych ograniczeniach czasowych (\textit{ang. Hard Real-Time}) jest architektura sterowania typu X-by-Wire (np. Steer-by-Wire lub Brake-by-Wire) we współczesnych pojazdach autonomicznych oraz zaawansowanych systemach wspomagania kierowcy (\textit{ang. ADAS - Advanced Driver Assistance Systems}).
@@ -22,13 +22,14 @@ W systemach tych spóźniona odpowiedź jest z definicji równoznaczna z odpowie
 
 Radykalnym przeciwieństwem tak zdefiniowanego determinizmu są powszechnie stosowane systemy operacyjne ogólnego przeznaczenia (\textit{ang. GPOS -- General Purpose Operating Systems}), takie jak Microsoft Windows, macOS czy klasyczne dystrybucje GNU/Linux.
 Choć dysponują one gigantyczną mocą obliczeniową wielordzeniowych procesorów i wysoką przepustowością (\textit{ang. throughput}), z architektonicznego punktu widzenia są całkowicie niezdolne do pracy pod rygorem twardego czasu rzeczywistego.
-Planiści zadań (\textit{ang. schedulers}) w systemach GPOS zostali zoptymalizowani pod kątem sprawnego przydzielania zasobów dziesiątkom współbieżnych procesów w tle, płynnej obsługi interfejsu graficznego oraz sprawiedliwości czasowej, a nie gwarancji dotrzymania nieprzekraczalnego terminu zakończenia operacji (\textit{ang. deadline}).
-W systemie takim jak Windows niespodziewane przerwanie sprzętowe od karty sieciowej, operacja wejścia-wyjścia na dysku czy systemowy proces zarządzania pamięcią potrafią zamrozić wykonanie wątku komunikacyjnego użytkownika na kilka lub kilkadziesiąt milisekund.
+Planiści zadań (\textit{ang. schedulers}) w systemach GPOS zostali zoptymalizowani pod kątem sprawnego przydzielania zasobów, płynnej obsługi interfejsu graficznego oraz sprawiedliwości czasowej, a nie gwarancji dotrzymania nieprzekraczalnego terminu zakończenia operacji (\textit{ang. deadline}).
+W systemie takim jak Windows niespodziewane przerwanie sprzętowe od karty sieciowej, operacja wejścia-wyjścia na dysku, czy systemowy proces zarządzania pamięcią potrafią zamrozić wykonanie wątku komunikacyjnego użytkownika na kilka lub kilkadziesiąt milisekund.
 
 O ile w typowych aplikacjach ogólnego przeznaczenia takie mikro-zawieszenia planisty pozostają bez znaczenia, o tyle przy sprzęganiu środowiska PC ze sterownikami wbudowanymi wprowadzają one potężny szum czasowy po stronie nadawcy.
 Z tego względu opieranie analizy wyłącznie na czasach raportowanych przez system GPOS prowadziłoby do drastycznego zafałszowania wyników.
-Rozwiązaniem tego wyzwania architektonicznego, stanowiącym fundament metodologiczny niniejszej pracy, jest dwustronna rejestracja stempli czasowych -- zarówno w momencie zlecenia wysyłki przez komputer, jak i w sprzętowym przerwaniu mikrokontrolera.
-Taka asymetryczna korelacja wektorów czasu pozwala na matematyczne odizolowanie niedeterministycznego narzutu systemu operacyjnego od rzeczywistych opóźnień sieciowych (Queuing Delay) oraz dryftu zegarowego, umożliwiając obiektywną ocenę protokołów komunikacyjnych.
+Rozwiązaniem tego wyzwania architektonicznego, jest dwustronna rejestracja stempli czasowych - zarówno w momencie zlecenia wysyłki przez komputer jak i w sprzętowym przerwaniu mikrokontrolera, co stanowi metrologiczny fundament niniejszej pracy.
+
+Prace w toku...
 
 % W tej sekcji przechodzimy od ogółu do konkretnych dziedzin, w których czas ma znaczenie krytyczne.
 

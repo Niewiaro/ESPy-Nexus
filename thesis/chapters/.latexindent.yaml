@@ -13,4 +13,7 @@ noIndentBlock:
     min:
         begin: '\bm\.'
         end: 'in\. '
+    rys:
+        begin: '\bRys\.'
+        end: ' '
         

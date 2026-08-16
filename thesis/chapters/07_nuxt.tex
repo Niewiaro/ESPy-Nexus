@@ -192,13 +192,11 @@ Każdy plik z rozszerzeniem \texttt{.vue} w katalogu \texttt{pages/} automatyczn
 System analityczny podzielono na dwie podstawowe domeny zadaniowe:
 \begin{itemize}
       \item \textbf{Panel wizualizacyjny (\texttt{pages/index.vue}):}
-            Widok domyślny pod adresem głównym (\texttt{/}), stanowiący centrum dowodzenia eksperymentem (Rys.
-            \ref{fig:espy-nexus-chart}).
+            Widok domyślny pod adresem głównym (\texttt{/}), stanowiący centrum dowodzenia eksperymentem (Rys. \ref{fig:espy-nexus-chart}).
             Odpowiada za agregację wszystkich narzędzi filtrujących oraz rysowanie interaktywnych instancji wykresów biblioteki Chart.js.
 
       \item \textbf{Eksplorator surowych danych (\texttt{pages/data.vue}):}
-            Dedykowany widok pod ścieżką \texttt{/data}, zapewniający szybki, tabelaryczny dostęp do kompletnej matrycy wyników analizy (Rys.
-            \ref{fig:espy-nexus-data}).
+            Dedykowany widok pod ścieżką \texttt{/data}, zapewniający szybki, tabelaryczny dostęp do kompletnej matrycy wyników analizy (Rys. \ref{fig:espy-nexus-data}).
             Został on zaprojektowany jako element asystujący w celach debugowania warstwy analitycznej.
 
 \end{itemize}
@@ -472,9 +470,23 @@ Przykład wykorzystania gotowych kontrolerów do budowy zaawansowanego panelu fi
 
 Dzięki natywnemu wsparciu dla języka TypeScript, aplikacja korzysta z pełnej kontroli typów (w tym bezpieczeństwa przy podawaniu własności komponentów w szablonach), a programista jest wspierany przez wbudowane mechanizmy autouzupełniania (\textit{IntelliSense}) we wszystkich elementach struktury GUI.
 
-Integralną częścią aplikacji jest podstrona \texttt{/data}, pełniąca rolę deweloperskiej przestrzeni weryfikacyjnej. Wymagała ona zaimplementowania mechanizmu prezentacji w postaci tabelarycznej tysięcy połączonych rekordów wyników uzyskanych w toku analizy, obejmujących między innymi parametry związane ze zjawiskiem jitteru oraz pomiarem przepustowości PDR. Wykorzystanie standardowego elementu HTML \texttt{<table>} nie zapewnia mechanizmów takich jak filtrowanie, sortowanie czy paginacja, dlatego ich implementacja wymagałaby stworzenia dodatkowej logiki aplikacyjnej.
+Integralną częścią aplikacji jest podstrona \texttt{/data}, pełniąca rolę deweloperskiej przestrzeni weryfikacyjnej.
+Wymagała ona zaimplementowania mechanizmu prezentacji w postaci tabelarycznej tysięcy połączonych rekordów wyników uzyskanych w toku analizy, obejmujących między innymi parametry związane ze zjawiskiem jitteru oraz pomiarem przepustowości PDR.
+Wykorzystanie standardowego elementu HTML \texttt{<table>} nie zapewnia mechanizmów takich jak filtrowanie, sortowanie czy paginacja, dlatego ich implementacja wymagałaby stworzenia dodatkowej logiki aplikacyjnej.
 
-Problem rozwiązano z wykorzystaniem biblioteki TanStack Table (\texttt{@tanstack/vue-table}) - bezgłowego (ang. headless) silnika do obsługi tabel. Podejście headless oznacza, że biblioteka dostarcza logikę, stan oraz interfejs programistyczny odpowiedzialny za operacje na danych, takie jak filtrowanie, sortowanie i paginacja, nie narzucając jednocześnie struktury HTML ani warstwy wizualnej komponentu. Dzięki temu sposób prezentacji danych pozostaje w pełni kontrolowany przez aplikację. Wykorzystane w implementacji modele wierszy umożliwiają kolejne przekształcanie zbioru danych, między innymi poprzez filtrowanie, sortowanie oraz paginację, a następnie przekazanie wynikowego zbioru wierszy do warstwy prezentacji.
+Problem rozwiązano z wykorzystaniem biblioteki TanStack Table (\texttt{@tanstack/vue-table}) - bezgłowego (\textit{ang. headless}) silnika do obsługi tabel.
+Podejście headless oznacza, że biblioteka dostarcza logikę, stan oraz interfejs programistyczny odpowiedzialny za operacje na danych, takie jak filtrowanie, sortowanie i paginacja, nie narzucając jednocześnie struktury HTML ani warstwy wizualnej komponentu.
+Dzięki temu sposób prezentacji danych pozostaje w pełni kontrolowany przez aplikację.
+Wykorzystane w implementacji modele wierszy umożliwiają kolejne przekształcanie zbioru danych, między innymi poprzez filtrowanie, sortowanie oraz paginację, a następnie przekazanie wynikowego zbioru wierszy do warstwy prezentacji (Rys. \ref{fig:espy-nexus-data-table}).
+Rozwiązanie to jest w pełni zintegrowane z komponentem Nuxt UI \texttt{<UTable>} (Listening \ref{lst:data_vue_table}).
+
+\begin{figure}[htbp]
+      \centering
+      \includegraphics[width=0.80\linewidth]{images/nuxt/data_table.png}
+      \caption{ESPy-Nexus -- Tabela danych \cite{espy_nexus_data} }
+      \label{fig:espy-nexus-data-table}
+\end{figure}
+
 \begin{listing}[htbp]
       \caption{Deklaratywne podłączanie silnika TanStack Table do interfejsu wizualnego Nuxt UI (\texttt{data.vue}) \cite{espy_nexus_nuxt_dashboard}.}
       \label{lst:data_vue_table}

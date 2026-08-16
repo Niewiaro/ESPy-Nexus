@@ -1,13 +1,12 @@
 \chapter{Cel i zakres pracy}
 
-Głównym celem niniejszej pracy jest empiryczne zbadanie fizycznych oraz logicznych granic wydajności sieci bezprzewodowych w systemach czasu rzeczywistego, a także wykazanie, na jakie kompromisy projektowe musi zgodzić się inżynier podczas wyboru protokołu komunikacyjnego.
+Głównym celem niniejszej pracy jest empiryczne zbadanie fizycznych oraz logicznych granic wydajności sieci bezprzewodowych w systemach czasu rzeczywistego, a także wykazanie na jakie kompromisy projektowe musi zgodzić się inżynier podczas wyboru protokołu komunikacyjnego.
 
 Aby zrealizować to zamierzenie, postawiono cel poboczny: zaprojektować, zaimplementować i zweryfikować autorski system pomiarowy w architekturze Hardware-in-the-Loop o nazwie ESPy-Nexus.
-System ten, działający na styku komputera osobistego i mikrokontrolera ESP32, ma za zadanie precyzyjnie (z dokładnością do mikrosekund) badać parametry jakości usług sieciowych (\textit{ang. QoS - Quality of Service}) od klasycznych częstotliwości po ekstremalne obciążenie, zliczając tysiące pakietów przesyłanych w ułamkach sekund.
+System ten, działający na styku komputera osobistego i mikrokontrolera ESP32, ma za zadanie badać, z rejestracją znaczników czasowych w skali mikrosekund, parametry jakości usług sieciowych (\textit{ang. QoS - Quality of Service}) od klasycznych częstotliwości po ekstremalne obciążenie, zliczając tysiące pakietów przesyłanych w ułamkach sekund.
 Badania mają dowieść, w jaki sposób zmiana protokołu, topologii sieciowej, czy rozmiaru ładunku użytecznego wpływa na niezawodność, zachowanie pamięci i terminowość transmisji danych.
 
-Zakres niniejszej pracy obejmuje stworzenie kompleksowego środowiska badawczego typu Full-Stack, od oprogramowania wbudowanego, przez silnik testowy, aż po interfejs użytkownika.
-Następnie przeprowadzenie za jego pomocą rygorystycznych testów metrologicznych odpowiednio przygotowanej macierzy.
+Zakres niniejszej pracy obejmuje stworzenie kompleksowego środowiska badawczego typu Full-Stack, od oprogramowania wbudowanego, przez silnik testowy, aż po interfejs użytkownika, a następnie przeprowadzenie za jego pomocą rygorystycznych testów metrologicznych odpowiednio przygotowanej macierzy.
 W ramach realizacji projektu wykonano następujące zadania:
 \begin{itemize}
       \item \textbf{Opracowanie oprogramowania wbudowanego (Firmware)}
@@ -20,7 +19,7 @@ W ramach realizacji projektu wykonano następujące zadania:
             Operuje na relacyjnej bazie danych SQLite niezależnie od silnika testowego, umożliwiając weryfikację wyników i przygotowanie danych do wizualizacji w interfejsie użytkownika.
       \item \textbf{Zaprojektowanie i implementacja interfejsu użytkownika (User Interface)}
             zbudowany na meta-framework Nuxt.js opierający się na Vue.js, umożliwiający interaktywną wizualizację wyników eksperymentów.
-            Jako wzbogacenie UX (\textit{ang. User Experience}) zastosowano SSR (\textit{ang. Server-Side Rendering}) oraz SPA (\textit{ang. Single Page Application}) w celu zapewnienia płynnej i responsywnej obsługi aplikacji.
+            Implementacja wykorzystuje renderowanie hybrydowe (SSR (\textit{ang. Server-Side Rendering}) oraz SPA (\textit{ang. Single Page Application})).
 \end{itemize}
 
 Uzyskane wyniki badań pozwolą, na podstawie otrzymanych z analizy wskaźników zarówno znormalizowanych, jak i bezwzględnych, sformułowanie wniosków dotyczących najbardziej optymalnych konfiguracji połączenia bezprzewodowego wybranej pary urządzeń do aktualnych zastosowań projektowych, a także wskazanie kierunków dalszych badań w tym obszarze.

@@ -13,7 +13,7 @@ W niniejszym rozdziale zaprezentowano pełną architekturę stworzonego oprogram
 Omówiono wybór i konfigurację narzędzi programistycznych, zarządzanie rozszerzoną pamięcią operacyjną (PSRAM) w celu akwizycji dziesiątek tysięcy rekordów testowych oraz podział zadań na fizyczne rdzenie procesora z wykorzystaniem systemu czasu rzeczywistego.
 Szczególną uwagę poświęcono również obiektowej architekturze oprogramowania opartej na wzorcu projektowym Strategia, która umożliwiła spójną, bezkolizyjną i wydajną obsługę wielu protokołów.
 
-\section{Środowisko programistyczne i ekosystem PlatformIO}
+\section{Środowisko programistyczne - ekosystem PlatformIO}
 \label{sec:ekosystem_platformio}
 
 W tradycyjnym podejściu do programowania mikrokontrolerów popularnym środowiskiem jest Arduino IDE \cite{arduino_ide}, szczególnie na etapie nauki i prototypowania.
@@ -31,9 +31,8 @@ Wykorzystanie tego rozwiązania pozwoliło na zastosowanie konfiguracji projektu
 Takie podejście zwiększa przejrzystość konfiguracji oraz ułatwia odtworzenie środowiska projektu na innej stacji roboczej.
 PlatformIO umożliwia również określanie wersji zależności, co dodatkowo ogranicza ryzyko niekontrolowanych zmian środowiska podczas kolejnych kompilacji.
 
-% TUTAJ WSTAW KOD - Twój plik platformio.ini
 \begin{listing}[htbp]
-    \caption{Deklaratywna konfiguracja środowiska kompilacji w ekosystemie PlatformIO (\texttt{platformio.ini})}
+    \caption{Deklaratywna konfiguracja środowiska kompilacji w ekosystemie PlatformIO (\texttt{platformio.ini}) \cite{espy_nexus_esp32_firmware}.}
     \label{lst:platformio_ini}
     \begin{minted}[fontsize=\footnotesize, linenos]{ini}
 [env:esp-wrover-kit]
@@ -98,3 +97,118 @@ W środowisku tym zastosowano następujące krytyczne dyrektywy:
     \item \texttt{-D NETWORK\_MODE} - własna dyrektywa preprocesora C++, umożliwiająca kompilację warunkową kodu źródłowego (\#ifdef).
           Zapewnia ona łatwą rekonfigurację topologii radiowej (tworzenie własnej sieci punktu dostępowego lub podłączenie do zewnętrznego routera) bez konieczności ingerencji w logikę plików \texttt{.cpp}.
 \end{itemize}
+
+\section{Architektura mikrokontrolera ESP32}
+\label{sec:architektura_esp32}
+
+W projektowanym systemie jako jednostkę obliczeniową węzła pomiarowego wykorzystano płytkę rozwojową \textbf{ESP32-DevKitC-VIE} firmy Espressif.
+Oznaczenie tego wariantu sprzętowego należy rozpatrywać na kilku poziomach architektonicznych - ESP32 to nazwa podstawowej rodziny układów, natomiast DevKitC-VIE to nazwa samej płytki bazowej (ewaluacyjnej) posiadającej zarówno wbudowaną antenę ściekową na laminacie (\textit{ang. PCB antenna}), jak i możliwość współpracy z zewnętrzną anteną poprzez dedykowane złącze.
+Moduł lutowany jest powierzchniowo na PCB, gdzie dodatkowo wyprowadzone są piny GPIO układu umożliwiające korzystanie z przerwań sprzętowych i bogatych układów peryferyjnych, a także integruje obwody zasilania i konwerter USB-UART, znacząco ułatwiając programowanie układu (Rys. \ref{fig:esp32-devkitC-v4-pinout.png}).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/esp32/esp32-devkitC-v4-pinout.png}
+    \caption{Płytka rozwojowa ESP32-DevKitC-V4 - pinout \cite{esp32_pinout}.}
+    \label{fig:esp32-devkitC-v4-pinout.png}
+\end{figure}
+
+Mikrokontrolery z rodziny ESP32 oparte na architekturze Xtensa oferują gigantyczną przewagę obliczeniową i komunikacyjną nad klasycznymi układami stosowanymi w typowych projektach edukacyjnych, co czyni je optymalnym wyborem dla zaawansowanych systemów czasu rzeczywistego, a także filarem wielu rozwiązań SmartHome.
+Szczegółowe zestawienie parametrów sprzętowych zastosowanego modułu, w odniesieniu do referencyjnej, popularnej platformy Arduino UNO R3, zaprezentowano w tabeli \ref{tab:esp32_vs_uno}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Porównanie parametrów ESP32-DevKitC-VIE \cite{esp32} oraz referencyjnego Arduino UNO R3 \cite{arduino_uno_rev3}.}
+    \label{tab:esp32_vs_uno}
+    \begin{tabular}{|l|c|c|}
+        \hline
+        \textbf{Parametr}        & \textbf{ESP32-DevKitC-VIE}    & \textbf{Arduino UNO R3} \\
+        \hline
+        Układ bazowy             & ESP32-WROVER-IE               & ATmega328P              \\
+        \hline
+        Architektura CPU         & 32-bit                        & 8-bit                   \\
+        \hline
+        Liczba rdzeni            & 2                             & 1                       \\
+        \hline
+        Częstotliwość taktowania & do 240 MHz                    & 16 MHz                  \\
+        \hline
+        Pamięć SRAM              & 520 KB                        & 2 KB                    \\
+        \hline
+        Pamięć Flash             & 4 MB                          & 32 KB                   \\
+        \hline
+        Pamięć zewnętrzna PSRAM  & 8 MB                          & brak                    \\
+        \hline
+        Interfejs Wi-Fi          & 802.11 b/g/n 2,4 GHz          & brak                    \\
+        \hline
+        Interfejs Bluetooth      & Bluetooth 4.2 BR/EDR oraz BLE & brak                    \\
+        \hline
+        Napięcie logiki układu   & 3,3 V                         & 5 V                     \\
+        \hline
+    \end{tabular}
+\end{table}
+
+Głównym wyzwaniem programistycznym w kontekście warstwy sprzętowej była konieczność lokalnego buforowania gigantycznej liczby zdarzeń sieciowych.
+Architektura systemu zakłada zgromadzenie \texttt{MAX\_RECORDS = 50000} pomiarów przed ich ostatecznym zrzutem do warstwy analitycznej.
+Mimo że ESP32 oferuje wielokrotnie więcej natywnej pamięci SRAM (520 KB) niż układy takie jak ATmega328P, znaczna jej część jest rezerwowana przez system operacyjny FreeRTOS, stos sieciowy protokołu TCP/IP (lwIP) oraz sterowniki Wi-Fi.
+Próba zaalokowania tablicy pomiarowej w wewnętrznej pamięci SRAM skutkowałaby przepełnieniem sterty (\textit{ang. Heap Overflow}) i restartem układu z użyciem mechanizmu zabezpieczającego \textit{Watchdog}.
+
+Problem ten rozwiązano dzięki obecności wspominanej pamięci PSRAM.
+Jak zaprezentowano na Listingu \ref{lst:psram_malloc}, program przed uruchomieniem maszyny stanów weryfikuje sprzętową dostępność zewnętrznego modułu pamięci za pomocą metody \texttt{psramFound()}.
+Następnie, wykorzystując wywołanie \texttt{ps\_malloc()}, wymusza na wbudowanym alokatorze zlokalizowanie bufora wynikowego (\texttt{resultBuffer}) bezpośrednio w układzie PSRAM.
+Chroni to szybką pamięć wewnętrzną przed defragmentacją, pozostawiając ją do wyłącznej dyspozycji krytycznych czasowo procesów komunikacyjnych.
+
+\begin{listing}[htbp]
+    \caption{Wymuszona alokacja bufora pomiarowego w pamięci PSRAM (\texttt{main.cpp}) \cite{espy_nexus_esp32_firmware}.}
+    \label{lst:psram_malloc}
+    \begin{minted}[fontsize=\footnotesize, linenos]{cpp}
+const uint32_t MAX_RECORDS = 50000;
+TestRecord *resultBuffer = nullptr;
+
+// ...
+  // PSRAM allocation for result buffer
+  if (psramFound())
+  {
+    Serial.printf("Allocating PSRAM for %u records...\n", MAX_RECORDS);
+    resultBuffer = (TestRecord *)ps_malloc(MAX_RECORDS * sizeof(TestRecord));
+
+    if (resultBuffer != nullptr)
+    {
+      Serial.printf("OK! Allocated %u bytes.\n", MAX_RECORDS * sizeof(TestRecord));
+    }
+    else
+    {
+      Serial.println("FATAL ERROR: PSRAM allocation failed!");
+      while (1)
+        ;
+    }
+  }
+\end{minted}
+\end{listing}
+
+W systemach wbudowanych o ograniczonych zasobach, kompresja i wyrównanie pamięci na poziomie kompilatora odgrywa niebagatelną rolę.
+Standardową praktyką kompilatorów C/C++ jest wyrównywanie struktur w pamięci (\textit{ang. Data Structure Alignment}) do granic słowa maszynowego (z reguły 4 lub 8 bajtów), co przyspiesza instrukcje odczytu, lecz powoduje wstawienie niewidocznych, pustych bajtów buforujących (ang.
+\textit{Padding}).
+Struktura rekordu pomiarowego zdefiniowana w systemie \textit{ESPy-Nexus} składa się z 32-bitowego identyfikatora pakietu (\texttt{uint32\_t} - 4 bajty) oraz 64-bitowego stempla czasowego (\texttt{int64\_t} - 8 bajtów).
+Ze względu na narzucone wyrównanie do typu 64-bitowego, kompilator natywnie wstawiłby 4 bajty pustego \textit{paddingu} pomiędzy zmiennymi, rozszerzając fizyczny rozmiar struktury z matematycznych 12 do 16 bajtów.
+
+Narzut rzędu 4 bajtów, pomnożony przez założone 50 000 iteracji pomiarowych, skutkowałby nieuzasadnioną stratą niemal 200 KB cennego obszaru operacyjnego.
+Aby wyeliminować to zjawisko, definicję struktury obarczono specjalną dyrektywą środowiska GCC - \texttt{\_\_attribute\_\_((packed))} (Listing \ref{lst:packed_struct}).
+Atrybut ten wymusza na kompilatorze bezwzględną eliminację wyrównywania pamięci, co gwarantuje, że wpis waży dokładnie 12 bajtów (\texttt{sizeof(TestRecord)}).
+Umożliwiło to zoptymalizowanie alokacji w układzie PSRAM oraz znaczące zredukowanie ilości danych przesyłanych kanałem szeregowym (UART) na etapie zrzutu wyników do komputera sterującego.
+
+\begin{listing}[htbp]
+    \caption{Struktura \texttt{TestRecord} - eliminacja pustych bajtów wyrównania w strukturze pomiarowej (\texttt{TestRecord.h}) \cite{espy_nexus_esp32_firmware}.}
+    \label{lst:packed_struct}
+    \begin{minted}[fontsize=\footnotesize, linenos]{cpp}
+#pragma once
+#include <Arduino.h>
+
+// __attribute__((packed)) removes hardware padding (empty alignment bytes).
+struct __attribute__((packed)) TestRecord
+{
+    uint32_t packet_id;        // 4 bytes
+    int64_t esp_timestamp_us;  // 8 bytes
+};
+// Total size of the new struct: 12 bytes
+// Całkowity rozmiar struktury zredukowany z natywnych 16 do 12 bajtów.
+\end{minted}
+\end{listing}

@@ -102,7 +102,7 @@ W środowisku tym zastosowano następujące krytyczne dyrektywy:
 \label{sec:architektura_esp32}
 
 W projektowanym systemie jako jednostkę obliczeniową węzła pomiarowego wykorzystano płytkę rozwojową \textbf{ESP32-DevKitC-VIE} firmy Espressif (Rys. \ref{fig:esp32-devkitC-vie.png}).
-Oznaczenie tego wariantu sprzętowego należy rozpatrywać na kilku poziomach architektonicznych - ESP32 to nazwa podstawowej rodziny układów, natomiast DevKitC-VIE to nazwa samej płytki bazowej (ewaluacyjnej) posiadającej zarówno wbudowaną antenę ściekową na laminacie (\textit{ang. PCB antenna}), jak i możliwość współpracy z zewnętrzną anteną poprzez dedykowane złącze.
+Oznaczenie tego wariantu sprzętowego należy rozpatrywać na kilku poziomach architektonicznych - ESP32 to nazwa podstawowej rodziny układów, natomiast DevKitC-VIE to nazwa samej płytki bazowej (ewaluacyjnej) posiadającej zarówno wbudowaną antenę drukowaną na laminacie (\textit{ang. PCB antenna}), jak i możliwość współpracy z zewnętrzną anteną poprzez dedykowane złącze.
 Moduł lutowany jest powierzchniowo na PCB, gdzie dodatkowo wyprowadzone są piny GPIO układu umożliwiające korzystanie z przerwań sprzętowych i bogatych układów peryferyjnych, a także integruje obwody zasilania i konwerter USB-UART, znacząco ułatwiając programowanie układu (Rys. \ref{fig:esp32-devkitC-v4-pinout.png}).
 
 \begin{figure}[htbp]
@@ -219,7 +219,6 @@ struct __attribute__((packed)) TestRecord
     int64_t esp_timestamp_us;  // 8 bytes
 };
 // Total size of the new struct: 12 bytes
-// Całkowity rozmiar struktury zredukowany z natywnych 16 do 12 bajtów.
 \end{minted}
 \end{listing}
 
@@ -292,7 +291,7 @@ void loop()
 
 \subsection{Komunikacja międzyprocesowa (IPC) i synchronizacja}
 Oddzielenie wątków na różnych rdzeniach procesora stwarza ryzyko wystąpienia tzw. wyścigów (\textit{ang. Race Conditions}) przy próbie jednoczesnego dostępu do współdzielonych zasobów.
-W systemie zrezygnowano z używania niestabilnych, globalnych flag bitowych na rzecz natywnego mechanizmu komunikacji międzyprocesowej (IPC) środowiska FreeRTOS - kolejek (\texttt{QueueHandle\_t}).
+W systemie zrezygnowano z używania niestabilnych, globalnych flag bitowych na rzecz natywnego mechanizmu komunikacji międzyprocesowej (\textit{ang. IPC - Inter-Process Communication}) środowiska FreeRTOS - kolejek (\texttt{QueueHandle\_t}).
 
 Jak zaprezentowano na Listingu \ref{lst:freertos_queue}, po zdekodowaniu pełnej komendy, wątek \texttt{uartListenerTask} asynchronicznie wypycha dane do kolejki \texttt{controlQueue} z użyciem funkcji \texttt{xQueueSend()}.
 Z kolei wątek \texttt{controlPlaneTask} używa funkcji \texttt{xQueueReceive()} z parametrem \texttt{portMAX\_DELAY}.
@@ -334,7 +333,7 @@ void controlPlaneTask(void *pvParameters)
 \end{minted}
 \end{listing}
 
-\subsection{Wzorzec projektowy Strategia}
+\section{Wzorzec projektowy Strategia}
 \label{sec:wzorzec_strategia}
 
 Oprogramowanie węzła badawczego wymagało zaimplementowania obsługi wielu skrajnie różnych protokołów komunikacyjnych: strumieniowego protokołu TCP, bezpołączeniowego UDP, zorientowanych na ramki WebSockets oraz dwóch wariantów transmisji szeregowej (binarnej i tekstowej).
@@ -392,7 +391,7 @@ Gdy wątek zarządzający (\texttt{ControlTask}) odbierze od środowiska Python 
 Dzięki mechanizmowi \textbf{późnego wiązania} (\textit{ang. Late Binding / Dynamic Dispatch}) główny wątek pomiarowy (\texttt{DataTask}) przypięty do rdzenia aplikacyjnego pozostaje całkowicie niezależny od aktualnie wybranego protokołu (Listing \ref{lst:polimorfizm_proces}).
 
 Wykonuje on w pętli wyłącznie polimorficzne wywołanie dziedziczonej metody \texttt{process()}.
-Dzięki takiej abstrakcji wątek pomiarowy nie musi być powiązany z aktualnie działającym protokołem - nie musi wiedzieć, czy aktualnie czyta z gniazda WebSocket, czy z portu szeregowego.
+Dzięki takiej abstrakcji wątek pomiarowy nie jest powiązany z aktualnie działającym protokołem - nie musi wiedzieć, czy aktualnie czyta z gniazda WebSocket, czy z portu szeregowego.
 Takie podejście maksymalizuje czytelność kodu, eliminuje narzut instrukcji warunkowych w krytycznej pętli czasowej i pozwala na błyskawiczne dodanie obsługi nowych protokołów w przyszłości bez konieczności modyfikowania jądra systemu.
 
 \begin{listing}[htbp]
@@ -435,3 +434,108 @@ else if (protocol == "SERIAL_BIN")
 }
 \end{minted}
 \end{listing}
+
+\section{Implementacja interfejsów komunikacyjnych}
+\label{sec:interfejsy_komunikacyjne}
+
+Zaimplementowanie abstrakcyjnego interfejsu \texttt{IDataPlane} pozwoliło na zdefiniowanie pięciu niezależnych mechanizmów akwizycji danych: UDP, TCP, WebSockets oraz dwóch wariantów interfejsu szeregowego (tekstowego i binarnego).
+Każdy z tych protokołów charakteryzuje się odmiennym sposobem dostarczania ładunku (\textit{ang. payload}), co wymagało zastosowania dedykowanych strategii buforowania oraz dekodowania, przy jednoczesnym zachowaniu rygoru czasowego HIL.
+
+Protokoły oparte na datagramach (takie jak UDP, czy ramki WebSockets) dostarczają do mikrokontrolera kompletne, odseparowane od siebie pakiety informacji.
+Z tego względu wyodrębnienie pojedynczego pomiaru sprowadza się do odczytania bufora systemowego.
+Zupełnie inaczej sytuacja wygląda w przypadku protokołu TCP oraz interfejsu UART.
+Oba te standardy to tzw. protokoły strumieniowe (\textit{ang. Stream-oriented protocols}), które nie zachowują granic pomiędzy wysłanymi pakietami.
+Mikrokontroler otrzymuje ciągły potok bajtów i musi samodzielnie określić, w którym miejscu kończy się jedna ramka danych, a zaczyna kolejna.
+
+W przypadku protokołów tekstowych (np. \texttt{SerialStrDataPlane}), problem ten rozwiązuje się trywialnie poprzez wykorzystanie znaku nowej linii (\texttt{\char`\\n}) jako separator.
+Podejście to jest jednak niewydajne - konwersja liczb na tekst (ASCII) i ich powrotne parsowanie (np. funkcją \texttt{atoi}) niepotrzebnie obciąża procesor, a same pakiety zajmują wielokrotnie więcej miejsca.
+
+Aby zmaksymalizować przepustowość, węzeł \textit{ESPy-Nexus} wykorzystuje transmisję w 100\% binarną (\texttt{SerialBinDataPlane}, \texttt{TcpDataPlane}).
+Wynika z tego jednak krytyczny problem: jeśli jako separatora użyto by wartości zerowej (\texttt{0x00}), to mogłaby ona przypadkowo wystąpić jako część użytecznych danych binarnych (np. wewnątrz identyfikatora \texttt{packet\_id}), powodując przedwczesne, błędne \textit{przecięcie} ramki przez odbiornik.
+Problem ten rozwiązano wdrażając niezawodny algorytm \textbf{COBS} (\textit{Consistent Overhead Byte Stuffing}).
+Nadajnik (skrypt Python) koduje ładunek użyteczny w taki sposób, aby wyeliminować z niego wszystkie zera (\texttt{0x00}), zastępując je specjalnymi przesunięciami.
+Dzięki temu, bajt \texttt{0x00} może być bezpiecznie użyty jako bezwzględny znacznik końca ramki.
+
+Jak zaprezentowano na Listingu \ref{lst:cobs_decoding}, mikrokontroler odkłada przychodzące bajty do bufora tymczasowego \texttt{rx\_buffer}.
+W momencie wykrycia bajtu \texttt{0x00}, natychmiast rejestrowany jest stempel czasowy, a bufor poddawany jest sprzętowemu dekodowaniu (funkcja \texttt{cobs\_decode}) przywracającemu oryginalną, surową strukturę.
+
+\begin{listing}[htbp]
+    \caption{Precyzyjne stemplowanie w czasie i bezpieczne dekodowanie binarnych ramek COBS w protokołach strumieniowych (\texttt{TcpDataPlane.cpp}) \cite{espy_nexus_esp32_firmware}.}
+    \label{lst:cobs_decoding}
+    \begin{minted}[fontsize=\footnotesize, linenos]{cpp}
+// Pętla odczytu ze strumienia TCP lub UART
+while (client.available() > 0)
+    uint8_t c = client.read();
+
+    // Oznacznik końca ramki w algorytmie COBS (bajt 0x00)
+    if (c == 0x00)
+    {
+        if (rx_index == 0) continue;
+
+        // TIMESTAMP: Pobierany natychmiast po fizycznym zamknięciu ramki, 
+        // przed narzutem obliczeniowym dekodera!
+        int64_t esp_ts = esp_timer_get_time();
+
+        // Dekodowanie COBS na buforze tymczasowym do surowej postaci w pamięci
+        size_t decoded_len = cobs_decode(rx_buffer, rx_index, decoded_payload);
+
+        if (decoded_len >= sizeof(uint32_t) && recordCount < maxRecords)
+        {
+            uint32_t packet_id;
+            // Bezpośrednie i błyskawiczne kopiowanie bloków pamięci (O(1))
+            memcpy(&packet_id, decoded_payload, sizeof(uint32_t));
+
+            buffer[recordCount].packet_id = packet_id;
+            buffer[recordCount].esp_timestamp_us = esp_ts;
+            recordCount++;
+        }
+        rx_index = 0; // Sukces: Zresetowanie wskaźnika pod kolejną ramkę
+    }
+    // ...
+\end{minted}
+\end{listing}
+
+\subsection{Bezpieczeństwo buforów pamięci}
+\label{sec:bezpieczenstwo_buforow_pamieci}
+
+Kluczowym elementem oprogramowania działającego w systemach wbudowanych jest odpowiednie zabezpieczenie logiki przed nieprzewidywalnymi zachowaniami ze strony źródła danych.
+W protokole \texttt{SERIAL\_BIN} ładunek jest przesyłany jako ciąg bajtów zakończony separatorem \texttt{0x00}.
+Nieprawidłowe dane wejściowe lub desynchronizacja strumienia mogłyby uniemożliwić wykrycie końca ramki, co prowadzi do niekontrolowanego zwiększania indeksu zapisu i przekroczenia granic tablicy \texttt{rx\_buffer}, a w efekcie do uszkodzenia pamięci programu (\textit{ang. buffer overflow}).
+
+Aby zapobiec temu scenariuszowi, zaimplementowano mechanizm ograniczenia maksymalnego rozmiaru odbieranej ramki (Listing \ref{lst:buffer_overflow}).
+Jeżeli indeks odczytu osiągnie maksymalną pojemność statycznego bufora, wynoszącą w tym systemie 2048 bajtów, a separator końca ramki nadal nie zostanie wykryty, aktualnie odbierana ramka zostaje odrzucona, a wskaźnik zapisu jest resetowany (\texttt{rx\_index = 0}).
+Dzięki temu przekroczenie rozmiaru bufora nie prowadzi do nadpisania obszaru pamięci znajdującego się poza jego zakresem, a mikrokontroler może kontynuować obsługę kolejnych danych.
+
+Analogiczne zabezpieczenie zastosowano dla komunikacji wykorzystującej TCP.
+Pomimo że TCP zapewnia niezawodne i uporządkowane dostarczanie strumienia bajtów, nie definiuje granic wiadomości na poziomie aplikacji.
+Z tego względu implementacja odbiornika musi samodzielnie kontrolować rozmiar gromadzonych danych oraz poprawność ich struktury.
+W przypadku przekroczenia maksymalnego rozmiaru bufora bez uzyskania kompletnej ramki mechanizm odbiorczy odrzuca bieżące dane i resetuje indeks zapisu.
+Zapobiega to przekroczeniu granic bufora i pozwala na dalszą pracę układu bez konieczności jego restartowania.
+
+\begin{listing}[htbp]
+    \caption{Mechanizm obronny przed przepełnieniem bufora strumieniowego i desynchronizacją (\texttt{SerialBinDataPlane.cpp}) \cite{espy_nexus_esp32_firmware}.}
+    \label{lst:buffer_overflow}
+    \begin{minted}[fontsize=\footnotesize, linenos]{cpp}
+    else // Jeśli c != 0x00
+    {
+        // Bezpieczne buforowanie bajtów ładunku
+        if (rx_index < sizeof(rx_buffer) - 1)
+        {
+            rx_buffer[rx_index++] = c;
+        }
+        else
+        {
+            // OCHRONA KRYTYCZNA: Bufor przepełniony bez odnalezienia 0x00.
+            // Ramka skorumpowana na łączu radiowym / desynchronizacja.
+            // Zrzucenie śmieciowych danych z pamięci i reset.
+            rx_index = 0;
+        }
+    }
+\end{minted}
+\end{listing}
+
+\subsection{Zrzut danych ewaluacyjnych}
+Ze względu na asymetryczny model HIL, mikrokontroler po zakończeniu trwania procedury uderzeniowej (\textit{burst}) musi przekazać całość zebranych parametrów do jednostki obliczeniowej z systemem bazodanowym.
+Posiadając wyizolowany bufor wyników w pamięci PSRAM z kompresją \texttt{\_\_attribute\_\_((packed))}, operacja ta została zrealizowana jako natychmiastowy, masowy transfer pamięci (ang.
+\textit{Memory Dump}) za pomocą instrukcji: \texttt{Serial.write((uint8\_t *)resultBuffer, recordCount * sizeof(TestRecord))}.
+Gwarantuje to najszybszą możliwą ekstrakcję danych pomiarowych z powrotem do komputera sterującego, kończąc tym samym pojedynczy obieg testowy i zwalniając urządzenie pod następną iterację macierzy testów.

@@ -158,6 +158,9 @@ Architektura systemu zakłada zgromadzenie \texttt{MAX\_RECORDS = 50000} pomiar�
 Mimo że ESP32 oferuje wielokrotnie więcej natywnej pamięci SRAM (520 KB) niż układy takie jak ATmega328P, znaczna jej część jest rezerwowana przez system operacyjny FreeRTOS, stos sieciowy protokołu TCP/IP (lwIP) oraz sterowniki Wi-Fi.
 Próba zaalokowania tablicy pomiarowej w wewnętrznej pamięci SRAM skutkowałaby przepełnieniem sterty (\textit{ang. Heap Overflow}) i restartem układu z użyciem mechanizmu zabezpieczającego \textit{Watchdog}.
 
+\subsection{Zarządzanie pamięcią zewnętrzną PSRAM}
+\label{psram}
+
 Problem ten rozwiązano dzięki obecności wspominanej pamięci PSRAM.
 Jak zaprezentowano na Listingu \ref{lst:psram_malloc}, program przed uruchomieniem maszyny stanów weryfikuje sprzętową dostępność zewnętrznego modułu pamięci za pomocą metody \texttt{psramFound()}.
 Następnie, wykorzystując wywołanie \texttt{ps\_malloc()}, wymusza na wbudowanym alokatorze zlokalizowanie bufora wynikowego (\texttt{resultBuffer}) bezpośrednio w układzie PSRAM.
@@ -217,5 +220,116 @@ struct __attribute__((packed)) TestRecord
 };
 // Total size of the new struct: 12 bytes
 // Całkowity rozmiar struktury zredukowany z natywnych 16 do 12 bajtów.
+\end{minted}
+\end{listing}
+
+\section{Architektura wielowątkowa w systemie czasu rzeczywistego (FreeRTOS)}
+\label{sec:freertos_architektura}
+
+Klasyczny paradygmat programowania mikrokontrolerów, spopularyzowany przez środowisko Arduino, opiera się na wykonywaniu instrukcji w pojedynczej, nieskończonej pętli głównej (\texttt{loop()}) poprzedzonej przez funkcję inicjalizacyjną (\texttt{setup()}).
+W zaawansowanych systemach pomiarowych, takich jak węzeł HIL, podejście jednowątkowe jest niewystarczające.
+Konieczność jednoczesnego nasłuchiwania interfejsu sterującego (UART), zarządzania maszyną stanów oraz dekodowania gęstego strumienia danych sieciowych w jednym wątku doprowadziłoby do drastycznych opóźnień (zjawisko \textit{Jitteru} systemowego) i gubienia pakietów.
+
+Aby zagwarantować determinizm czasowy, oprogramowanie układu ESP32 zostało oparte na systemie operacyjnym czasu rzeczywistego \textbf{FreeRTOS}, natywnie wspieranym przez układ Espressif.
+Architektura ta pozwoliła na całkowite porzucenie klasycznej pętli \texttt{loop()}, w której wnętrzu wywoływana jest jedynie funkcja \texttt{vTaskDelete(NULL)}, co definitywnie usuwa domyślny wątek środowiska Arduino z pamięci operacyjnej i oddaje pełną kontrolę nad procesorem zaplanowanym, dedykowanym zadaniom (\textit{ang. Tasks}).
+
+\subsection{Podział obowiązków i przypisanie do rdzeni}
+Dwurdzeniowa architektura procesora Xtensa LX6 umożliwiła rygorystyczną separację procesów komunikacyjnych (\textit{Control Plane}) od krytycznych procesów pomiarowych (\textit{Data Plane}).
+Wykorzystując specyficzną dla układów ESP32 funkcję \texttt{xTaskCreatePinnedToCore()}, rozdzielono i przypięto zadania do konkretnych fizycznych rdzeni procesora (Listing \ref{lst:freertos_tasks}):
+
+\begin{itemize}
+    \item \textbf{Rdzeń 0 (systemowy - PRO\_CPU):}
+          tradycyjnie obciążony obsługą stosu radiowego (Wi-Fi/Bluetooth).
+          Przypisano do niego dwa zadania administracyjne:
+          \begin{itemize}
+              \item \texttt{UartListenerTask} (Priorytet 2): niskopoziomowy proces asynchronicznie nasłuchujący bufora interfejsu szeregowego.
+                    Odbiera on znaki od komputera sterującego (skryptów Python) i składa je w kompletne ramki tekstowe.
+              \item \texttt{ControlTask} (Priorytet 1): wątek maszyny stanów.
+                    Odpowiada za parsowanie komend (np. \texttt{START\_TCP}, \texttt{STOP}, \texttt{GET\_DATA}) oraz dynamiczną inicjalizację odpowiednich obiektów warstwy pomiarowej.
+                    Niższy priorytet gwarantuje, że parsowanie poleceń nie zablokuje procesu odczytu z portu UART.
+          \end{itemize}
+    \item \textbf{Rdzeń 1 (aplikacyjny - APP\_CPU):}
+          całkowicie odizolowany od warstwy sterującej.
+          Przypięto do niego wyłącznie jedno, krytyczne zadanie pomiarowe: \texttt{DataTask}.
+          Otrzymało ono absolutnie \textbf{maksymalny priorytet systemowy} (\texttt{configMAX\_PRIORITIES - 1}).
+          Oznacza to, że proces pobierania danych i stemplowania ich w czasie (\textit{timestamping}) nie może zostać wywłaszczony (\textit{ang. preempted}) przez żadne inne zadanie aplikacyjne.
+          Gwarantuje to najwyższą możliwą precyzję pomiaru opóźnień HIL, eliminując zakłócenia wynikające z przełączania kontekstu (\textit{ang. Context Switching}).
+\end{itemize}
+
+\begin{listing}[htbp]
+    \caption{Porzucenie pętli głównej i utworzenie rygorystycznych wątków systemowych przypiętych do rdzeni procesora (\texttt{main.cpp}) \cite{espy_nexus_esp32_firmware}.}
+    \label{lst:freertos_tasks}
+    \begin{minted}[fontsize=\footnotesize, linenos]{cpp}
+void setup()
+{
+  // [...] Inicjalizacja środowiska w funkcji setup()
+
+  // Utworzenie bezpiecznej kolejki kontrolnej
+  // Create control queue and tasks
+  controlQueue = xQueueCreate(10, sizeof(char[32]));
+
+  // Rdzeń 0: Zadania nasłuchujące i sterujące eksperymentem
+  xTaskCreatePinnedToCore(
+      uartListenerTask, "UartListener", 2048, NULL, 2, NULL, 0);
+
+  xTaskCreatePinnedToCore(
+      controlPlaneTask, "ControlTask", 4096, NULL, 1, NULL, 0);
+
+  // Rdzeń 1: Ekstremalnie priorytetowe zadanie akwizycji danych
+  xTaskCreatePinnedToCore(
+      dataPlaneTask, "DataTask", 8192, NULL, configMAX_PRIORITIES - 1, NULL, 1);
+
+  Serial.println("\n--- System Ready ---");
+}
+
+void loop()
+{
+  // Usunięcie domyślnego wątku Arduino - pełna kontrola przekazana do FreeRTOS
+  vTaskDelete(NULL);
+}
+\end{minted}
+\end{listing}
+
+\subsection{Komunikacja międzyprocesowa (IPC) i synchronizacja}
+Oddzielenie wątków na różnych rdzeniach procesora stwarza ryzyko wystąpienia tzw. wyścigów (\textit{ang. Race Conditions}) przy próbie jednoczesnego dostępu do współdzielonych zasobów.
+W systemie zrezygnowano z używania niestabilnych, globalnych flag bitowych na rzecz natywnego mechanizmu komunikacji międzyprocesowej (IPC) środowiska FreeRTOS - kolejek (\texttt{QueueHandle\_t}).
+
+Jak zaprezentowano na Listingu \ref{lst:freertos_queue}, po zdekodowaniu pełnej komendy, wątek \texttt{uartListenerTask} asynchronicznie wypycha dane do kolejki \texttt{controlQueue} z użyciem funkcji \texttt{xQueueSend()}.
+Z kolei wątek \texttt{controlPlaneTask} używa funkcji \texttt{xQueueReceive()} z parametrem \texttt{portMAX\_DELAY}.
+Powoduje to natychmiastowe zablokowanie zadania (zdjęcie go z procesora) do momentu fizycznego pojawienia się nowej komendy w kolejce.
+W efekcie, wątek kontrolny nie zużywa cykli obliczeniowych procesora na aktywne oczekiwanie (\textit{ang. busy waiting}), pozostając w uśpieniu i budząc się wyłącznie w chwili odebrania zlecenia z zewnątrz, co drastycznie optymalizuje wykorzystanie zasobów mikrokontrolera.
+
+\begin{listing}[htbp]
+    \caption{Mechanizm bezkolizyjnej komunikacji IPC pomiędzy rdzeniami za pomocą kolejek systemowych (\texttt{main.cpp}) \cite{espy_nexus_esp32_firmware}.}
+    \label{lst:freertos_queue}
+    \begin{minted}[fontsize=\footnotesize, linenos]{cpp}
+void uartListenerTask(void *pvParameters)
+{
+  char rx_buffer[32];
+  // [...] Parsowanie pojedynczych znaków z UART
+          rx_buffer[rx_index] = '\0';
+          // Wysłanie zdekodowanej komendy do kolejki IPC (nieblokująco)
+          xQueueSend(controlQueue, &rx_buffer, 0); 
+  // [...]
+}
+
+void controlPlaneTask(void *pvParameters)
+{
+  char cmd[32];
+  for (;;)
+  {
+    // Zadanie pozostaje zablokowane (uśpione) do momentu pojawienia się komendy
+    if (xQueueReceive(controlQueue, &cmd, portMAX_DELAY) == pdPASS)
+    {
+      String command(cmd);
+      command.trim();
+
+      if (command.startsWith("START_")) {
+          // Logika inicjalizacji warstwy pomiarowej
+      }
+      // [...]
+    }
+  }
+}
 \end{minted}
 \end{listing}

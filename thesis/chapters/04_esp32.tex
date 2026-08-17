@@ -101,9 +101,16 @@ W środowisku tym zastosowano następujące krytyczne dyrektywy:
 \section{Architektura mikrokontrolera ESP32}
 \label{sec:architektura_esp32}
 
-W projektowanym systemie jako jednostkę obliczeniową węzła pomiarowego wykorzystano płytkę rozwojową \textbf{ESP32-DevKitC-VIE} firmy Espressif.
+W projektowanym systemie jako jednostkę obliczeniową węzła pomiarowego wykorzystano płytkę rozwojową \textbf{ESP32-DevKitC-VIE} firmy Espressif (Rys. \ref{fig:esp32-devkitC-vie.png}).
 Oznaczenie tego wariantu sprzętowego należy rozpatrywać na kilku poziomach architektonicznych - ESP32 to nazwa podstawowej rodziny układów, natomiast DevKitC-VIE to nazwa samej płytki bazowej (ewaluacyjnej) posiadającej zarówno wbudowaną antenę ściekową na laminacie (\textit{ang. PCB antenna}), jak i możliwość współpracy z zewnętrzną anteną poprzez dedykowane złącze.
 Moduł lutowany jest powierzchniowo na PCB, gdzie dodatkowo wyprowadzone są piny GPIO układu umożliwiające korzystanie z przerwań sprzętowych i bogatych układów peryferyjnych, a także integruje obwody zasilania i konwerter USB-UART, znacząco ułatwiając programowanie układu (Rys. \ref{fig:esp32-devkitC-v4-pinout.png}).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/esp32/ESP32-DevKitC-VIE.png}
+    \caption{Mikrokontroler ESP32-DevKitC-VIE \cite{esp32_mouser}.}
+    \label{fig:esp32-devkitC-vie.png}
+\end{figure}
 
 \begin{figure}[htbp]
     \centering

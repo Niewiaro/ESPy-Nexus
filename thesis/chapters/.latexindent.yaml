@@ -16,4 +16,7 @@ noIndentBlock:
     rys:
         begin: '\bRys\.'
         end: ' '
+    tzw:
+        begin: '\btzw\.'
+        end: ' '
         

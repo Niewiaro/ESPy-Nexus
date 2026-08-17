@@ -1,0 +1,14 @@
+\chapter{Platforma sprzętowa i oprogramowanie wbudowane ESP32}
+\label{ch:platforma_sprzetowa}
+
+W rozbudowanych systemach badawczych typu \textit{Hardware-in-the-Loop} (HIL) fundamentem wiarygodności wyników jest urządzenie końcowe (węzeł pomiarowy).
+Musi ono charakteryzować się zdolnością do deterministycznego przetwarzania gęstych strumieni danych sieciowych oraz precyzyjnego stemplowania pakietów w czasie (\textit{ang. timestamping}) w reżimie mikrosekundowym.
+O ile logika orkiestracji eksperymentów została przeniesiona do warstwy skryptowej w języku Python, o tyle fizyczna akwizycja danych musi odbywać się na poziomie sprzętowym, pozbawionym narzutu systemów operacyjnych ogólnego przeznaczenia (GPOS).
+
+W niniejszym projekcie funkcję tę powierzono mikrokontrolerowi \textbf{ESP32} firmy Espressif Systems.
+Układ ten pełni w systemie podwójną rolę: z jednej strony utrzymuje wysokoczęstotliwościową pętlę komunikacji radiowej i przewodowej (\textit{Data Plane}), a z drugiej strony realizuje asynchroniczną wymianę komend z komputerem sterującym (\textit{Control Plane}).
+Aby sprostać tak rygorystycznym wymaganiom czasowym, oprogramowanie wbudowane (\textit{ang. firmware}) napisane w języku C++ wymagało zastosowania zaawansowanych technik programistycznych oraz wykorzystania systemu czasu rzeczywistego FreeRTOS, który umożliwia równoległe wykonywanie wielu zadań na fizycznych rdzeniach procesora.
+
+W niniejszym rozdziale zaprezentowano pełną architekturę stworzonego oprogramowania wbudowanego.
+Omówiono wybór i konfigurację narzędzi programistycznych, zarządzanie rozszerzoną pamięcią operacyjną (PSRAM) w celu akwizycji dziesiątek tysięcy rekordów testowych oraz podział zadań na fizyczne rdzenie procesora z wykorzystaniem systemu czasu rzeczywistego.
+Szczególną uwagę poświęcono również obiektowej architekturze oprogramowania opartej na wzorcu projektowym Strategia, która umożliwiła spójną, bezkolizyjną i wydajną obsługę wielu protokołów.

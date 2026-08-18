@@ -1,4 +1,63 @@
-\chapter{Koncepcja Hardware-in-the-Loop (HIL) i autorski system badaczy}
+\chapter{Koncepcja Hardware-in-the-Loop (HIL) i autorski system badawczy}
 
-Prace w toku.
-..
+Weryfikacja niezawodności i wydajności systemów wbudowanych operujących w czasie rzeczywistym wymaga zastosowania odpowiednio zaprojektowanych środowisk testowych.
+Tradycyjne metody oceny oprogramowania, opierające się wyłącznie na analizie statycznej kodu lub symulacjach programowych, nie pozwalają w pełni uwzględnić interakcji zachodzących pomiędzy rzeczywistym procesorem mikrokontrolera, jego fizycznymi peryferiami, stosem komunikacyjnym oraz asynchronicznymi zdarzeniami sieciowymi.
+Z tego względu do ewaluacji stworzonego oprogramowania sieciowego wybrano metodologię \textit{Hardware-in-the-Loop} (HIL).
+
+Realizacja stanowiska badawczego wymagała zaprojektowania w pełni zautomatyzowanego środowiska testowego, w którym komputer PC pełni funkcję jednostki nadrzędnej, natomiast mikrokontroler ESP32 stanowi urządzenie badane (\textit{ang. DUT - Device Under Test}).
+Oprogramowanie sterujące, zaimplementowane w języku Python, pełni funkcję orkiestratora eksperymentów, generatora ruchu sieciowego oraz menedżera urządzenia, a także realizuje proces akwizycji i analizy wyników.
+Pozwala ono na automatyczne wykonywanie zdefiniowanej macierzy testowej oraz przetwarzanie zebranych danych na użyteczne metryki jakości transmisji.
+
+W niniejszym rozdziale przedstawiono teoretyczne założenia techniki HIL w kontekście systemów wbudowanych, a następnie zaprezentowano architekturę autorskiego stanowiska badawczego.
+Omówiono również zastosowane mechanizmy automatyzacji eksperymentów, sposób generowania macierzy testowej oraz ograniczenia związane z generowaniem kontrolowanego ruchu sieciowego z wykorzystaniem komputera wyposażonego w system operacyjny ogólnego przeznaczenia (GPOS).
+
+\section{Micro-HIL jako metoda ewaluacji sprzętu}
+
+Technika \textit{Hardware-in-the-Loop} (HIL), określana jako testowanie \textit{sprzętu w pętli}, jest metodą testowania i walidacji systemów, w której rzeczywiste urządzenie badane współpracuje z komputerowo realizowanym modelem lub środowiskiem testowym.
+W klasycznym stanowisku HIL system nadrzędny odwzorowuje w czasie rzeczywistym zachowanie środowiska, z którym urządzenie współpracuje w warunkach docelowych, umożliwiając badanie rzeczywistego sprzętu i oprogramowania w kontrolowanych oraz powtarzalnych warunkach.
+
+Z perspektywy testowanego mikrokontrolera środowisko HIL dostarcza rzeczywistych bodźców wejściowych za pośrednictwem wykorzystywanych w systemie interfejsów komunikacyjnych.
+Dzięki temu testowany układ wykonuje rzeczywisty kod aplikacyjny na docelowym sprzęcie, z wykorzystaniem jego procesora, pamięci, fizycznych peryferiów oraz rzeczywistego stosu komunikacyjnego.
+
+Zastosowana w pracy architektura stanowi uproszczoną odmianę środowiska Hardware-in-the-Loop, którą można określić mianem Micro-HIL (MHIL).
+W klasycznym środowisku HIL rzeczywisty sterownik jest integrowany z systemem czasu rzeczywistego wykonującym model symulowanego środowiska (\textit{ang .plant}), a wymiana danych odbywa się za pośrednictwem rzeczywistych interfejsów wejścia-wyjścia \cite{mathworks_hil}.
+W projektowanym systemie nie jest konieczne odwzorowanie złożonego modelu fizycznego badanego środowiska.
+Komputer PC pełni przede wszystkim funkcję orkiestratora eksperymentu, generatora kontrolowanego ruchu sieciowego oraz systemu akwizycji i analizy wyników, natomiast rzeczywisty mikrokontroler ESP32 stanowi urządzenie badane (DUT).
+
+Takie ograniczenie zakresu symulowanego środowiska pozwala uprościć architekturę stanowiska, zachowując jednocześnie istotną cechę podejścia HIL, jaką jest wykonywanie testowanego oprogramowania na rzeczywistym sprzęcie.
+Koncepcja uproszczonych systemów tego typu znajduje odzwierciedlenie w literaturze dotyczącej Micro Hardware-in-the-Loop, w której przedstawiono możliwość redukcji klasycznego stanowiska HIL do mniejszego i bardziej ekonomicznego systemu testowego \cite{palladino2009micro}.
+
+\subsection{Zalety testowania zjawisk sieciowych w pętli sprzętowej}
+
+W kontekście badań wydajności transmisyjnej, obejmujących między innymi pomiar \textit{jitteru}, przepustowości oraz strat pakietów (\textit{PDR}), zastosowanie rzeczywistego urządzenia docelowego pozwala uwzględnić czynniki, których nie można bezpośrednio zaobserwować w przypadku czystej symulacji programowej.
+
+\begin{itemize}
+
+    \item \textbf{Walidacja rzeczywistego stosu TCP/IP:}
+          w przeciwieństwie do symulacji programowej, w której zachowanie urządzenia oraz jego stosu komunikacyjnego jest reprezentowane przez model, zastosowanie HIL umożliwia wykonanie rzeczywistego oprogramowania na docelowym mikrokontrolerze.
+          Dzięki temu pomiar obejmuje również ograniczenia wynikające z rzeczywistego procesora, pamięci, peryferiów oraz implementacji stosu komunikacyjnego.
+
+    \item \textbf{Identyfikacja ograniczeń sprzętowych:}
+          w testach obejmujących krótkotrwałe zwiększenie intensywności ruchu (\textit{ang. Burst tests}) badaniu podlega nie tylko zachowanie protokołów komunikacyjnych, lecz również wpływ ograniczeń sprzętowych badanego urządzenia.
+          Dotyczy to między innymi wydajności obsługi interfejsów komunikacyjnych, dostępu do pamięci oraz zasobów procesora.
+          W przypadku wykorzystania dodatkowych komponentów sprzętowych analiza może również obejmować ich wpływ na zdolność mikrokontrolera do obsługi zwiększonego obciążenia.
+
+    \item \textbf{Automatyzacja i powtarzalność:}
+          komputer sterujący kontroluje parametry macierzy testowej, w tym częstotliwość generowania ruchu, wykorzystywany protokół oraz rozmiar ładunku użytecznego.
+          Automatyzacja procesu pozwala ograniczyć wpływ operatora na przebieg eksperymentu oraz zwiększyć powtarzalność warunków badawczych.
+
+\end{itemize}
+
+\subsection{Wyzwania i ograniczenia systemów HIL}
+
+Istotnym wyzwaniem w przypadku zastosowanego stanowiska jest fakt, że komputer PC pełniący funkcję jednostki nadrzędnej pracuje pod kontrolą systemu operacyjnego ogólnego przeznaczenia (GPOS), takiego jak Windows lub Linux.
+W przeciwieństwie do systemów czasu rzeczywistego systemy te nie gwarantują deterministycznego czasu wykonania operacji.
+Na moment rozpoczęcia wykonywania poszczególnych operacji wpływają między innymi mechanizmy szeregowania zadań przez system operacyjny, obciążenie procesora oraz działanie innych procesów.
+
+Ograniczenie to ma szczególne znaczenie podczas generowania ruchu sieciowego z określonymi odstępami czasowymi.
+Wykorzystanie standardowych mechanizmów usypiania wątku, takich jak \texttt{time.sleep()} w języku Python, nie gwarantuje dokładnego momentu jego wznowienia, ponieważ rzeczywisty czas oczekiwania zależy od mechanizmów planowania zadań systemu operacyjnego.
+Z tego względu w krytycznych fragmentach generatora ruchu zastosowano aktywne oczekiwanie (\textit{ang. busy-wait}), którego zadaniem jest ograniczenie zmienności momentu rozpoczęcia kolejnych operacji.
+
+Zastosowanie aktywnego oczekiwania nie zapewnia jednak deterministycznego czasu wykonania charakterystycznego dla systemów czasu rzeczywistego.
+Ostateczna precyzja generowania ruchu zależy również od obciążenia systemu operacyjnego, działania stosu sieciowego, wykorzystywanego interfejsu komunikacyjnego oraz pozostałych elementów ścieżki transmisji.
+Z tego względu komputer PC należy traktować przede wszystkim jako jednostkę sterującą i generującą bodźce testowe, a nie jako deterministyczne źródło sygnałów czasu rzeczywistego.

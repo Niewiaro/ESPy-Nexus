@@ -2,16 +2,16 @@
 \label{ch:platforma_sprzetowa}
 
 W rozbudowanych systemach badawczych typu \textit{Hardware-in-the-Loop} (HIL) fundamentem wiarygodności wyników jest urządzenie końcowe (węzeł pomiarowy).
-Musi ono charakteryzować się zdolnością do deterministycznego przetwarzania gęstych strumieni danych sieciowych oraz precyzyjnego stemplowania pakietów w czasie (\textit{ang. timestamping}) w reżimie mikrosekundowym.
+Musi ono charakteryzować się zdolnością do sprawnego przetwarzania gęstych strumieni danych sieciowych oraz precyzyjnego stemplowania pakietów w czasie (\textit{ang. timestamping}) z rozdzielczością mikrosekundową.
 O ile logika orkiestracji eksperymentów została przeniesiona do warstwy skryptowej w języku Python, o tyle fizyczna akwizycja danych musi odbywać się na poziomie sprzętowym, pozbawionym narzutu systemów operacyjnych ogólnego przeznaczenia (GPOS).
 
 W niniejszym projekcie funkcję tę powierzono mikrokontrolerowi \textbf{ESP32} firmy Espressif Systems.
 Układ ten pełni w systemie podwójną rolę: z jednej strony utrzymuje wysokoczęstotliwościową pętlę komunikacji radiowej i przewodowej (\textit{Data Plane}), a z drugiej strony realizuje asynchroniczną wymianę komend z komputerem sterującym (\textit{Control Plane}).
-Aby sprostać tak rygorystycznym wymaganiom czasowym, oprogramowanie wbudowane (\textit{ang. firmware}) napisane w języku C++ wymagało zastosowania zaawansowanych technik programistycznych oraz wykorzystania systemu czasu rzeczywistego FreeRTOS, który umożliwia równoległe wykonywanie wielu zadań na fizycznych rdzeniach procesora.
+Aby sprostać wymaganiom czasowym, oprogramowanie wbudowane (\textit{ang. firmware}) napisane w języku C++ wykorzystuje system FreeRTOS oraz podział zadań pomiędzy fizyczne rdzenie procesora.
 
 W niniejszym rozdziale zaprezentowano pełną architekturę stworzonego oprogramowania wbudowanego.
 Omówiono wybór i konfigurację narzędzi programistycznych, zarządzanie rozszerzoną pamięcią operacyjną (PSRAM) w celu akwizycji dziesiątek tysięcy rekordów testowych oraz podział zadań na fizyczne rdzenie procesora z wykorzystaniem systemu czasu rzeczywistego.
-Szczególną uwagę poświęcono również obiektowej architekturze oprogramowania opartej na wzorcu projektowym Strategia, która umożliwiła spójną, bezkolizyjną i wydajną obsługę wielu protokołów.
+Szczególną uwagę poświęcono również obiektowej architekturze oprogramowania opartej na wzorcu projektowym Strategia, która umożliwiła spójną obsługę wielu protokołów.
 
 \section{Środowisko programistyczne - ekosystem PlatformIO}
 \label{sec:ekosystem_platformio}
@@ -22,10 +22,10 @@ Jego istotną zaletą jest niski próg wejścia oraz wysoki poziom automatyzacji
 
 Wraz ze wzrostem złożoności projektu większego znaczenia nabierają jednak możliwości organizacji procesu budowania, zarządzania zależnościami oraz jawnego definiowania konfiguracji sprzętowej i kompilatora.
 W przypadku Arduino IDE część konfiguracji jest wykonywana za pośrednictwem ustawień środowiska.
-Alternatywą jest otwartoźródłowy ekosystem PlatformIO \cite{platformio} - pozwala przenieść znaczną część tych informacji do konfiguracji projektu.
+Alternatywą jest otwartoźródłowy ekosystem PlatformIO \cite{platformio}, który pozwala przenieść znaczną część tych informacji do konfiguracji projektu.
 Zależności bibliotek mogą być deklarowane w pliku \texttt{platformio.ini}, podobnie jak informacje dotyczące platformy sprzętowej, używanego frameworka oraz parametrów procesu budowania.
 
-Z tego względu jako główne środowisko programistyczne w niniejszym projekcie wykorzystano PlatformIO, zintegrowane z edytorem Visual Studio Code (tak jak pozostałe elementy projektu tworząc pełne rozwiązanie dostępne z poziomu jednej aplikacji (\textit{ang. AIO - All-in-One})).
+Z tego względu jako główne środowisko programistyczne w niniejszym projekcie wykorzystano PlatformIO, zintegrowane z edytorem Visual Studio Code. Wraz z pozostałymi elementami projektu tworzy ono rozwiązanie dostępne z poziomu jednej aplikacji (\textit{ang. AIO - All-in-One}).
 Ekosystem ten obejmuje system budowania, zarządzanie pakietami i bibliotekami, monitor portu szeregowego, narzędzia debugowania oraz mechanizmy wspierające testowanie i analizę kodu.
 Wykorzystanie tego rozwiązania pozwoliło na zastosowanie konfiguracji projektu, w której informacje dotyczące środowiska budowania, używanej płytki, frameworka, flag kompilatora oraz zależności są przechowywane w pliku \texttt{platformio.ini} (Listing \ref{lst:platformio_ini}).
 Takie podejście zwiększa przejrzystość konfiguracji oraz ułatwia odtworzenie środowiska projektu na innej stacji roboczej.
@@ -82,53 +82,52 @@ build_flags =
 \end{minted}
 \end{listing}
 
-Parametryzacja procesu kompilacji (\texttt{build\_flags}) została precyzyjnie dostosowana do rygorystycznych wymogów czasowych eksperymentów Hardware-in-the-Loop.
+Parametryzacja procesu kompilacji (\texttt{build\_flags}) została dostosowana do wymogów eksperymentów Hardware-in-the-Loop.
 W środowisku tym zastosowano następujące krytyczne dyrektywy:
 
 \begin{itemize}
-    \item \texttt{-O3} - agresywna flaga kompilatora GCC (ang. \textit{Level 3 Optimization}).
+    \item \texttt{-O3} - flaga kompilatora GCC włączająca optymalizację poziomu 3 (\textit{ang. Level 3 Optimization}).
           W standardowych projektach stosuje się optymalizację pod kątem redukcji rozmiaru pliku wynikowego (\texttt{-Os}).
-          W projektowanym węźle pomiarowym priorytetem jest jednak uzyskanie absolutnie najwyższej szybkości wykonywania instrukcji, co bezpośrednio przekłada się na redukcję narzutu obliczeniowego przy precyzyjnym stemplowaniu czasowym (mikrosekundowym).
+          W projektowanym węźle pomiarowym priorytetem jest ograniczenie narzutu obliczeniowego, między innymi przy stemplowaniu czasowym.
     \item \texttt{-D CORE\_DEBUG\_LEVEL=0} - całkowite wyłączenie systemowych logów diagnostycznych rdzenia ESP32.
-          Wypisywanie informacji z użyciem wbudowanego interfejsu UART jest operacją wysoce blokującą.
-          Jakikolwiek nieoczekiwany zrzut informacji z bibliotek Wi-Fi w trakcie trwania szybkiej transmisji uszkodziłby rygorystyczne ramy czasowe pętli HIL, a w przypadku wariantu komunikacji bezpośredniej (\texttt{SERIAL\_BIN} lub \texttt{SERIAL\_STR}) doprowadziłby do krytycznej korupcji transportowanych strumieni binarnych.
-    \item \texttt{-D BOARD\_HAS\_PSRAM} oraz \texttt{-mfix-esp32-psram-cache-issue} - aktywacja i sprzętowe łatanie magistrali zewnętrznej pamięci RAM.
-          Dyrektywy te są fundamentalne dla funkcjonowania aplikacji, pozwalając na zaalokowanie buforów przekraczających fizyczne możliwości mikrokontrolera.
+          Ograniczenie logów systemowych zmniejsza narzut komunikacji przez UART.
+          Jest to szczególnie istotne w wariantach, w których ten sam interfejs służy do przesyłania danych binarnych.
+        \item \texttt{-D BOARD\_HAS\_PSRAM} oraz \texttt{-mfix-esp32-psram-cache-issue} - oznaczenie obecności PSRAM oraz flaga związana z poprawką kompatybilności pamięci zewnętrznej.
+            W połączeniu z wywołaniem \texttt{ps\_malloc()} umożliwia to alokację bufora wynikowego w PSRAM.
     \item \texttt{-D NETWORK\_MODE} - własna dyrektywa preprocesora C++, umożliwiająca kompilację warunkową kodu źródłowego (\#ifdef).
-          Zapewnia ona łatwą rekonfigurację topologii radiowej (tworzenie własnej sieci punktu dostępowego lub podłączenie do zewnętrznego routera) bez konieczności ingerencji w logikę plików \texttt{.cpp}.
+          Zapewnia ona łatwą rekonfigurację trybu sieciowego (utworzenie punktu dostępowego lub podłączenie do zewnętrznego routera) bez konieczności ingerencji w logikę plików \texttt{.cpp}.
 \end{itemize}
 
 \section{Architektura mikrokontrolera ESP32}
 \label{sec:architektura_esp32}
 
-W projektowanym systemie jako jednostkę obliczeniową węzła pomiarowego wykorzystano płytkę rozwojową \textbf{ESP32-DevKitC-VIE} firmy Espressif (Rys. \ref{fig:esp32-devkitC-vie.png}).
-Oznaczenie tego wariantu sprzętowego należy rozpatrywać na kilku poziomach architektonicznych - ESP32 to nazwa podstawowej rodziny układów, natomiast DevKitC-VIE to nazwa samej płytki bazowej (ewaluacyjnej) posiadającej zarówno wbudowaną antenę drukowaną na laminacie (\textit{ang. PCB antenna}), jak i możliwość współpracy z zewnętrzną anteną poprzez dedykowane złącze.
-Moduł lutowany jest powierzchniowo na PCB, gdzie dodatkowo wyprowadzone są piny GPIO układu umożliwiające korzystanie z przerwań sprzętowych i bogatych układów peryferyjnych, a także integruje obwody zasilania i konwerter USB-UART, znacząco ułatwiając programowanie układu (Rys. \ref{fig:esp32-devkitC-v4-pinout.png}).
+W projektowanym systemie jako jednostkę obliczeniową węzła pomiarowego wykorzystano płytkę z modułem ESP32-WROVER-IE, skonfigurowaną w PlatformIO jako \texttt{esp-wrover-kit} (Rys. \ref{fig:esp32-devkitC-vie}).
+ESP32 jest rodziną mikrokontrolerów, natomiast WROVER-IE oznacza wariant modułu zawierający układ ESP32 oraz pamięć PSRAM. Płytka rozwojowa wyprowadza piny GPIO i integruje układy zasilania oraz konwerter USB-UART, co ułatwia programowanie i testowanie układu (Rys. \ref{fig:esp32-devkitC-v4-pinout}).
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{images/esp32/ESP32-DevKitC-VIE.png}
     \caption{Mikrokontroler ESP32-DevKitC-VIE \cite{esp32_mouser}.}
-    \label{fig:esp32-devkitC-vie.png}
+    \label{fig:esp32-devkitC-vie}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/esp32/esp32-devkitC-v4-pinout.png}
     \caption{Płytka rozwojowa ESP32-DevKitC-V4 - pinout \cite{esp32_pinout}.}
-    \label{fig:esp32-devkitC-v4-pinout.png}
+    \label{fig:esp32-devkitC-v4-pinout}
 \end{figure}
 
-Mikrokontrolery z rodziny ESP32 oparte na architekturze Xtensa oferują gigantyczną przewagę obliczeniową i komunikacyjną nad klasycznymi układami stosowanymi w typowych projektach edukacyjnych, co czyni je optymalnym wyborem dla zaawansowanych systemów czasu rzeczywistego, a także filarem wielu rozwiązań SmartHome.
+Mikrokontrolery z rodziny ESP32, oparte na architekturze Xtensa, zapewniają większe zasoby obliczeniowe i komunikacyjne niż klasyczne układy stosowane w prostych projektach edukacyjnych, dzięki czemu mogą być wykorzystywane w zaawansowanych systemach wbudowanych i rozwiązaniach automatyki domowej.
 Szczegółowe zestawienie parametrów sprzętowych zastosowanego modułu, w odniesieniu do referencyjnej, popularnej platformy Arduino UNO R3, zaprezentowano w tabeli \ref{tab:esp32_vs_uno}.
 
 \begin{table}[htbp]
     \centering
-    \caption{Porównanie parametrów ESP32-DevKitC-VIE \cite{esp32} oraz referencyjnego Arduino UNO R3 \cite{arduino_uno_rev3}.}
+    \caption{Porównanie parametrów modułu ESP32-WROVER-IE \cite{esp32} oraz referencyjnego Arduino UNO R3 \cite{arduino_uno_rev3}.}
     \label{tab:esp32_vs_uno}
     \begin{tabular}{|l|c|c|}
         \hline
-        \textbf{Parametr}        & \textbf{ESP32-DevKitC-VIE}    & \textbf{Arduino UNO R3} \\
+        \textbf{Parametr}        & \textbf{ESP32-WROVER-IE}    & \textbf{Arduino UNO R3} \\
         \hline
         Układ bazowy             & ESP32-WROVER-IE               & ATmega328P              \\
         \hline
@@ -153,10 +152,10 @@ Szczegółowe zestawienie parametrów sprzętowych zastosowanego modułu, w odni
     \end{tabular}
 \end{table}
 
-Głównym wyzwaniem programistycznym w kontekście warstwy sprzętowej była konieczność lokalnego buforowania gigantycznej liczby zdarzeń sieciowych.
-Architektura systemu zakłada zgromadzenie \texttt{MAX\_RECORDS = 50000} pomiarów przed ich ostatecznym zrzutem do warstwy analitycznej.
+Głównym wyzwaniem programistycznym w kontekście warstwy sprzętowej była konieczność lokalnego buforowania dużej liczby zdarzeń sieciowych.
+Architektura systemu zakłada zgromadzenie maksymalnie \texttt{MAX\_RECORDS = 50000} pomiarów przed ich ostatecznym zrzutem do warstwy analitycznej.
 Mimo że ESP32 oferuje wielokrotnie więcej natywnej pamięci SRAM (520 KB) niż układy takie jak ATmega328P, znaczna jej część jest rezerwowana przez system operacyjny FreeRTOS, stos sieciowy protokołu TCP/IP (lwIP) oraz sterowniki Wi-Fi.
-Próba zaalokowania tablicy pomiarowej w wewnętrznej pamięci SRAM skutkowałaby przepełnieniem sterty (\textit{ang. Heap Overflow}) i restartem układu z użyciem mechanizmu zabezpieczającego \textit{Watchdog}.
+Próba zaalokowania takiej tablicy wyłącznie w wewnętrznej pamięci SRAM mogłaby zakończyć się niepowodzeniem alokacji, a w konsekwencji doprowadzić do błędnej pracy lub restartu układu.
 
 \subsection{Zarządzanie pamięcią zewnętrzną PSRAM}
 \label{psram}
@@ -194,15 +193,14 @@ TestRecord *resultBuffer = nullptr;
 \end{minted}
 \end{listing}
 
-W systemach wbudowanych o ograniczonych zasobach, kompresja i wyrównanie pamięci na poziomie kompilatora odgrywa niebagatelną rolę.
-Standardową praktyką kompilatorów C/C++ jest wyrównywanie struktur w pamięci (\textit{ang. Data Structure Alignment}) do granic słowa maszynowego (z reguły 4 lub 8 bajtów), co przyspiesza instrukcje odczytu, lecz powoduje wstawienie niewidocznych, pustych bajtów buforujących (ang.
-\textit{Padding}).
+W systemach wbudowanych o ograniczonych zasobach istotną rolę odgrywa sposób wyrównywania struktur w pamięci.
+Standardową praktyką kompilatorów C/C++ jest wyrównywanie struktur (\textit{ang. Data Structure Alignment}) do granic wymaganych przez typy składowych, co może powodować wstawienie niewidocznych bajtów (\textit{ang. Padding}).
 Struktura rekordu pomiarowego zdefiniowana w systemie \textit{ESPy-Nexus} składa się z 32-bitowego identyfikatora pakietu (\texttt{uint32\_t} - 4 bajty) oraz 64-bitowego stempla czasowego (\texttt{int64\_t} - 8 bajtów).
-Ze względu na narzucone wyrównanie do typu 64-bitowego, kompilator natywnie wstawiłby 4 bajty pustego \textit{paddingu} pomiędzy zmiennymi, rozszerzając fizyczny rozmiar struktury z matematycznych 12 do 16 bajtów.
+W typowej, niewyrównanej deklaracji tej struktury kompilator mógłby wstawić 4 bajty paddingu przed polem 64-bitowym, rozszerzając jej rozmiar z 12 do 16 bajtów.
 
-Narzut rzędu 4 bajtów, pomnożony przez założone 50 000 iteracji pomiarowych, skutkowałby nieuzasadnioną stratą niemal 200 KB cennego obszaru operacyjnego.
-Aby wyeliminować to zjawisko, definicję struktury obarczono specjalną dyrektywą środowiska GCC - \texttt{\_\_attribute\_\_((packed))} (Listing \ref{lst:packed_struct}).
-Atrybut ten wymusza na kompilatorze bezwzględną eliminację wyrównywania pamięci, co gwarantuje, że wpis waży dokładnie 12 bajtów (\texttt{sizeof(TestRecord)}).
+Narzut rzędu 4 bajtów, pomnożony przez 50\.000 rekordów, oznaczałby dodatkowe około 200\.000 bajtów pamięci.
+Aby go wyeliminować, definicję struktury opatrzono rozszerzeniem GCC \texttt{\_\_attribute\_\_((packed))} (Listing \ref{lst:packed_struct}).
+Atrybut ten wyłącza dodawanie paddingu, dzięki czemu rozmiar struktury wynosi dokładnie 12 bajtów (\texttt{sizeof(TestRecord)}).
 Umożliwiło to zoptymalizowanie alokacji w układzie PSRAM oraz znaczące zredukowanie ilości danych przesyłanych kanałem szeregowym (UART) na etapie zrzutu wyników do komputera sterującego.
 
 \begin{listing}[htbp]
@@ -212,13 +210,13 @@ Umożliwiło to zoptymalizowanie alokacji w układzie PSRAM oraz znaczące zredu
 #pragma once
 #include <Arduino.h>
 
-// __attribute__((packed)) removes hardware padding (empty alignment bytes).
+// __attribute__((packed)) removes compiler-inserted padding.
 struct __attribute__((packed)) TestRecord
 {
     uint32_t packet_id;        // 4 bytes
     int64_t esp_timestamp_us;  // 8 bytes
 };
-// Total size of the new struct: 12 bytes
+// Total size of the structure: 12 bytes
 \end{minted}
 \end{listing}
 
@@ -229,34 +227,33 @@ Klasyczny paradygmat programowania mikrokontrolerów, spopularyzowany przez śro
 W zaawansowanych systemach pomiarowych, takich jak węzeł HIL, podejście jednowątkowe jest niewystarczające.
 Konieczność jednoczesnego nasłuchiwania interfejsu sterującego (UART), zarządzania maszyną stanów oraz dekodowania gęstego strumienia danych sieciowych w jednym wątku doprowadziłoby do drastycznych opóźnień (zjawisko \textit{Jitteru} systemowego) i gubienia pakietów.
 
-Aby zagwarantować determinizm czasowy, oprogramowanie układu ESP32 zostało oparte na systemie operacyjnym czasu rzeczywistego \textbf{FreeRTOS}, natywnie wspieranym przez układ Espressif.
-Architektura ta pozwoliła na całkowite porzucenie klasycznej pętli \texttt{loop()}, w której wnętrzu wywoływana jest jedynie funkcja \texttt{vTaskDelete(NULL)}, co definitywnie usuwa domyślny wątek środowiska Arduino z pamięci operacyjnej i oddaje pełną kontrolę nad procesorem zaplanowanym, dedykowanym zadaniom (\textit{ang. Tasks}).
+Aby uporządkować wykonywanie zadań, oprogramowanie układu ESP32 wykorzystuje system czasu rzeczywistego \textbf{FreeRTOS}, zintegrowany z używanym frameworkiem Arduino.
+Architektura ta ogranicza rolę klasycznej pętli \texttt{loop()} do wywołania funkcji \texttt{vTaskDelete(NULL)}. Funkcja ta usuwa bieżące zadanie pętli po jego uruchomieniu, pozostawiając obsługę aplikacji zadaniom utworzonym jawnie przez program.
 
 \subsection{Podział obowiązków i przypisanie do rdzeni}
-Dwurdzeniowa architektura procesora Xtensa LX6 umożliwiła rygorystyczną separację procesów komunikacyjnych (\textit{Control Plane}) od krytycznych procesów pomiarowych (\textit{Data Plane}).
+Dwurdzeniowa architektura procesora Xtensa LX6 umożliwiła rozdzielenie zadań komunikacyjnych (\textit{Control Plane}) od zadania pomiarowego (\textit{Data Plane}).
 Wykorzystując specyficzną dla układów ESP32 funkcję \texttt{xTaskCreatePinnedToCore()}, rozdzielono i przypięto zadania do konkretnych fizycznych rdzeni procesora (Listing \ref{lst:freertos_tasks}):
 
 \begin{itemize}
-    \item \textbf{Rdzeń 0 (systemowy - PRO\_CPU):}
-          tradycyjnie obciążony obsługą stosu radiowego (Wi-Fi/Bluetooth).
+        \item \textbf{Rdzeń 0 (PRO\_CPU):}
+            na którym w tej konfiguracji działają również zadania systemowe związane z komunikacją sieciową.
           Przypisano do niego dwa zadania administracyjne:
           \begin{itemize}
               \item \texttt{UartListenerTask} (Priorytet 2): niskopoziomowy proces asynchronicznie nasłuchujący bufora interfejsu szeregowego.
                     Odbiera on znaki od komputera sterującego (skryptów Python) i składa je w kompletne ramki tekstowe.
               \item \texttt{ControlTask} (Priorytet 1): wątek maszyny stanów.
                     Odpowiada za parsowanie komend (np. \texttt{START\_TCP}, \texttt{STOP}, \texttt{GET\_DATA}) oraz dynamiczną inicjalizację odpowiednich obiektów warstwy pomiarowej.
-                    Niższy priorytet gwarantuje, że parsowanie poleceń nie zablokuje procesu odczytu z portu UART.
+                    Niższy priorytet pozwala zadaniu nasłuchującemu wcześniej obsłużyć dane z portu UART, ale nie stanowi gwarancji obsługi każdej komendy w każdych warunkach.
           \end{itemize}
-    \item \textbf{Rdzeń 1 (aplikacyjny - APP\_CPU):}
-          całkowicie odizolowany od warstwy sterującej.
-          Przypięto do niego wyłącznie jedno, krytyczne zadanie pomiarowe: \texttt{DataTask}.
-          Otrzymało ono absolutnie \textbf{maksymalny priorytet systemowy} (\texttt{configMAX\_PRIORITIES - 1}).
-          Oznacza to, że proces pobierania danych i stemplowania ich w czasie (\textit{timestamping}) nie może zostać wywłaszczony (\textit{ang. preempted}) przez żadne inne zadanie aplikacyjne.
-          Gwarantuje to najwyższą możliwą precyzję pomiaru opóźnień HIL, eliminując zakłócenia wynikające z przełączania kontekstu (\textit{ang. Context Switching}).
+        \item \textbf{Rdzeń 1 (APP\_CPU):}
+            na którym przypięto krytyczne zadanie pomiarowe: \texttt{DataTask}.
+            Otrzymało ono najwyższy dostępny priorytet zadania (\texttt{configMAX\_PRIORITIES - 1}).
+            Zmniejsza to prawdopodobieństwo wywłaszczenia przez zadania aplikacyjne o niższym priorytecie, ale nie wyklucza obsługi przerwań ani działania zadań systemowych o takim samym lub wyższym priorytecie.
+            Rozwiązanie to ogranicza wpływ przełączania kontekstu na pomiar, lecz nie zapewnia pełnego determinizmu czasowego.
 \end{itemize}
 
 \begin{listing}[htbp]
-    \caption{Porzucenie pętli głównej i utworzenie rygorystycznych wątków systemowych przypiętych do rdzeni procesora (\texttt{main.cpp}) \cite{espy_nexus_esp32_firmware}.}
+    \caption{Usunięcie zadania pętli głównej i utworzenie zadań przypiętych do rdzeni procesora (\texttt{main.cpp}) \cite{espy_nexus_esp32_firmware}.}
     \label{lst:freertos_tasks}
     \begin{minted}[fontsize=\footnotesize, linenos]{cpp}
 void setup()
@@ -290,13 +287,13 @@ void loop()
 \end{listing}
 
 \subsection{Komunikacja międzyprocesowa (IPC) i synchronizacja}
-Oddzielenie wątków na różnych rdzeniach procesora stwarza ryzyko wystąpienia tzw. wyścigów (\textit{ang. Race Conditions}) przy próbie jednoczesnego dostępu do współdzielonych zasobów.
-W systemie zrezygnowano z używania niestabilnych, globalnych flag bitowych na rzecz natywnego mechanizmu komunikacji międzyprocesowej (\textit{ang. IPC - Inter-Process Communication}) środowiska FreeRTOS - kolejek (\texttt{QueueHandle\_t}).
+Oddzielenie zadań na różnych rdzeniach procesora stwarza ryzyko wystąpienia wyścigów (\textit{ang. Race Conditions}) przy jednoczesnym dostępie do współdzielonych zasobów.
+W systemie do przekazywania komend wykorzystano natywny mechanizm komunikacji międzyzadaniowej (\textit{ang. Inter-Process Communication, IPC}) środowiska FreeRTOS - kolejkę reprezentowaną przez typ \texttt{QueueHandle\_t}.
 
-Jak zaprezentowano na Listingu \ref{lst:freertos_queue}, po zdekodowaniu pełnej komendy, wątek \texttt{uartListenerTask} asynchronicznie wypycha dane do kolejki \texttt{controlQueue} z użyciem funkcji \texttt{xQueueSend()}.
+Jak zaprezentowano na Listingu \ref{lst:freertos_queue}, po zdekodowaniu pełnej komendy zadanie \texttt{uartListenerTask} asynchronicznie kopiuje dane do kolejki \texttt{controlQueue} z użyciem funkcji \texttt{xQueueSend()}.
 Z kolei wątek \texttt{controlPlaneTask} używa funkcji \texttt{xQueueReceive()} z parametrem \texttt{portMAX\_DELAY}.
-Powoduje to natychmiastowe zablokowanie zadania (zdjęcie go z procesora) do momentu fizycznego pojawienia się nowej komendy w kolejce.
-W efekcie, wątek kontrolny nie zużywa cykli obliczeniowych procesora na aktywne oczekiwanie (\textit{ang. busy waiting}), pozostając w uśpieniu i budząc się wyłącznie w chwili odebrania zlecenia z zewnątrz, co drastycznie optymalizuje wykorzystanie zasobów mikrokontrolera.
+Powoduje to zablokowanie zadania do momentu pojawienia się nowej komendy w kolejce.
+W efekcie zadanie kontrolne nie zużywa cykli obliczeniowych procesora na aktywne oczekiwanie (\textit{ang. busy waiting}), lecz pozostaje uśpione i jest wznawiane po odebraniu komendy. Wysyłanie do kolejki jest jednak nieblokujące, a kod nie sprawdza wyniku \texttt{xQueueSend()}, dlatego przy pełnej kolejce komenda może zostać pominięta.
 
 \begin{listing}[htbp]
     \caption{Mechanizm bezkolizyjnej komunikacji IPC pomiędzy rdzeniami za pomocą kolejek systemowych (\texttt{main.cpp}) \cite{espy_nexus_esp32_firmware}.}
@@ -338,15 +335,15 @@ void controlPlaneTask(void *pvParameters)
 
 Oprogramowanie węzła badawczego wymagało zaimplementowania obsługi wielu skrajnie różnych protokołów komunikacyjnych: strumieniowego protokołu TCP, bezpołączeniowego UDP, zorientowanych na ramki WebSockets oraz dwóch wariantów transmisji szeregowej (binarnej i tekstowej).
 Klasyczne, strukturalne podejście do tego problemu skutkowałoby stworzeniem monolitycznej pętli głównej, przepełnionej instrukcjami warunkowymi (\texttt{switch}/\texttt{if-else}) sprawdzającymi aktualny tryb pracy.
-Taka architektura jest trudna w utrzymaniu, podatna na błędy i łamie fundamentalną zasadę otwarte-zamknięte (\textit{ang. Open/Closed Principle}) z SOLID \cite{solid}, ponieważ dodanie nowego protokołu wymagałoby modyfikacji krytycznego jądra systemu skutkując powstawaniem spaghetti code.
+Taka architektura jest trudna w utrzymaniu i podatna na błędy. Dodanie nowego protokołu wymagałoby modyfikacji głównego fragmentu logiki, co zwiększałoby ryzyko naruszenia zasady otwarte-zamknięte (\textit{ang. Open/Closed Principle}) z SOLID \cite{solid}.
 
-Aby zagwarantować najwyższą jakość architektury oprogramowania warstwę akwizycji danych zrealizowano w oparciu o obiektowy wzorzec projektowy \textbf{Strategia} (\textit{Strategy Pattern}).
+Aby uporządkować architekturę oprogramowania, warstwę akwizycji danych zrealizowano w oparciu o obiektowy wzorzec projektowy \textbf{Strategia} (\textit{Strategy Pattern}).
 Pozwala on na zdefiniowanie rodziny algorytmów (w tym przypadku protokołów), hermetyzację każdego z nich w oddzielnej klasie i umożliwienie ich swobodnego, dynamicznego podmieniania w trakcie działania programu.
 
 \subsection{Abstrakcyjny interfejs komunikacyjny}
 \label{sec:abstrakcyjny_interfejs_komunikacyjny}
 
-Fundamentem wdrożonego wzorca jest wirtualna klasa bazowa \texttt{IDataPlane} (Listing \ref{lst:idataplane}), pełniąca rolę kontraktu (interfejsu) pomiędzy maszyną stanów, a konkretnymi implementacjami protokołów.
+Fundamentem wdrożonego wzorca jest abstrakcyjna klasa bazowa \texttt{IDataPlane} (Listing \ref{lst:idataplane}), pełniąca rolę kontraktu (interfejsu) pomiędzy maszyną stanów a konkretnymi implementacjami protokołów.
 Zdefiniowano w niej trzy czysto wirtualne metody:
 \begin{itemize}
     \item \texttt{begin()} - inicjalizacja gniazd i buforów,
@@ -354,10 +351,10 @@ Zdefiniowano w niej trzy czysto wirtualne metody:
     \item \texttt{end()} - bezpieczne zamykanie połączeń.
 \end{itemize}
 
-Obecność wirtualnego destruktora (\texttt{virtual \textasciitilde IDataPlane()}) jest rygorystycznym wymogiem języka C++ zapobiegającym wyciekom pamięci w przypadku polimorficznego usuwania obiektów pochodnych.
+Wirtualny destruktor umożliwia bezpieczne usuwanie obiektów pochodnych przez wskaźnik bazowy. W tym projekcie obiekty Data Plane są jednak przechowywane statycznie, więc nie są usuwane polimorficznie.
 
 \begin{listing}[htbp]
-    \caption{Definicja abstrakcyjnego interfejsu warstwy danych wymuszającego rygorystyczny kontrakt (\texttt{IDataPlane.h}) \cite{espy_nexus_esp32_firmware}.}
+    \caption{Definicja abstrakcyjnego interfejsu warstwy danych określającego kontrakt (\texttt{IDataPlane.h}) \cite{espy_nexus_esp32_firmware}.}
     \label{lst:idataplane}
     \begin{minted}[fontsize=\footnotesize, linenos]{cpp}
 #pragma once
@@ -379,23 +376,23 @@ public:
 \end{minted}
 \end{listing}
 
-Każdy z obsługiwanych protokołów otrzymał własną, wyizolowaną klasę dziedziczącą (np. \texttt{TcpDataPlane}, \texttt{SerialBinDataPlane}), która przesłania (\textit{ang. override}) metody interfejsu, implementując specyficzną dla siebie logikę obsługi sprzętowej.
+Każdy z obsługiwanych protokołów otrzymał własną, wyodrębnioną klasę dziedziczącą (np. \texttt{TcpDataPlane}, \texttt{SerialBinDataPlane}), która przesłania (\textit{ang. override}) metody interfejsu i implementuje właściwą dla siebie logikę obsługi.
 
 \subsection{Polimorfizm protokołów w głównym wątku pomiarowym}
 \label{sec:polimorfizm_proces}
 
 Zastosowanie interfejsu pozwoliło na drastyczne uproszczenie wielowątkowej architektury w głównym pliku aplikacji (\texttt{main.cpp}).
-Zadeklarowano globalny wskaźnik polimorficzny \texttt{IDataPlane *currentDataPlane}, który w danej chwili może wskazywać na dowolny z zainstancjowanych protokołów.
+Zadeklarowano globalny wskaźnik polimorficzny \texttt{IDataPlane *currentDataPlane}, który w danej chwili może wskazywać na dowolny z utworzonych obiektów Data Plane.
 
-Gdy wątek zarządzający (\texttt{ControlTask}) odbierze od środowiska Python polecenie rozpoczęcia eksperymentu (np. \texttt{START\_TCP}), dokonuje on przypisania adresu konkretnego obiektu do wskaźnika bazowego (\texttt{currentDataPlane = \&tcpDataPlane}) oraz wywołuje jego metodę inicjalizacyjną.
-Dzięki mechanizmowi \textbf{późnego wiązania} (\textit{ang. Late Binding / Dynamic Dispatch}) główny wątek pomiarowy (\texttt{DataTask}) przypięty do rdzenia aplikacyjnego pozostaje całkowicie niezależny od aktualnie wybranego protokołu (Listing \ref{lst:polimorfizm_proces}).
+Gdy zadanie zarządzające (\texttt{ControlTask}) odbierze od środowiska Python polecenie rozpoczęcia eksperymentu (np. \texttt{START\_TCP}), przypisuje adres konkretnego obiektu do wskaźnika bazowego (\texttt{currentDataPlane = \&tcpDataPlane}) i wywołuje jego metodę inicjalizacyjną.
+Dzięki mechanizmowi \textbf{późnego wiązania} (\textit{ang. Late Binding / Dynamic Dispatch}) zadanie pomiarowe (\texttt{DataTask}) przypięte do rdzenia aplikacyjnego nie musi znać konkretnej klasy aktualnie wybranego protokołu (Listing \ref{lst:polimorfizm_proces}).
 
 Wykonuje on w pętli wyłącznie polimorficzne wywołanie dziedziczonej metody \texttt{process()}.
-Dzięki takiej abstrakcji wątek pomiarowy nie jest powiązany z aktualnie działającym protokołem - nie musi wiedzieć, czy aktualnie czyta z gniazda WebSocket, czy z portu szeregowego.
-Takie podejście maksymalizuje czytelność kodu, eliminuje narzut instrukcji warunkowych w krytycznej pętli czasowej i pozwala na błyskawiczne dodanie obsługi nowych protokołów w przyszłości bez konieczności modyfikowania jądra systemu.
+Dzięki takiej abstrakcji zadanie pomiarowe nie jest powiązane z aktualnie działającym protokołem - nie musi wiedzieć, czy aktualnie odczytuje dane z gniazda WebSocket, czy z portu szeregowego.
+Takie podejście zwiększa czytelność kodu i ogranicza liczbę instrukcji warunkowych w pętli zadania pomiarowego. Dodanie nowego protokołu nadal wymaga rozszerzenia kodu wyboru strategii, ale nie wymaga zmiany interfejsu ani logiki samego zadania pomiarowego.
 
 \begin{listing}[htbp]
-    \caption{Wykorzystanie polimorfizmu do bezwarunkowego wykonywania procesów sieciowych w głównym wątku pomiarowym (\texttt{main.cpp}) \cite{espy_nexus_esp32_firmware}.}
+    \caption{Wykorzystanie polimorfizmu do obsługi różnych protokołów w zadaniu pomiarowym (\texttt{main.cpp}) \cite{espy_nexus_esp32_firmware}.}
     \label{lst:polimorfizm_proces}
     \begin{minted}[fontsize=\footnotesize, linenos]{cpp}
 // Globalny wskaźnik do abstrakcyjnego interfejsu
@@ -441,30 +438,30 @@ else if (protocol == "SERIAL_BIN")
 Zaimplementowanie abstrakcyjnego interfejsu \texttt{IDataPlane} pozwoliło na zdefiniowanie pięciu niezależnych mechanizmów akwizycji danych: UDP, TCP, WebSockets oraz dwóch wariantów interfejsu szeregowego (tekstowego i binarnego).
 Każdy z tych protokołów charakteryzuje się odmiennym sposobem dostarczania ładunku (\textit{ang. payload}), co wymagało zastosowania dedykowanych strategii buforowania oraz dekodowania, przy jednoczesnym zachowaniu rygoru czasowego HIL.
 
-Protokoły oparte na datagramach (takie jak UDP, czy ramki WebSockets) dostarczają do mikrokontrolera kompletne, odseparowane od siebie pakiety informacji.
+Protokół UDP dostarcza do mikrokontrolera kompletne, odseparowane od siebie datagramy. WebSocket również przekazuje komunikaty z zachowaniem granic wiadomości na poziomie biblioteki.
 Z tego względu wyodrębnienie pojedynczego pomiaru sprowadza się do odczytania bufora systemowego.
 Zupełnie inaczej sytuacja wygląda w przypadku protokołu TCP oraz interfejsu UART.
 Oba te standardy to tzw. protokoły strumieniowe (\textit{ang. Stream-oriented protocols}), które nie zachowują granic pomiędzy wysłanymi pakietami.
 Mikrokontroler otrzymuje ciągły potok bajtów i musi samodzielnie określić, w którym miejscu kończy się jedna ramka danych, a zaczyna kolejna.
 
-W przypadku protokołów tekstowych (np. \texttt{SerialStrDataPlane}), problem ten rozwiązuje się trywialnie poprzez wykorzystanie znaku nowej linii (\texttt{\char`\\n}) jako separator.
-Podejście to jest jednak niewydajne - konwersja liczb na tekst (ASCII) i ich powrotne parsowanie (np. funkcją \texttt{atoi}) niepotrzebnie obciąża procesor, a same pakiety zajmują wielokrotnie więcej miejsca.
+W przypadku protokołu tekstowego (\texttt{SerialStrDataPlane}) problem ten rozwiązuje się przez wykorzystanie znaku nowej linii (\texttt{\char`\\n}) jako separatora. Podejście to jest jednak mniej wydajne: konwersja liczb na tekst ASCII i ich późniejsze parsowanie zwiększają narzut obliczeniowy, a same pakiety zajmują więcej miejsca.
 
-Aby zmaksymalizować przepustowość, węzeł \textit{ESPy-Nexus} wykorzystuje transmisję w 100\% binarną (\texttt{SerialBinDataPlane}, \texttt{TcpDataPlane}).
+Aby ograniczyć narzut kodowania tekstowego, węzeł \textit{ESPy-Nexus} wykorzystuje transmisję binarną w klasach \texttt{SerialBinDataPlane} i \texttt{TcpDataPlane}.
 Wynika z tego jednak krytyczny problem: jeśli jako separatora użyto by wartości zerowej (\texttt{0x00}), to mogłaby ona przypadkowo wystąpić jako część użytecznych danych binarnych (np. wewnątrz identyfikatora \texttt{packet\_id}), powodując przedwczesne, błędne \textit{przecięcie} ramki przez odbiornik.
 Problem ten rozwiązano wdrażając niezawodny algorytm \textbf{COBS} (\textit{Consistent Overhead Byte Stuffing}).
-Nadajnik (skrypt Python) koduje ładunek użyteczny w taki sposób, aby wyeliminować z niego wszystkie zera (\texttt{0x00}), zastępując je specjalnymi przesunięciami.
+Nadajnik (skrypt Python) koduje ładunek użyteczny w taki sposób, aby wyeliminować z niego bajty zerowe (\texttt{0x00}), zastępując je kodami COBS.
 Dzięki temu, bajt \texttt{0x00} może być bezpiecznie użyty jako bezwzględny znacznik końca ramki.
 
 Jak zaprezentowano na Listingu \ref{lst:cobs_decoding}, mikrokontroler odkłada przychodzące bajty do bufora tymczasowego \texttt{rx\_buffer}.
-W momencie wykrycia bajtu \texttt{0x00}, natychmiast rejestrowany jest stempel czasowy, a bufor poddawany jest sprzętowemu dekodowaniu (funkcja \texttt{cobs\_decode}) przywracającemu oryginalną, surową strukturę.
+W momencie wykrycia bajtu \texttt{0x00} rejestrowany jest stempel czasowy, a bufor jest dekodowany programowo przez funkcję \texttt{cobs\_decode}, która przywraca oryginalną strukturę ładunku.
 
 \begin{listing}[htbp]
-    \caption{Precyzyjne stemplowanie w czasie i bezpieczne dekodowanie binarnych ramek COBS w protokołach strumieniowych (\texttt{TcpDataPlane.cpp}) \cite{espy_nexus_esp32_firmware}.}
+  \caption{Stemplowanie w czasie i programowe dekodowanie binarnych ramek COBS w strumieniu TCP (\texttt{TcpDataPlane.cpp}) \cite{espy_nexus_esp32_firmware}.}
     \label{lst:cobs_decoding}
     \begin{minted}[fontsize=\footnotesize, linenos]{cpp}
-// Pętla odczytu ze strumienia TCP lub UART
+// Pętla odczytu ze strumienia TCP
 while (client.available() > 0)
+{
     uint8_t c = client.read();
 
     // Oznacznik końca ramki w algorytmie COBS (bajt 0x00)
@@ -472,17 +469,17 @@ while (client.available() > 0)
     {
         if (rx_index == 0) continue;
 
-        // TIMESTAMP: Pobierany natychmiast po fizycznym zamknięciu ramki, 
-        // przed narzutem obliczeniowym dekodera!
+        // Stempel jest pobierany po wykryciu końca ramki,
+        // przed dekodowaniem ładunku.
         int64_t esp_ts = esp_timer_get_time();
 
-        // Dekodowanie COBS na buforze tymczasowym do surowej postaci w pamięci
+        // Programowe dekodowanie COBS do bufora wynikowego
         size_t decoded_len = cobs_decode(rx_buffer, rx_index, decoded_payload);
 
         if (decoded_len >= sizeof(uint32_t) && recordCount < maxRecords)
         {
             uint32_t packet_id;
-            // Bezpośrednie i błyskawiczne kopiowanie bloków pamięci (O(1))
+            // Kopiowanie identyfikatora pakietu
             memcpy(&packet_id, decoded_payload, sizeof(uint32_t));
 
             buffer[recordCount].packet_id = packet_id;
@@ -492,18 +489,19 @@ while (client.available() > 0)
         rx_index = 0; // Sukces: Zresetowanie wskaźnika pod kolejną ramkę
     }
     // ...
+  }
 \end{minted}
 \end{listing}
 
 \subsection{Bezpieczeństwo buforów pamięci}
 \label{sec:bezpieczenstwo_buforow_pamieci}
 
-Kluczowym elementem oprogramowania działającego w systemach wbudowanych jest odpowiednie zabezpieczenie logiki przed nieprzewidywalnymi zachowaniami ze strony źródła danych.
+Kluczowym elementem oprogramowania działającego w systemach wbudowanych jest zabezpieczenie logiki przed nieprawidłowymi danymi wejściowymi.
 W protokole \texttt{SERIAL\_BIN} ładunek jest przesyłany jako ciąg bajtów zakończony separatorem \texttt{0x00}.
 Nieprawidłowe dane wejściowe lub desynchronizacja strumienia mogłyby uniemożliwić wykrycie końca ramki, co prowadzi do niekontrolowanego zwiększania indeksu zapisu i przekroczenia granic tablicy \texttt{rx\_buffer}, a w efekcie do uszkodzenia pamięci programu (\textit{ang. buffer overflow}).
 
 Aby zapobiec temu scenariuszowi, zaimplementowano mechanizm ograniczenia maksymalnego rozmiaru odbieranej ramki (Listing \ref{lst:buffer_overflow}).
-Jeżeli indeks odczytu osiągnie maksymalną pojemność statycznego bufora, wynoszącą w tym systemie 2048 bajtów, a separator końca ramki nadal nie zostanie wykryty, aktualnie odbierana ramka zostaje odrzucona, a wskaźnik zapisu jest resetowany (\texttt{rx\_index = 0}).
+Jeżeli bufor o pojemności 2048 bajtów zostanie zapełniony, a separator końca ramki nadal nie zostanie wykryty, aktualnie odbierana ramka zostaje odrzucona, a wskaźnik zapisu jest resetowany (\texttt{rx\_index = 0}).
 Dzięki temu przekroczenie rozmiaru bufora nie prowadzi do nadpisania obszaru pamięci znajdującego się poza jego zakresem, a mikrokontroler może kontynuować obsługę kolejnych danych.
 
 Analogiczne zabezpieczenie zastosowano dla komunikacji wykorzystującej TCP.
@@ -535,7 +533,6 @@ Zapobiega to przekroczeniu granic bufora i pozwala na dalszą pracę układu bez
 \end{listing}
 
 \subsection{Zrzut danych ewaluacyjnych}
-Ze względu na asymetryczny model HIL, mikrokontroler po zakończeniu trwania procedury uderzeniowej (\textit{burst}) musi przekazać całość zebranych parametrów do jednostki obliczeniowej z systemem bazodanowym.
-Posiadając wyizolowany bufor wyników w pamięci PSRAM z kompresją \texttt{\_\_attribute\_\_((packed))}, operacja ta została zrealizowana jako natychmiastowy, masowy transfer pamięci (ang.
-\textit{Memory Dump}) za pomocą instrukcji: \texttt{Serial.write((uint8\_t *)resultBuffer, recordCount * sizeof(TestRecord))}.
-Gwarantuje to najszybszą możliwą ekstrakcję danych pomiarowych z powrotem do komputera sterującego, kończąc tym samym pojedynczy obieg testowy i zwalniając urządzenie pod następną iterację macierzy testów.
+Ze względu na asymetryczny model HIL mikrokontroler po zakończeniu procedury testowej musi przekazać zebrane rekordy do komputera sterującego.
+Bufor wyników znajduje się w pamięci PSRAM, a struktura rekordu nie zawiera paddingu dzięki atrybutowi \texttt{\_\_attribute\_\_((packed))}. Zrzut zrealizowano jako masowy transfer bajtów (\textit{ang. Memory Dump}) za pomocą instrukcji \texttt{Serial.write((uint8\_t *)resultBuffer, recordCount * sizeof(TestRecord))}.
+Przed wysłaniem danych zadanie sterujące przekazuje liczbę rekordów w komunikacie potwierdzającym \texttt{ACK\_GET\_DATA}. Operacja ta kończy akwizycję danych dla danego testu; przejście do kolejnej iteracji macierzy należy do komputera sterującego.

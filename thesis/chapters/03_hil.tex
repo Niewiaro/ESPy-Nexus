@@ -240,7 +240,8 @@ def generate_smart_rates(
 \end{minted}
 \end{listing}
 
-\subsubsection{Iloczyn kartezjański i rygor niemutowalności (Immutable State)}
+\subsection{Iloczyn kartezjański}
+
 Po ustaleniu wektora częstotliwości, niezbędne jest wygenerowanie wszystkich dopuszczalnych wariantów badawczych.
 Zamiast implementowania głęboko zagnieżdżonych pętli (\texttt{for}-\texttt{loop}), które znacząco obniżają czytelność kodu, proces ten oparto na wbudowanej bibliotece standardowej \texttt{itertools}.
 Wywołanie metody \texttt{itertools.product()} generuje pełny iloczyn kartezjański podanych parametrów: zbioru protokołów transportowych, zbioru częstotliwości uderzeniowych oraz zbioru rozmiarów ładunku użytecznego (\textit{ang .Payload Size}).
@@ -285,3 +286,4 @@ def generate_test_matrix(
     return matrix
 \end{minted}
 \end{listing}
+

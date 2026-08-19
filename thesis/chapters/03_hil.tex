@@ -131,3 +131,61 @@ Rozdzielenie etapu \textit{składania} komponentów od ich faktycznego użycia t
 Pozwala to przełączyć system w profil deweloperski, wstrzykując obiekty typu \texttt{MockControlPlane} i \texttt{MockDataPlane}.
 Silnik \texttt{TestEngine} wykona wówczas pełny proces eksperymentalny (od symulowanej wysyłki, po zapis do bazy SQLite i uruchomienie procesu analitycznego ETL), bez informacji, że po drugiej stronie nie znajduje się fizyczny mikrokontroler ESP32.
 Znacząco usprawnia to rozwój oprogramowania (\textit{ang. Software Development Lifecycle}) bez konieczności angażowania środowiska sprzętowego do weryfikacji warstwy logicznej w Pythonie.
+
+\section{Płaszczyzna Sterowania (Control Plane) i zarządzanie zasobami (Multiton)}
+\label{sec:control_plane_multiton}
+
+Asymetryczna architektura testowa wymaga niezawodnego kanału komunikacyjnego służącego do koordynacji przebiegu eksperymentów.
+Funkcję tę w systemie \textit{ESPy-Nexus} pełni wyizolowana Płaszczyzna Sterowania (\textit{ang. Control Plane}), zaimplementowana natywnie w klasie \texttt{SerialControlPlane}.
+Jej głównym zadaniem jest asynchroniczna wymiana komend kontrolnych z układem ESP32 (takich jak \texttt{START\_TCP}, czy \texttt{STOP}) oraz weryfikacja poprawności synchronizacji poprzez wymuszanie odpowiedzi potwierdzających (tzw. \textit{handshake}, np. \texttt{ACK\_START\_TCP}).
+Dodatkowo, po zrealizowaniu procedury pomiarowej, płaszczyzna ta odpowiada za ekstrakcję zgromadzonych wyników sprzętowych (wywołanie metody \texttt{fetch\_data() i komendy \texttt{GET\_DATA}}).
+
+Rozdzielenie Płaszczyzny Sterowania od Płaszczyzny Danych (\textit{Data Plane}) stanowi modelowe podejście koncepcyjne, jednak w środowisku fizycznym rodzi poważny problem związany z wyłącznością dostępu do zasobów.
+
+Systemy operacyjne ogólnego przeznaczenia (GPOS), takie jak Windows czy Linux, natywnie blokują interfejsy szeregowe (porty COM / TTY) w trybie wyłączności dla pierwszego procesu, który dokona ich otwarcia.
+W przypadku realizacji scenariuszy testowych z wykorzystaniem protokołów sieciowych (np. \texttt{Protocol.TCP} lub \texttt{Protocol.UDP}) rozdział ten nie sprawia problemów - Control Plane operuje na porcie szeregowym USB, podczas gdy Data Plane wykorzystuje fizyczną kartę sieciową (karty Wi-Fi/Ethernet) komputera.
+Problem pojawia się jednak, gdy w matrycy testowej wywołany zostanie protokół bezpośredniej komunikacji przewodowej (np. \texttt{Protocol.SERIAL\_BIN}).
+Wówczas zarówno Płaszczyzna Sterowania, jak i Płaszczyzna Danych próbują zainicjować odrębne obiekty dostępu (\texttt{serial.Serial}) pod tym samym fizycznym adresem (np. \texttt{COM3}).
+Skutkuje to natychmiastowym odrzuceniem żądania przez system operacyjny i błędem braku dostępu, prowadząc do zatrzymania procesu badawczego.
+
+Przekazywanie pojedynczej referencji portu pomiędzy skrajnymi elementami architektury naruszyłoby rygorystyczny podział na wyizolowane klasy bazowe i zasadę otwarte-zamknięte.
+Problem ten rozwiązano architektonicznie, wdrażając moduł \texttt{SerialConnectionManager}, stanowiący implementację kreacyjnego wzorca projektowego \textbf{Multiton} (rozszerzenie klasycznego wzorca Singleton, często nazywane wzorcem Rejestru).
+
+Jak zaprezentowano na Listingu \ref{lst:multiton_manager}, język Python umożliwia nadpisanie wewnętrznej metody magicznej \texttt{\_\_new\_\_()} odpowiedzialnej za fizyczną alokację nowej instancji klasy w pamięci komputera.
+Menadżer połączeń weryfikuje żądany klucz sprzętowy np. \texttt{COM3}.
+Jeśli w wewnętrznym słowniku klasy (\texttt{\_instances}) instancja do obsługi tego portu jeszcze nie istnieje, zostaje utworzona.
+Jeśli jednak port został już wcześniej zarejestrowany przez Płaszczyznę Sterowania, metoda \texttt{\_\_new\_\_} zwraca dokładnie ten sam, współdzielony adres w pamięci, gwarantując, że cały system operuje fizycznie na tylko jednym gnieździe \texttt{serial.Serial}.
+
+\begin{listing}[htbp]
+    \caption{Wykorzystanie wzorca Multiton do zapobiegania kolizjom zasobów sprzętowych przy współdzieleniu fizycznego portu COM (\texttt{connection\_manager.py}) \cite{espy_nexus_python_host}}
+    \label{lst:multiton_manager}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+class SerialConnectionManager:
+    """
+    Wzorzec Multiton (Registry). Gwarantuje istnienie wyłącznie 
+    jednej instancji menadżera dla danego fizycznego portu COM.
+    """
+
+    _instances: dict[str, "SerialConnectionManager"] = {}
+
+    def __new__(cls, port: str, baudrate: int = 921600, timeout_s: float = 2.0):
+        port_key = port.upper()
+
+        if port_key not in cls._instances:
+            # Tworzenie całkowicie nowej instancji dla pierwszego wywołania
+            instance = super().__new__(cls)
+            cls._instances[port_key] = instance
+            instance._init_connection(port_key, baudrate, timeout_s)
+        else:
+            # Obiekt istnieje. Jeśli Data Plane żąda innych parametrów 
+            # (np. innej prędkości Baudrate), aktualizujemy fizyczny port.
+            instance = cls._instances[port_key]
+            instance._update_connection(baudrate, timeout_s)
+
+        return cls._instances[port_key]
+\end{minted}
+\end{listing}
+
+Aby zagwarantować bezpieczeństwo wieloaspektowego wykorzystania gniazda, wewnątrz menadżera zaimplementowano również mechanizm zliczania referencji (zmienna \texttt{\_ref\_count}).
+Funkcja \texttt{connect()} inkrementuje licznik, a \texttt{disconnect()} go dekrementuje.
+Fizyczne przerwanie transmisji (funkcja \texttt{close()} systemowej biblioteki) następuje dopiero w momencie, w którym licznik klientów wyniesie zero, co oznacza, że ani moduł \textit{Control}, ani moduł \textit{Data} nie zgłasza już zapotrzebowania na dany zasób komunikacyjny.

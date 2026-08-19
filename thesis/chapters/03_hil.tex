@@ -1,4 +1,5 @@
 \chapter{Koncepcja Hardware-in-the-Loop (HIL) i autorski system badawczy}
+\label{chap:hil}
 
 Weryfikacja niezawodności i wydajności systemów wbudowanych operujących w czasie rzeczywistym wymaga zastosowania odpowiednio zaprojektowanych środowisk testowych.
 Tradycyjne metody oceny oprogramowania, opierające się wyłącznie na analizie statycznej kodu lub symulacjach programowych, nie pozwalają w pełni uwzględnić interakcji zachodzących pomiędzy rzeczywistym procesorem mikrokontrolera, jego fizycznymi peryferiami, stosem komunikacyjnym oraz asynchronicznymi zdarzeniami sieciowymi.
@@ -252,7 +253,7 @@ Takie rozwiązanie gwarantuje, że zaplanowane parametry testu nie ulegną przyp
 Tak skomponowana lista (matryca) trafia następnie do jądra wykonawczego \texttt{TestEngine}, który sekwencyjnie uruchamia i nadzoruje każdy z zaplanowanych eksperymentów.
 
 \begin{listing}[htbp]
-    \caption{Wykorzystanie iloczynu kartezjańskiego do generowania bezobsługowej kampanii testowej złożonej z niemutowalnych konfiguracji (\texttt{matrix.py})}
+    \caption{Wykorzystanie iloczynu kartezjańskiego do generowania bezobsługowej kampanii testowej złożonej z niemutowalnych konfiguracji (\texttt{matrix.py}) \cite{espy_nexus_python_host}.}
     \label{lst:matrix_cartesian}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 def generate_test_matrix(
@@ -374,3 +375,82 @@ records_df.to_sql(
 conn.commit()
 \end{minted}
 \end{listing}
+
+\section{Ekstrakcja wiedzy i transformacja danych ETL}
+\label{sec:batchanalyzer_etl}
+
+Proces zautomatyzowanej akwizycji danych HIL w wielogodzinnych kampaniach pomiarowych (omówiony w podrozdziale \ref{sec:akwizycja_danych_exfiltration}) produkuje gigantyczne wolumeny surowych logów.
+Pojedyncza relacyjna baza danych zawierająca miliony rekordów z czasami nadania (TX) i odbioru (RX) każdego pakiety staje się zbyt duża, aby można ją było bezpośrednio załadować i swobodnie analizować w pamięci przeglądarki internetowej.
+Docelowa aplikacja analityczna (\textit{ESPy-Nexus Dashboard} omówiona w rozdziale \ref{chap:nuxt}) potrzebuje zagregowanych, gotowych do wyświetlenia wskaźników jakości sieci (QoS), a nie surowych stempli czasowych z mikrokontrolera.
+
+Aby połączyć środowisko akwizycji sprzętowej z nowoczesnym interfejsem webowym, architekturę systemu wyposażono w dedykowany moduł przetwarzania wsadowego - \texttt{BatchAnalyzer}.
+Został on zaprojektowany ściśle według paradygmatu przetwarzania danych \textbf{ETL} (\textit{ang. (Extract, Transform, Load)}).
+
+\subsection{Faza Wydobycia (Extract) i Transformacji (Transform)}
+Jak zaprezentowano na Listingu \ref{lst:etl_pipeline}, po zakończeniu właściwych eksperymentów sprzętowych, system inicjuje pierwszą fazę rurociągu danych (ETL).
+Metoda \texttt{\_extract\_successful\_tests} łączy się z bazą danych DAQ (\textit{ang. Data Acquisition}) i filtruje wyłącznie te testy, które zakończyły się sukcesem sprzętowym (status \texttt{"OK"}), odrzucając eksperymenty przerwane przez błędy środowiskowe.
+
+Następnie, w fazie transformacji (\textit{Transform}), zoptymalizowane struktury z biblioteki Pandas przekazywane są do modułu \texttt{DownlinkAnalyzer}.
+Moduł ten (którego szczegółowa implementacja matematyczna oraz wykorzystane wzory QoS zostaną omówione w rozdziale \ref{chap:qos}) weryfikuje m.in. stany opóźnień między pakietami, wariancje Jittera, spadki niezawodności PDR oraz zjawiska utraty seryjnej (\textit{Burst Loss}).
+Wynikiem jego działania są głęboko zagnieżdżone, obiektowe struktury metryk, które analizator spłaszcza do postaci jednowymiarowego słownika gotowego do konwersji tabelarycznej.
+
+\begin{listing}[htbp]
+    \caption{Struktura autorskiego rurociągu analitycznego opartego na paradygmacie ETL (\texttt{batch\_analyzer.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:etl_pipeline}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+def run_pipeline(self) -> None:
+    """Wykonywanie pełnego potoku analitycznego ETL."""
+    
+    # EXTRACT: pobranie pomyślnie zakończonych testów z bazy DAQ
+    tests_df = self._extract_successful_tests()
+    if tests_df is None or tests_df.empty:
+        self.logger.warning("Brak testów do przetworzenia.")
+        return
+
+    # TRANSFORM: obliczenie wskaźników QoS dla każdego eksperymentu
+    all_results = self._process_tests(tests_df)
+
+    # LOAD: eksport i utrwalenie zagregowanych wyników analitycznych
+    self._load_results(all_results)
+\end{minted}
+\end{listing}
+
+\subsection{Faza Ładowania i Single Source of Truth (Load)}
+Ostatnim etapem potoku ETL jest eksport spłaszczonych danych do użytecznych formatów.
+Aby zapewnić najwyższą kompatybilność, przetworzone miliony logów sprzętowych zostają skondensowane do zaledwie kilku tysięcy zagregowanych rekordów (odpowiadających konkretnym konfiguracjom matrycy).
+
+Mechanizm \texttt{\_load\_results()} obsługuje dystrybucję wiedzy na trzech płaszczyznach:
+\begin{enumerate}
+    \item \textbf{SQLite (\texttt{hil\_analytics.sqlite}):}
+          struktura relacyjna ułatwiająca późniejsze kwerendowanie i łączenie wyników w badaniach historycznych, z pominięciem obciążającego fazy ponownego obliczania wskaźników.
+    \item \textbf{Plik CSV (\texttt{hil\_analytics.csv}):}
+          powszechnie akceptowany format pliku płaskiego, niezbędny w przypadku poddawania wyników ewaluacji w zewnętrznych arkuszach kalkulacyjnych lub systemach wizualizacji (np. Microsoft Excel, Tableau).
+    \item \textbf{Statyczny plik JSON (\texttt{hil\_analytics.json}):}
+          najważniejszy element integrujący warstwę kontrolną ze środowiskiem webowym (Frontend).
+          Jak zilustrowano na Listingu \ref{lst:etl_json_load}, przed wyeksportowaniem macierzy do formatu JSON, analizator celowo usuwa (metoda \texttt{drop}) wyjątkowo skomplikowane i obszerne ciągi tekstowe reprezentujące tablice zgubionych pakietów (\texttt{ooo\_events}, \texttt{burst\_events}).
+\end{enumerate}
+
+\begin{listing}[htbp]
+    \caption{Optymalizacja wagi pliku wynikowego dla aplikacji SPA Nuxt (\texttt{batch\_analyzer.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:etl_json_load}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+# Przygotowanie lekkiej paczki JSON na potrzeby interfejsu Webowego
+if self.json_csv_path is not None:
+    try:
+        df_final_json = df_final.copy()
+        
+        # Redukcja wagi poprzez odrzucenie gigantycznych list tekstowych
+        df_final_json.drop(
+            columns=["ooo_events", "burst_events"], inplace=True
+        ) 
+        
+        # Generowanie zoptymalizowanego dokumentu docelowego
+        df_final_json.to_json(self.json_csv_path, orient="records", indent=2)
+        
+    except Exception as e:
+        self.logger.error(f"Failed to save results to JSON: {e}")
+\end{minted}
+\end{listing}
+
+Operacja redukcji kolumn jest świadomą decyzją inżynierską, która gwarantuje zachowanie rozmiaru pliku \texttt{JSON} na poziomie umożliwiającym sprawną dystrybucję przez serwery brzegowe (\textit{ang. Edge Computing / CDN}).
+Wygenerowany plik staje się w ten sposób jedynym, niepodważalnym źródłem wiedzy (\textit{ang. Single Source of Truth}) dla aplikacji \textit{Nuxt.js}, domykając pełen cykl zautomatyzowanego potoku przetwarzania - od zjawisk radiowych na warstwie fizycznej ESP32, po interaktywne wykresy na ekranie badacza.

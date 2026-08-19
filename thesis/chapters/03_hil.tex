@@ -189,3 +189,99 @@ class SerialConnectionManager:
 Aby zagwarantować bezpieczeństwo wieloaspektowego wykorzystania gniazda, wewnątrz menadżera zaimplementowano również mechanizm zliczania referencji (zmienna \texttt{\_ref\_count}).
 Funkcja \texttt{connect()} inkrementuje licznik, a \texttt{disconnect()} go dekrementuje.
 Fizyczne przerwanie transmisji (funkcja \texttt{close()} systemowej biblioteki) następuje dopiero w momencie, w którym licznik klientów wyniesie zero, co oznacza, że ani moduł \textit{Control}, ani moduł \textit{Data} nie zgłasza już zapotrzebowania na dany zasób komunikacyjny.
+
+\section{Generator matrycy testowej i parametryzacja ruchu sieciowego}
+\label{sec:matryca_testowa}
+
+Rzetelna ewaluacja wydajności układu ESP32 i jego stosu sieciowego w warunkach stresowych (\textit{ang. Stress Testing}) wymaga przeprowadzenia nie kilku, lecz tysięcy niezależnych pomiarów dla każdej z możliwych konfiguracji.
+Zależność opóźnień (Jitteru) oraz strat pakietów (PDR) ma charakter wysoce nieliniowy i zmienia się dynamicznie w funkcji wybranego protokołu transportowego, rozmiaru przesyłanego ładunku oraz częstotliwości uderzeniowej.
+Ręczne rekonfigurowanie i uruchamianie każdego testu z osobna byłoby procesem żmudnym i podatnym na błędy ludzkie.
+W celu pełnej automatyzacji środowiska HIL opracowano autorski generator matrycy testowej (\texttt{matrix.py}), zdolny do bezobsługowego zaplanowania wielogodzinnych kampanii pomiarowych.
+
+\subsection{Algorytmy przemiatania częstotliwości}
+
+Aby odnaleźć limity wydajnościowe sprzętu (\textit{ang. Hardware Bottlenecks}), system musi stopniowo zwiększać obciążenie sieciowe, od wartości bezpiecznych (np. 1 Hz) aż po fizyczne granice układu (np. 10 000 Hz).
+Skrypt w języku Python pozwala na wybranie kilku matematycznych strategii profilowania częstotliwości uderzeniowej:
+\begin{itemize}
+    \item \textbf{Przyrost liniowy (\texttt{LINEAR}):}
+          zwiększanie częstotliwości o stałą wartość (np. o 100 Hz na każdy krok).
+          Użyteczne do precyzyjnego badania konkretnych przedziałów, jednak wysoce nieefektywne czasowo przy badaniu szerokiego spektrum operacyjnego.
+    \item \textbf{Przyrost wykładniczy (\texttt{EXPONENTIAL}):}
+          skokowe zwiększanie częstotliwości poprzez mnożenie przez ustaloną podstawę (np. potęgi dwójki: 2, 4, 8, 16, ...).
+          Pozwala błyskawicznie wykryć moment załamania wydajności mikrokontrolera.
+    \item \textbf{Przyrost logarytmiczny (\texttt{LOGARITHMIC}):}
+          zwiększanie częstotliwości w sposób logarytmiczny (np. 1, 2, 4, 8, 16, 32, 64, 128, ...).
+          Strategia ta pozwala na szybkie przemiatanie szerokiego spektrum częstotliwości przy jednoczesnym zachowaniu gęstej siatki pomiarowej w niskich częstotliwościach.
+    \item \textbf{Strategia mieszana (\texttt{SMART}):}
+          autorski algorytm łączący zalety powyższych generatorów.
+          Jak zaprezentowano na Listingu \ref{lst:matrix_smart}, funkcja napełnia zbiór matematyczny (\texttt{set}) wartościami z rozkładu wykładniczego, logarytmicznego oraz liniowego.
+          Właściwość zbioru w języku Python automatycznie eliminuje powielone wartości (duplikaty).
+          W efekcie tworzona jest gęsta siatka pomiarowa w niskich częstotliwościach (gdzie układy wykazują dużą czułość na małe zmiany) i szeroka siatka badawcza przy wysokich obciążeniach krańcowych.
+\end{itemize}
+
+\begin{listing}[htbp]
+    \caption{Hybrydowy algorytm przemiatania częstotliwości automatycznie eliminujący duplikaty pomiarowe z wykorzystaniem zbiorów (\texttt{matrix.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:matrix_smart}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+def generate_smart_rates(
+    exp_base: int,
+    linear_start: int,
+    linear_step: int,
+    max_val: int,
+) -> list[int]:
+    rates = set()
+    # Fuzja wielu strategii matematycznych
+    rates.update(generate_log_rates(max_val))
+    rates.update(generate_exponential_rates(exp_base, max_val))
+    rates.update(generate_linear_rates(linear_start, max_val, linear_step))
+
+    # Konwersja zbioru (z natury eliminującego duplikaty) na posortowaną listę
+    return sorted(list(rates))
+\end{minted}
+\end{listing}
+
+\subsubsection{Iloczyn kartezjański i rygor niemutowalności (Immutable State)}
+Po ustaleniu wektora częstotliwości, niezbędne jest wygenerowanie wszystkich dopuszczalnych wariantów badawczych.
+Zamiast implementowania głęboko zagnieżdżonych pętli (\texttt{for}-\texttt{loop}), które znacząco obniżają czytelność kodu, proces ten oparto na wbudowanej bibliotece standardowej \texttt{itertools}.
+Wywołanie metody \texttt{itertools.product()} generuje pełny iloczyn kartezjański podanych parametrów: zbioru protokołów transportowych, zbioru częstotliwości uderzeniowych oraz zbioru rozmiarów ładunku użytecznego (\textit{ang .Payload Size}).
+
+Każda z wyliczonych permutacji zamykana jest wewnątrz struktury \texttt{TestConfig} (Listing \ref{lst:matrix_cartesian}).
+Strukturę tę zadeklarowano z wykorzystaniem mechanizmu \texttt{dataclasses} jako obiekt całkowicie niemutowalny (\texttt{@dataclass(frozen=True)}).
+Takie rozwiązanie gwarantuje, że zaplanowane parametry testu nie ulegną przypadkowej modyfikacji podczas poprzez np. nadpisywanie kopii będącą referencję, a nie przez modyfikację samej instancji w skryptach.
+Tak skomponowana lista (matryca) trafia następnie do jądra wykonawczego \texttt{TestEngine}, który sekwencyjnie uruchamia i nadzoruje każdy z zaplanowanych eksperymentów.
+
+\begin{listing}[htbp]
+    \caption{Wykorzystanie iloczynu kartezjańskiego do generowania bezobsługowej kampanii testowej złożonej z niemutowalnych konfiguracji (\texttt{matrix.py})}
+    \label{lst:matrix_cartesian}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+def generate_test_matrix(
+    router_topology: RouterTopology,
+    protocols: list[Protocol],
+    rates_hz: list[int],
+    payloads_bytes: list[int],
+    packet_count: int = 1000,
+    drain_time_s: float = 5.0,
+    cooldown_s: float = 5.0,
+) -> list[TestConfig]:
+    """
+    Tworzy iloczyn kartezjański (każdy z każdym) z podanych parametrów, 
+    budując gotową listę niemutowalnych konfiguracji badawczych (TestConfig).
+    """
+    matrix = [
+        TestConfig(
+            router_topology=router_topology,
+            protocol=protocol,
+            frequency_hz=freq,
+            packet_count=packet_count,
+            payload_size_bytes=payload,
+            drain_time_s=drain_time_s,
+            cooldown_s=cooldown_s,
+        )
+        for protocol, freq, payload in itertools.product(
+            protocols, rates_hz, payloads_bytes
+        )
+    ]
+    
+    return matrix
+\end{minted}
+\end{listing}

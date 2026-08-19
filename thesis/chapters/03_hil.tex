@@ -61,3 +61,73 @@ Z tego względu w krytycznych fragmentach generatora ruchu zastosowano aktywne o
 Zastosowanie aktywnego oczekiwania nie zapewnia jednak deterministycznego czasu wykonania charakterystycznego dla systemów czasu rzeczywistego.
 Ostateczna precyzja generowania ruchu zależy również od obciążenia systemu operacyjnego, działania stosu sieciowego, wykorzystywanego interfejsu komunikacyjnego oraz pozostałych elementów ścieżki transmisji.
 Z tego względu komputer PC należy traktować przede wszystkim jako jednostkę sterującą i generującą bodźce testowe, a nie jako deterministyczne źródło sygnałów czasu rzeczywistego.
+
+\section{Paradygmaty obiektowe i wstrzykiwanie zależności w środowisku Python}
+\label{sec:python_architektura_oop}
+
+Język Python dzięki swojej elastyczności i popularności jest często używany w szybkiej analizie danych.
+Wraz z tym pojawia się wiele nieustrukturyzowanych, proceduralnych skryptów.
+W przypadku autorskiego systemu HIL \textit{ESPy-Nexus}, który docelowo realizuje tysiące scenariuszy testowych, zarządza połączeniami sieciowymi, steruje portami szeregowymi i procesuje relacyjne bazy danych (SQLite), takie podejście nieuchronnie doprowadziłoby do powstania trudnego w utrzymaniu, nieskalowalnego kodu.
+
+Aby temu zapobiec, architekturę systemu nadzorczego podzielono na odseparowane pakiety:
+\begin{itemize}
+    \item \texttt{core} - konfiguracja i logowanie,
+    \item \texttt{runner} - silnik wykonawczy i analityczny,
+    \item \texttt{control\_plane} - warstwa sterowania,
+    \item \texttt{data\_plane} - warstwa transmisji danych.
+\end{itemize}
+Całość oparto na rygorystycznym programowaniu obiektowym (OOP) oraz wzorcach projektowych.
+
+\subsection{Abstrakcyjne interfejsy bazowe}
+
+Podstawą uniwersalności platformy jest narzucenie ścisłych kontraktów dla poszczególnych modułów transmisyjnych.
+Wykorzystując wbudowaną bibliotekę \texttt{abc} (\textit{ang. Abstract Base Classes}), zdefiniowano abstrakcyjne interfejsy, takie jak \texttt{BaseControlPlane} oraz \texttt{BaseDataPlane}.
+Zmuszają one każdą nową implementację do bezwzględnego zaimplementowania określonych metod (np. \texttt{connect()}, \texttt{disconnect()}, \texttt{transmit()}) niezależnie czy będzie to port szeregowy, czy gniazdo UDP.
+
+Takie podejście realizuje fundamentalną zasadę otwarte-zamknięte (\textit{Open/Closed Principle}) oraz zasadę podstawienia Liskov (\textit{Liskov Substitution Principle}) z \cite{solid}.
+Silnik wykonawczy wie jedynie, że operuje na obiekcie typu \texttt{BaseDataPlane}, co całkowicie uniezależnia wewnętrzną logikę testów od fizycznej implementacji poszczególnych protokołów transportowych.
+
+\subsection{Wzorzec Fabryki i Wstrzykiwanie Zależności}
+Tworzenie obiektów zarządzających warstwą fizyczną sprzętu jest procesem skomplikowanym.
+Decyzja o tym, czy system użyje protokołu binarnego, tekstowego, czy wirtualnego (Mock) zależy od profilu konfiguracyjnego (\texttt{RunnerSettings}).
+Logikę decyzyjną odizolowano w pliku uruchomieniowym \texttt{main.py}, stosując wzorzec \textbf{Fabryki} (\textit{Factory Pattern}).
+Funkcje takie jak \texttt{build\_data\_planes()} parsują żądaną konfigurację i zwracają zainstancjowane obiekty konkretnych klas (np. \texttt{TcpDataPlane}).
+
+Gotowe, skonfigurowane obiekty połączeniowe nie są jednak globalnie dostępne dla reszty aplikacji.
+Aby utrzymać najwyższy stopień luźnego powiązania (\textit{ang. Loose Coupling}), zastosowano paradygmat \textbf{Wstrzykiwania Zależności} (\textit{ang. DI - Dependency Injection}).
+Jak zaprezentowano na Listingu \ref{lst:python_di_main}, gotowe instancje warstwy sterującej i transmisyjnej przekazywane są jako argumenty do konstruktora głównej maszyny stanów (\texttt{TestEngine}).
+
+\begin{listing}[htbp]
+    \caption{Wykorzystanie wzorca Fabryki i Wstrzykiwania Zależności do izolacji logiki wykonawczej od warstwy sprzętowej (\texttt{main.py}) \cite{espy_nexus_python_host}}
+    \label{lst:python_di_main}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+def main() -> None:
+    # Załadowanie profilu konfiguracyjnego
+    config = get_active_profile()
+
+    # Inicjalizacja instancji sprzętowych (Wzorzec Fabryki)
+    # Fabryki zwracają obiekty implementujące interfejsy BaseControlPlane i BaseDataPlane
+    control_plane = build_control_plane(config)
+    data_planes = build_data_planes(config)
+
+    # Wygenerowanie wektora testowego
+    test_matrix = build_matrix(config)
+
+    # Wstrzyknięcie zależności (DI) do konstruktora silnika TestEngine
+    # Silnik operuje wyłącznie na wstrzykniętych interfejsach, co pozwala 
+    # na łatwą wymianę protokołów (np. na MockDataPlane) w celach testowych.
+    engine = TestEngine(
+        control_plane=control_plane,
+        data_planes=data_planes,
+        db_path=config.raw_db_path,
+    )
+    
+    # Rozpoczęcie fazy akwizycji danych HIL
+    engine.run_matrix(matrix=test_matrix)
+\end{minted}
+\end{listing}
+
+Rozdzielenie etapu \textit{składania} komponentów od ich faktycznego użycia to ogromna zaleta z perspektywy inżynierii testów.
+Pozwala to przełączyć system w profil deweloperski, wstrzykując obiekty typu \texttt{MockControlPlane} i \texttt{MockDataPlane}.
+Silnik \texttt{TestEngine} wykona wówczas pełny proces eksperymentalny (od symulowanej wysyłki, po zapis do bazy SQLite i uruchomienie procesu analitycznego ETL), bez informacji, że po drugiej stronie nie znajduje się fizyczny mikrokontroler ESP32.
+Znacząco usprawnia to rozwój oprogramowania (\textit{ang. Software Development Lifecycle}) bez konieczności angażowania środowiska sprzętowego do weryfikacji warstwy logicznej w Pythonie.

@@ -19,4 +19,7 @@ noIndentBlock:
     tzw:
         begin: '\btzw\.'
         end: ' '
+    threeDots:
+        begin: '\.\.\.'
+        end: ' '
         

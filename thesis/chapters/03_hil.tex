@@ -21,7 +21,7 @@ Z perspektywy testowanego mikrokontrolera środowisko HIL dostarcza rzeczywistyc
 Dzięki temu testowany układ wykonuje rzeczywisty kod aplikacyjny na docelowym sprzęcie, z wykorzystaniem jego procesora, pamięci, fizycznych peryferiów oraz rzeczywistego stosu komunikacyjnego.
 
 Zastosowana w pracy architektura stanowi uproszczoną odmianę środowiska Hardware-in-the-Loop, którą można określić mianem Micro-HIL (MHIL).
-W klasycznym środowisku HIL rzeczywisty sterownik jest integrowany z systemem czasu rzeczywistego wykonującym model symulowanego środowiska (\textit{ang .plant}), a wymiana danych odbywa się za pośrednictwem rzeczywistych interfejsów wejścia-wyjścia \cite{mathworks_hil}.
+W klasycznym środowisku HIL rzeczywisty sterownik jest integrowany z systemem czasu rzeczywistego wykonującym model symulowanego środowiska (\textit{ang. plant}), a wymiana danych odbywa się za pośrednictwem rzeczywistych interfejsów wejścia-wyjścia \cite{mathworks_hil}.
 W projektowanym systemie nie jest konieczne odwzorowanie złożonego modelu fizycznego badanego środowiska.
 Komputer PC pełni przede wszystkim funkcję orkiestratora eksperymentu, generatora kontrolowanego ruchu sieciowego oraz systemu akwizycji i analizy wyników, natomiast rzeczywisty mikrokontroler ESP32 stanowi urządzenie badane (DUT).
 
@@ -34,7 +34,7 @@ W kontekście badań wydajności transmisyjnej, obejmujących między innymi pom
 
 \begin{itemize}
 
-    \item \textbf{Walidacja rzeczywistego stosu TCP/IP:}
+    \item \textbf{Walidacja rzeczywistych stosów komunikacyjnych:}
           w przeciwieństwie do symulacji programowej, w której zachowanie urządzenia oraz jego stosu komunikacyjnego jest reprezentowane przez model, zastosowanie HIL umożliwia wykonanie rzeczywistego oprogramowania na docelowym mikrokontrolerze.
           Dzięki temu pomiar obejmuje również ograniczenia wynikające z rzeczywistego procesora, pamięci, peryferiów oraz implementacji stosu komunikacyjnego.
 
@@ -57,7 +57,7 @@ Na moment rozpoczęcia wykonywania poszczególnych operacji wpływają między i
 
 Ograniczenie to ma szczególne znaczenie podczas generowania ruchu sieciowego z określonymi odstępami czasowymi.
 Wykorzystanie standardowych mechanizmów usypiania wątku, takich jak \texttt{time.sleep()} w języku Python, nie gwarantuje dokładnego momentu jego wznowienia, ponieważ rzeczywisty czas oczekiwania zależy od mechanizmów planowania zadań systemu operacyjnego.
-Z tego względu w krytycznych fragmentach generatora ruchu zastosowano aktywne oczekiwanie (\textit{ang. busy-wait}), którego zadaniem jest ograniczenie zmienności momentu rozpoczęcia kolejnych operacji.
+Z tego względu w krytycznych fragmentach płaszczyzn danych (Data Plane) zastosowano aktywne oczekiwanie (\textit{ang. busy-wait}), którego zadaniem jest ograniczenie zmienności momentu rozpoczęcia kolejnych operacji.
 
 Zastosowanie aktywnego oczekiwania nie zapewnia jednak deterministycznego czasu wykonania charakterystycznego dla systemów czasu rzeczywistego.
 Ostateczna precyzja generowania ruchu zależy również od obciążenia systemu operacyjnego, działania stosu sieciowego, wykorzystywanego interfejsu komunikacyjnego oraz pozostałych elementów ścieżki transmisji.
@@ -66,8 +66,8 @@ Z tego względu komputer PC należy traktować przede wszystkim jako jednostkę 
 \section{Paradygmaty obiektowe i wstrzykiwanie zależności w środowisku Python}
 \label{sec:python_architektura_oop}
 
-Język Python dzięki swojej elastyczności i popularności jest często używany w szybkiej analizie danych.
-Wraz z tym pojawia się wiele nieustrukturyzowanych, proceduralnych skryptów.
+Język Python dzięki swojej elastyczności i popularności jest często używany do szybkiej analizy danych.
+W takich zastosowaniach często powstają nieustrukturyzowane, proceduralne skrypty.
 W przypadku autorskiego systemu HIL \textit{ESPy-Nexus}, który docelowo realizuje tysiące scenariuszy testowych, zarządza połączeniami sieciowymi, steruje portami szeregowymi i procesuje relacyjne bazy danych (SQLite), takie podejście nieuchronnie doprowadziłoby do powstania trudnego w utrzymaniu, nieskalowalnego kodu.
 
 Aby temu zapobiec, architekturę systemu nadzorczego podzielono na odseparowane pakiety:
@@ -77,7 +77,7 @@ Aby temu zapobiec, architekturę systemu nadzorczego podzielono na odseparowane 
     \item \texttt{control\_plane} - warstwa sterowania,
     \item \texttt{data\_plane} - warstwa transmisji danych.
 \end{itemize}
-Całość oparto na rygorystycznym programowaniu obiektowym (OOP) oraz wzorcach projektowych.
+Całość oparto na programowaniu obiektowym (OOP) oraz wzorcach projektowych.
 
 \subsection{Abstrakcyjne interfejsy bazowe}
 
@@ -85,21 +85,22 @@ Podstawą uniwersalności platformy jest narzucenie ścisłych kontraktów dla p
 Wykorzystując wbudowaną bibliotekę \texttt{abc} (\textit{ang. Abstract Base Classes}), zdefiniowano abstrakcyjne interfejsy, takie jak \texttt{BaseControlPlane} oraz \texttt{BaseDataPlane}.
 Zmuszają one każdą nową implementację do bezwzględnego zaimplementowania określonych metod (np. \texttt{connect()}, \texttt{disconnect()}, \texttt{transmit()}) niezależnie czy będzie to port szeregowy, czy gniazdo UDP.
 
-Takie podejście realizuje fundamentalną zasadę otwarte-zamknięte (\textit{Open/Closed Principle}) oraz zasadę podstawienia Liskov (\textit{Liskov Substitution Principle}) z \cite{solid}.
+Takie podejście wspiera zasadę otwarte-zamknięte (\textit{Open/Closed Principle}) oraz zasadę podstawienia Liskov (\textit{Liskov Substitution Principle}) opisaną w \cite{solid}.
 Silnik wykonawczy wie jedynie, że operuje na obiekcie typu \texttt{BaseDataPlane}, co całkowicie uniezależnia wewnętrzną logikę testów od fizycznej implementacji poszczególnych protokołów transportowych.
 
 \subsection{Wzorzec Fabryki i Wstrzykiwanie Zależności}
+
 Tworzenie obiektów zarządzających warstwą fizyczną sprzętu jest procesem skomplikowanym.
 Decyzja o tym, czy system użyje protokołu binarnego, tekstowego, czy wirtualnego (Mock) zależy od profilu konfiguracyjnego (\texttt{RunnerSettings}).
 Logikę decyzyjną odizolowano w pliku uruchomieniowym \texttt{main.py}, stosując wzorzec \textbf{Fabryki} (\textit{Factory Pattern}).
-Funkcje takie jak \texttt{build\_data\_planes()} parsują żądaną konfigurację i zwracają zainstancjowane obiekty konkretnych klas (np. \texttt{TcpDataPlane}).
+Funkcje takie jak \texttt{build\_data\_planes()} odczytują konfigurację i zwracają utworzone obiekty konkretnych klas (np. \texttt{TcpDataPlane}).
 
 Gotowe, skonfigurowane obiekty połączeniowe nie są jednak globalnie dostępne dla reszty aplikacji.
 Aby utrzymać najwyższy stopień luźnego powiązania (\textit{ang. Loose Coupling}), zastosowano paradygmat \textbf{Wstrzykiwania Zależności} (\textit{ang. DI - Dependency Injection}).
 Jak zaprezentowano na Listingu \ref{lst:python_di_main}, gotowe instancje warstwy sterującej i transmisyjnej przekazywane są jako argumenty do konstruktora głównej maszyny stanów (\texttt{TestEngine}).
 
 \begin{listing}[htbp]
-    \caption{Wykorzystanie wzorca Fabryki i Wstrzykiwania Zależności do izolacji logiki wykonawczej od warstwy sprzętowej (\texttt{main.py}) \cite{espy_nexus_python_host}}
+    \caption{Wykorzystanie wzorca Fabryki i Wstrzykiwania Zależności do izolacji logiki wykonawczej od warstwy sprzętowej (\texttt{main.py}) \cite{espy_nexus_python_host}.}
     \label{lst:python_di_main}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 def main() -> None:
@@ -125,6 +126,14 @@ def main() -> None:
     
     # Rozpoczęcie fazy akwizycji danych HIL
     engine.run_matrix(matrix=test_matrix)
+
+    # Uruchomienie analizy wsadowej po zakończeniu akwizycji
+    batch_processor = BatchAnalyzer(
+        raw_db_path=config.raw_db_path,
+        analytics_db_path=config.analytics_db_path,
+        output_csv_path=config.output_csv_path,
+    )
+    batch_processor.run_pipeline()
 \end{minted}
 \end{listing}
 
@@ -138,8 +147,8 @@ Znacząco usprawnia to rozwój oprogramowania (\textit{ang. Software Development
 
 Asymetryczna architektura testowa wymaga niezawodnego kanału komunikacyjnego służącego do koordynacji przebiegu eksperymentów.
 Funkcję tę w systemie \textit{ESPy-Nexus} pełni wyizolowana Płaszczyzna Sterowania (\textit{ang. Control Plane}), zaimplementowana natywnie w klasie \texttt{SerialControlPlane}.
-Jej głównym zadaniem jest asynchroniczna wymiana komend kontrolnych z układem ESP32 (takich jak \texttt{START\_TCP}, czy \texttt{STOP}) oraz weryfikacja poprawności synchronizacji poprzez wymuszanie odpowiedzi potwierdzających (tzw. \textit{handshake}, np. \texttt{ACK\_START\_TCP}).
-Dodatkowo, po zrealizowaniu procedury pomiarowej, płaszczyzna ta odpowiada za ekstrakcję zgromadzonych wyników sprzętowych (wywołanie metody \texttt{fetch\_data() i komendy \texttt{GET\_DATA}}).
+Jej głównym zadaniem jest wymiana komend kontrolnych z układem ESP32 (takich jak \texttt{START\_TCP} czy \texttt{STOP}) oraz weryfikacja poprawności synchronizacji poprzez oczekiwanie na odpowiedzi potwierdzające (tzw. \textit{handshake}, np. \texttt{ACK\_START\_TCP}).
+Dodatkowo, po zrealizowaniu procedury pomiarowej, płaszczyzna ta odpowiada za ekstrakcję zgromadzonych wyników sprzętowych poprzez wywołanie metody \texttt{fetch\_data()}, która wysyła komendę \texttt{GET\_DATA}.
 
 Rozdzielenie Płaszczyzny Sterowania od Płaszczyzny Danych (\textit{Data Plane}) stanowi modelowe podejście koncepcyjne, jednak w środowisku fizycznym rodzi poważny problem związany z wyłącznością dostępu do zasobów.
 
@@ -149,7 +158,7 @@ Problem pojawia się jednak, gdy w matrycy testowej wywołany zostanie protokó�
 Wówczas zarówno Płaszczyzna Sterowania, jak i Płaszczyzna Danych próbują zainicjować odrębne obiekty dostępu (\texttt{serial.Serial}) pod tym samym fizycznym adresem (np. \texttt{COM3}).
 Skutkuje to natychmiastowym odrzuceniem żądania przez system operacyjny i błędem braku dostępu, prowadząc do zatrzymania procesu badawczego.
 
-Przekazywanie pojedynczej referencji portu pomiędzy skrajnymi elementami architektury naruszyłoby rygorystyczny podział na wyizolowane klasy bazowe i zasadę otwarte-zamknięte.
+Przekazywanie pojedynczej referencji portu pomiędzy skrajnymi elementami architektury utrudniałoby zachowanie podziału na wyizolowane klasy bazowe i zasady otwarte-zamknięte.
 Problem ten rozwiązano architektonicznie, wdrażając moduł \texttt{SerialConnectionManager}, stanowiący implementację kreacyjnego wzorca projektowego \textbf{Multiton} (rozszerzenie klasycznego wzorca Singleton, często nazywane wzorcem Rejestru).
 
 Jak zaprezentowano na Listingu \ref{lst:multiton_manager}, język Python umożliwia nadpisanie wewnętrznej metody magicznej \texttt{\_\_new\_\_()} odpowiedzialnej za fizyczną alokację nowej instancji klasy w pamięci komputera.
@@ -187,7 +196,7 @@ class SerialConnectionManager:
 \end{minted}
 \end{listing}
 
-Aby zagwarantować bezpieczeństwo wieloaspektowego wykorzystania gniazda, wewnątrz menadżera zaimplementowano również mechanizm zliczania referencji (zmienna \texttt{\_ref\_count}).
+Aby zagwarantować bezpieczne współdzielenie portu, wewnątrz menadżera zaimplementowano również mechanizm zliczania referencji (zmienna \texttt{\_ref\_count}).
 Funkcja \texttt{connect()} inkrementuje licznik, a \texttt{disconnect()} go dekrementuje.
 Fizyczne przerwanie transmisji (funkcja \texttt{close()} systemowej biblioteki) następuje dopiero w momencie, w którym licznik klientów wyniesie zero, co oznacza, że ani moduł \textit{Control}, ani moduł \textit{Data} nie zgłasza już zapotrzebowania na dany zasób komunikacyjny.
 
@@ -195,7 +204,7 @@ Fizyczne przerwanie transmisji (funkcja \texttt{close()} systemowej biblioteki) 
 \label{sec:matryca_testowa}
 
 Rzetelna ewaluacja wydajności układu ESP32 i jego stosu sieciowego w warunkach stresowych (\textit{ang. Stress Testing}) wymaga przeprowadzenia nie kilku, lecz tysięcy niezależnych pomiarów dla każdej z możliwych konfiguracji.
-Zależność opóźnień (Jitteru) oraz strat pakietów (PDR) ma charakter wysoce nieliniowy i zmienia się dynamicznie w funkcji wybranego protokołu transportowego, rozmiaru przesyłanego ładunku oraz częstotliwości uderzeniowej.
+Zależność opóźnień (jitteru) oraz strat pakietów (PDR) ma charakter wysoce nieliniowy i zmienia się dynamicznie w funkcji wybranego protokołu transportowego, rozmiaru przesyłanego ładunku oraz częstotliwości generowania ruchu.
 Ręczne rekonfigurowanie i uruchamianie każdego testu z osobna byłoby procesem żmudnym i podatnym na błędy ludzkie.
 W celu pełnej automatyzacji środowiska HIL opracowano autorski generator matrycy testowej (\texttt{matrix.py}), zdolny do bezobsługowego zaplanowania wielogodzinnych kampanii pomiarowych.
 
@@ -210,12 +219,12 @@ Skrypt w języku Python pozwala na wybranie kilku matematycznych strategii profi
     \item \textbf{Przyrost wykładniczy (\texttt{EXPONENTIAL}):}
           skokowe zwiększanie częstotliwości poprzez mnożenie przez ustaloną podstawę (np. potęgi dwójki: 2, 4, 8, 16, ...).
           Pozwala błyskawicznie wykryć moment załamania wydajności mikrokontrolera.
-    \item \textbf{Przyrost logarytmiczny (\texttt{LOGARITHMIC}):}
-          zwiększanie częstotliwości w sposób logarytmiczny (np. 1, 2, 4, 8, 16, 32, 64, 128, ...).
+    \item \textbf{Przyrost logarytmiczny (\texttt{LOG}):}
+          zwiększanie częstotliwości według skali logarytmicznej (np. 1, 2, 3, ..., 9, 10, 20, 30, ..., 90, 100, 200, ...).
           Strategia ta pozwala na szybkie przemiatanie szerokiego spektrum częstotliwości przy jednoczesnym zachowaniu gęstej siatki pomiarowej w niskich częstotliwościach.
     \item \textbf{Strategia mieszana (\texttt{SMART}):}
           autorski algorytm łączący zalety powyższych generatorów.
-          Jak zaprezentowano na Listingu \ref{lst:matrix_smart}, funkcja napełnia zbiór matematyczny (\texttt{set}) wartościami z rozkładu wykładniczego, logarytmicznego oraz liniowego.
+          Jak zaprezentowano na Listingu \ref{lst:matrix_smart}, funkcja wypełnia zbiór (\texttt{set}) wartościami z przebiegu wykładniczego, logarytmicznego oraz liniowego.
           Właściwość zbioru w języku Python automatycznie eliminuje powielone wartości (duplikaty).
           W efekcie tworzona jest gęsta siatka pomiarowa w niskich częstotliwościach (gdzie układy wykazują dużą czułość na małe zmiany) i szeroka siatka badawcza przy wysokich obciążeniach krańcowych.
 \end{itemize}
@@ -245,11 +254,11 @@ def generate_smart_rates(
 
 Po ustaleniu wektora częstotliwości, niezbędne jest wygenerowanie wszystkich dopuszczalnych wariantów badawczych.
 Zamiast implementowania głęboko zagnieżdżonych pętli (\texttt{for}-\texttt{loop}), które znacząco obniżają czytelność kodu, proces ten oparto na wbudowanej bibliotece standardowej \texttt{itertools}.
-Wywołanie metody \texttt{itertools.product()} generuje pełny iloczyn kartezjański podanych parametrów: zbioru protokołów transportowych, zbioru częstotliwości uderzeniowych oraz zbioru rozmiarów ładunku użytecznego (\textit{ang .Payload Size}).
+Wywołanie metody \texttt{itertools.product()} generuje pełny iloczyn kartezjański podanych parametrów: zbioru protokołów transportowych, zbioru częstotliwości generowania ruchu oraz zbioru rozmiarów ładunku użytecznego (\textit{ang. payload size}).
 
 Każda z wyliczonych permutacji zamykana jest wewnątrz struktury \texttt{TestConfig} (Listing \ref{lst:matrix_cartesian}).
 Strukturę tę zadeklarowano z wykorzystaniem mechanizmu \texttt{dataclasses} jako obiekt całkowicie niemutowalny (\texttt{@dataclass(frozen=True)}).
-Takie rozwiązanie gwarantuje, że zaplanowane parametry testu nie ulegną przypadkowej modyfikacji podczas poprzez np. nadpisywanie kopii będącą referencję, a nie przez modyfikację samej instancji w skryptach.
+Takie rozwiązanie gwarantuje, że zaplanowane parametry testu nie ulegną przypadkowej modyfikacji w trakcie wykonywania kampanii, na przykład wskutek modyfikacji instancji przekazanej przez referencję.
 Tak skomponowana lista (matryca) trafia następnie do jądra wykonawczego \texttt{TestEngine}, który sekwencyjnie uruchamia i nadzoruje każdy z zaplanowanych eksperymentów.
 
 \begin{listing}[htbp]
@@ -307,7 +316,7 @@ Zdekodowanie otrzymanego strumienia bajtów na obiekty języka Python zrealizowa
 Jak zaprezentowano na Listingu \ref{lst:python_struct_unpack}, do błyskawicznego rozpakowania tablicy wykorzystano metodę \texttt{iter\_unpack()} ze specyfikatorem formatu \texttt{<Iq}.
 Deklaracja ta informuje interpreter Pythona, aby interpretował surowe bajty kolejno jako:
 \begin{itemize}
-    \item \texttt{<} - wartości w formacie \textit{Little-Endian} (zgodnie z architekturą procesorów Xtensa w ESP32),
+    \item \texttt{<} - wartości w formacie \textit{little-endian} (zgodnie z formatem używanym przez implementację ESP32),
     \item \texttt{I} - bezznakowa, 32-bitowa liczba całkowita (\texttt{uint32\_t} w C++, odpowiadająca \texttt{packet\_id}),
     \item \texttt{q} - znakowa, 64-bitowa liczba całkowita (\texttt{int64\_t} w C++, odpowiadająca stemplowi czasowemu w mikrosekundach).
 \end{itemize}
@@ -325,7 +334,7 @@ raw_bytes = serial_obj.read(expected_bytes)
 
 records = []
 try:
-    # Wymuszenie dekodowania w standardzie Little-Endian ('<')
+    # Wymuszenie dekodowania w standardzie little-endian ('<')
     # gdzie 'I' to uint32_t (ID), a 'q' to int64_t (timestamp)
     for struct_tuple in struct.iter_unpack("<Iq", raw_bytes):
         records.append({
@@ -350,7 +359,7 @@ Wykorzystanie funkcji \texttt{pd.merge(..., how="outer")} wykonuje tzw. złącze
 Gwarantuje to zachowanie w macierzy wynikowej informacji o pakietach, które opuściły PC, lecz nigdy nie dotarły do mikrokontrolera (uzyskując pustą wartość odebranego czasu - \texttt{NaN} / \textit{Not a Number}).
 
 Kompletna, połączona macierz zdarzeń wprowadzana jest następnie do relacyjnej bazy danych \textbf{SQLite} (\texttt{hil\_raw\_data.sqlite}).
-Zapis metadanych testu (w tabeli \texttt{test\_runs}) oraz setek tysięcy logów surowych (w tabeli \texttt{raw\_packets}) odbywa się w ramach jednego, bloku (Listing \ref{lst:python_acid_commit}).
+Zapis metadanych testu (w tabeli \texttt{test\_runs}) oraz setek tysięcy logów surowych (w tabeli \texttt{raw\_packets}) odbywa się w ramach jednego bloku transakcji (Listing \ref{lst:python_acid_commit}).
 Gwarantuje to spełnienie wymogów ACID (Atomowość, Spójność, Izolacja, Trwałość).
 W przypadku nagłej przerwy w zasilaniu lub zablokowania portu komunikacyjnego, transakcja zostaje cofnięta (\textit{ang. Rollback}), co skutecznie zapobiega bezpowrotnemu zanieczyszczeniu zbiorów badawczych niekompletnymi wynikami.
 
@@ -380,11 +389,11 @@ conn.commit()
 \label{sec:batchanalyzer_etl}
 
 Proces zautomatyzowanej akwizycji danych HIL w wielogodzinnych kampaniach pomiarowych (omówiony w podrozdziale \ref{sec:akwizycja_danych_exfiltration}) produkuje gigantyczne wolumeny surowych logów.
-Pojedyncza relacyjna baza danych zawierająca miliony rekordów z czasami nadania (TX) i odbioru (RX) każdego pakiety staje się zbyt duża, aby można ją było bezpośrednio załadować i swobodnie analizować w pamięci przeglądarki internetowej.
+Pojedyncza relacyjna baza danych zawierająca miliony rekordów z czasami nadania (TX) i odbioru (RX) każdego pakietu staje się zbyt duża, aby można ją było bezpośrednio załadować i swobodnie analizować w pamięci przeglądarki internetowej.
 Docelowa aplikacja analityczna (\textit{ESPy-Nexus Dashboard} omówiona w rozdziale \ref{chap:nuxt}) potrzebuje zagregowanych, gotowych do wyświetlenia wskaźników jakości sieci (QoS), a nie surowych stempli czasowych z mikrokontrolera.
 
 Aby połączyć środowisko akwizycji sprzętowej z nowoczesnym interfejsem webowym, architekturę systemu wyposażono w dedykowany moduł przetwarzania wsadowego - \texttt{BatchAnalyzer}.
-Został on zaprojektowany ściśle według paradygmatu przetwarzania danych \textbf{ETL} (\textit{ang. (Extract, Transform, Load)}).
+Został on zaprojektowany zgodnie z paradygmatem przetwarzania danych \textbf{ETL} (\textit{ang. Extract, Transform, Load}).
 
 \subsection{Faza Wydobycia (Extract) i Transformacji (Transform)}
 Jak zaprezentowano na Listingu \ref{lst:etl_pipeline}, po zakończeniu właściwych eksperymentów sprzętowych, system inicjuje pierwszą fazę rurociągu danych (ETL).
@@ -422,11 +431,11 @@ Aby zapewnić najwyższą kompatybilność, przetworzone miliony logów sprzęto
 Mechanizm \texttt{\_load\_results()} obsługuje dystrybucję wiedzy na trzech płaszczyznach:
 \begin{enumerate}
     \item \textbf{SQLite (\texttt{hil\_analytics.sqlite}):}
-          struktura relacyjna ułatwiająca późniejsze kwerendowanie i łączenie wyników w badaniach historycznych, z pominięciem obciążającego fazy ponownego obliczania wskaźników.
+          struktura relacyjna ułatwiająca późniejsze kwerendowanie i łączenie wyników w badaniach historycznych, bez konieczności ponownego obliczania wskaźników.
     \item \textbf{Plik CSV (\texttt{hil\_analytics.csv}):}
           powszechnie akceptowany format pliku płaskiego, niezbędny w przypadku poddawania wyników ewaluacji w zewnętrznych arkuszach kalkulacyjnych lub systemach wizualizacji (np. Microsoft Excel, Tableau).
     \item \textbf{Statyczny plik JSON (\texttt{hil\_analytics.json}):}
-          najważniejszy element integrujący warstwę kontrolną ze środowiskiem webowym (Frontend).
+          najważniejszy element integrujący warstwę analityczną ze środowiskiem webowym (frontend).
           Jak zilustrowano na Listingu \ref{lst:etl_json_load}, przed wyeksportowaniem macierzy do formatu JSON, analizator celowo usuwa (metoda \texttt{drop}) wyjątkowo skomplikowane i obszerne ciągi tekstowe reprezentujące tablice zgubionych pakietów (\texttt{ooo\_events}, \texttt{burst\_events}).
 \end{enumerate}
 
@@ -434,7 +443,7 @@ Mechanizm \texttt{\_load\_results()} obsługuje dystrybucję wiedzy na trzech p�
     \caption{Optymalizacja wagi pliku wynikowego dla aplikacji SPA Nuxt (\texttt{batch\_analyzer.py}) \cite{espy_nexus_python_host}.}
     \label{lst:etl_json_load}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
-# Przygotowanie lekkiej paczki JSON na potrzeby interfejsu Webowego
+# Przygotowanie lekkiej paczki JSON na potrzeby interfejsu webowego
 if self.json_csv_path is not None:
     try:
         df_final_json = df_final.copy()
@@ -453,4 +462,4 @@ if self.json_csv_path is not None:
 \end{listing}
 
 Operacja redukcji kolumn jest świadomą decyzją inżynierską, która gwarantuje zachowanie rozmiaru pliku \texttt{JSON} na poziomie umożliwiającym sprawną dystrybucję przez serwery brzegowe (\textit{ang. Edge Computing / CDN}).
-Wygenerowany plik staje się w ten sposób jedynym, niepodważalnym źródłem wiedzy (\textit{ang. Single Source of Truth}) dla aplikacji \textit{Nuxt.js}, domykając pełen cykl zautomatyzowanego potoku przetwarzania - od zjawisk radiowych na warstwie fizycznej ESP32, po interaktywne wykresy na ekranie badacza.
+Wygenerowany plik stanowi w ten sposób źródło danych dla aplikacji \textit{Nuxt.js}, domykając pełen cykl zautomatyzowanego potoku przetwarzania - od transmisji realizowanej przez ESP32 po interaktywne wykresy na ekranie badacza.

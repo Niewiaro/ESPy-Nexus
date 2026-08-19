@@ -287,3 +287,90 @@ def generate_test_matrix(
 \end{minted}
 \end{listing}
 
+\section{Akwizycja i ekstrakcja danych pamięciowych}
+\label{sec:akwizycja_danych_exfiltration}
+
+Kluczowym zadaniem systemu nadzorczego HIL w ujęciu pojedynczego scenariusza (\texttt{\_run\_single\_test}) jest nie tylko wygenerowanie i wysłanie strumienia spredefiniowanych ramek, ale przede wszystkim bezpieczne odebranie logów zarejestrowanych przez mikrokontroler.
+Ze względu na asymetryczny model architektury, w którym urządzenie końcowe gromadzi dane w zewnętrznej pamięci PSRAM, niezbędne było zaprojektowanie wysoce wydajnego mechanizmu ekstrakcji.
+
+\subsection{Ekstrakcja binarna i mapowanie struktur C++}
+
+Tradycyjne przesyłanie logów z mikrokontrolerów odbywa się najczęściej z wykorzystaniem formatów tekstowych (np. CSV przesyłane przez port szeregowy).
+Przy założeniu matrycy badawczej generującej do 50 000 rekordów na jeden test, konwersja wartości 64-bitowych (\textit{timestamp}) do postaci znaków ASCII (tekstu) bezpośrednio na układzie ESP32, a następnie powrotne ich parsowanie w języku Python trwałoby nieakceptowalnie długo i uniemożliwiłoby przeprowadzenie szerokich kampanii pomiarowych.
+
+Aby zminimalizować czas trwania narzutu komunikacyjnego pomiędzy kolejnymi testami, w warstwie sterującej (\texttt{SerialControlPlane}) zaimplementowano mechanizm masowego, binarnego zrzutu pamięci (\textit{ang. Memory Dump}).
+Jak omówiono w rozdziale \ref{ch:platforma_sprzetowa}, mikrokontroler wysyła dokładnie 12 bajtów na każdy rekord.
+Skrypt w języku Python oblicza teoretyczny rozmiar zrzutu (np. $50000 \times 12 \text{ B} = 600 \text{ KB}$) i odczytuje całą tę wielkość za pomocą pojedynczej, natywnej operacji \texttt{serial\_obj.read(expected\_bytes)}.
+
+Zdekodowanie otrzymanego strumienia bajtów na obiekty języka Python zrealizowano przy pomocy wbudowanej biblioteki \texttt{struct}.
+Jak zaprezentowano na Listingu \ref{lst:python_struct_unpack}, do błyskawicznego rozpakowania tablicy wykorzystano metodę \texttt{iter\_unpack()} ze specyfikatorem formatu \texttt{<Iq}.
+Deklaracja ta informuje interpreter Pythona, aby interpretował surowe bajty kolejno jako:
+\begin{itemize}
+    \item \texttt{<} - wartości w formacie \textit{Little-Endian} (zgodnie z architekturą procesorów Xtensa w ESP32),
+    \item \texttt{I} - bezznakowa, 32-bitowa liczba całkowita (\texttt{uint32\_t} w C++, odpowiadająca \texttt{packet\_id}),
+    \item \texttt{q} - znakowa, 64-bitowa liczba całkowita (\texttt{int64\_t} w C++, odpowiadająca stemplowi czasowemu w mikrosekundach).
+\end{itemize}
+
+\begin{listing}[htbp]
+    \caption{Błyskawiczne dekodowanie pamięci binarnej C++ na wysokopoziomowe obiekty słownikowe w języku Python (\texttt{serial\_cp.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:python_struct_unpack}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+# C++: uint32_t (4B) + int64_t (8B) = 12 bajtów na rekord pomiarowy
+bytes_per_record = 12
+expected_bytes = record_count * bytes_per_record
+
+# Odczyt całego zrzutu pamięci PSRAM jednym wywołaniem
+raw_bytes = serial_obj.read(expected_bytes)
+
+records = []
+try:
+    # Wymuszenie dekodowania w standardzie Little-Endian ('<')
+    # gdzie 'I' to uint32_t (ID), a 'q' to int64_t (timestamp)
+    for struct_tuple in struct.iter_unpack("<Iq", raw_bytes):
+        records.append({
+            "packet_id": struct_tuple[0], 
+            "esp_rx_ts": struct_tuple[1]
+        })
+except struct.error as e:
+    self.logger.error(f"Failed to unpack struct: {e}")
+\end{minted}
+\end{listing}
+
+Dzięki temu podejściu, transformacja setek tysięcy bajtów surowej komunikacji sprzętowej na wewnętrzne, łatwo iterowalne struktury danych języka Python (listy słowników) odbywa się w ułamku sekundy, bez angażowania obciążających pamięć parserów tekstowych.
+
+\subsection{Krzyżowanie danych TX i RX}
+
+W celu obliczenia statystyk jakości usług sieciowych (takich jak PDR), system analityczny musi posiadać wiedzę nie tylko o tym, co urządzenie sprzętowe odebrało (RX - \textit{Receive}), ale przede wszystkim o tym, co komputer PC faktycznie nadał (TX - \textit{Transmit}).
+W trakcie każdego eksperymentu \textit{Płaszczyzna Danych} (\textit{Data Plane}) na komputerze generuje listę nadanych pakietów wraz ze stemplami czasowymi wyjścia po stronie PC.
+
+Po udanym zrzucie binarnym (\textit{fetch}), w jądrze \texttt{TestEngine} następuje integracja obu zbiorów (TX i RX).
+Ponieważ zbiory te przy wyższych częstotliwościach najczęściej różnią się objętością (wynikającą ze zjawiska fizycznej utraty pakietów w kanale komunikacyjnym), do operacji krzyżowania wdrożono potężny silnik biblioteki \textbf{Pandas}.
+Wykorzystanie funkcji \texttt{pd.merge(..., how="outer")} wykonuje tzw. złączenie pełne.
+Gwarantuje to zachowanie w macierzy wynikowej informacji o pakietach, które opuściły PC, lecz nigdy nie dotarły do mikrokontrolera (uzyskując pustą wartość odebranego czasu - \texttt{NaN} / \textit{Not a Number}).
+
+Kompletna, połączona macierz zdarzeń wprowadzana jest następnie do relacyjnej bazy danych \textbf{SQLite} (\texttt{hil\_raw\_data.sqlite}).
+Zapis metadanych testu (w tabeli \texttt{test\_runs}) oraz setek tysięcy logów surowych (w tabeli \texttt{raw\_packets}) odbywa się w ramach jednego, bloku (Listing \ref{lst:python_acid_commit}).
+Gwarantuje to spełnienie wymogów ACID (Atomowość, Spójność, Izolacja, Trwałość).
+W przypadku nagłej przerwy w zasilaniu lub zablokowania portu komunikacyjnego, transakcja zostaje cofnięta (\textit{ang. Rollback}), co skutecznie zapobiega bezpowrotnemu zanieczyszczeniu zbiorów badawczych niekompletnymi wynikami.
+
+\begin{listing}[htbp]
+    \caption{Wykorzystanie silnika złączeń zewnętrznych (Outer Join) w Pandas i trwały zapis do bazy danych relacyjnych (\texttt{engine.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:python_acid_commit}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+# Wstępne sformatowanie danych do wektorowych obiektów DataFrame
+df_tx = pd.DataFrame(tx_records)  # [packet_id, pc_tx_ts]
+df_rx = pd.DataFrame(rx_records)  # [packet_id, esp_rx_ts]
+
+# Pełne złączenie wektorowe zachowujące zgubione pakiety (wartości NaN)
+if not df_tx.empty and not df_rx.empty:
+    df_merged = pd.merge(df_tx, df_rx, on="packet_id", how="outer")
+
+# [...] Przygotowanie kolumn
+
+# Zapis do bazy danych w ramach jednej transakcji
+records_df.to_sql(
+    "raw_packets", conn, if_exists="append", index=False
+)
+conn.commit()
+\end{minted}
+\end{listing}

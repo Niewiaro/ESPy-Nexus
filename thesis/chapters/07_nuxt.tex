@@ -2,10 +2,10 @@
 \label{chap:nuxt}
 
 Rozbudowana matryca badawcza, która składa się z wielu wariantów obciążeniowych, protokołów komunikacyjnych oraz topologii sieci radiowej, wymagała opracowania dedykowanego środowiska analitycznego.
-Praca układu doprowadzająca do saturacji pasma radiowego generowała miliony punktów pomiarowych, które należało w sposób uporządkowany rejestrować, agregować i wizualizować.
+Praca układu prowadząca do nasycenia pasma radiowego generowała miliony punktów pomiarowych, które należało w uporządkowany sposób rejestrować, agregować i wizualizować.
 W tym celu powstała autorska platforma analityczna, której architektura i implementacja zostały omówione w niniejszym rozdziale.
 
-O ile zaimplementowany w języku Python moduł głównego silnika testowego (TestEngine) doskonale radzi sobie z rygorystyczną orkiestracją cyklu życia testów i akwizycją danych, a analizator wsadowy (BatchAnalyzer) umożliwia wydajną obróbkę stempli czasowych zgodnie z paradygmatem ETL (\textit{ang. Extract, Transform, Load}), to ostatecznym rezultatem tych operacji jest obszerna baza danych lub zbiór płaskich plików CSV.
+O ile zaimplementowany w języku Python główny silnik testowy (TestEngine) odpowiada za orkiestrację cyklu życia testów i akwizycję danych, a analizator wsadowy (BatchAnalyzer) umożliwia wydajne przetwarzanie stempli czasowych zgodnie z paradygmatem ETL (\textit{ang. Extract, Transform, Load}), o tyle rezultatem tych operacji jest obszerna baza danych oraz pliki wynikowe, w tym CSV i JSON.
 W tej surowej postaci dane nie sprzyjają szybkiej interpretacji i pozostają mało czytelne dla użytkownika końcowego.
 Analiza wyników w formie wyłącznie tabelarycznej jest procesem nieefektywnym i podatnym na błędy.
 Aby umożliwić sprawną i obiektywną ocenę wydajności badanych protokołów, konieczne stało się zaprojektowanie dedykowanego, graficznego interfejsu użytkownika (\textit{ang. GUI - Graphical User Interface}) do interaktywnego prezentowania zagregowanych wyników pomiarów.
@@ -15,21 +15,22 @@ Interaktywne panele i aplikacje oparte na danych można z kolei budować m.in. z
 Choć narzędzia te doskonale sprawdzają się w fazie prototypowania i eksploracji danych, to w kontekście niniejszej pracy ich możliwości architektoniczne okazały się niewystarczające.
 Kryteria doboru docelowego narzędzia wizualizacyjnego obejmowały przede wszystkim:
 \begin{itemize}
-	\item pełną dostępność w przeglądarce internetowej, bez konieczności konfiguracji środowiska uruchomieniowego, czy instalacji dodatkowego oprogramowania na stacji roboczej,
+	\item pełną dostępność w przeglądarce internetowej, bez konieczności konfiguracji środowiska uruchomieniowego lub instalacji dodatkowego oprogramowania na stacji roboczej,
 	\item możliwość zdalnego dostępu do wyników analizy na podstawie zebranych danych, bez konieczności przesyłania dużych plików CSV i ręcznej konfiguracji środowiska Python,
 	\item wysoką interaktywność wizualizacji, umożliwiającą dynamiczne filtrowanie serii danych, elastyczne dostosowywanie zakresu badanych częstotliwości i natychmiastowe porównywanie topologii,
 	\item elastyczną integrację z istniejącym silnikiem testowym i analizatorem wsadowym,
-	\item rygorystyczną separację warstwy prezentacji od logiki biznesowej (\textit{ang. Separation of Concerns}), gwarantującą niezależny rozwój i utrzymanie obu komponentów (skrypty w środowisku Python oraz mikrokontroler ESP32 odpowiadają w tym modelu wyłącznie za wysokoczęstotliwościową komunikację sieciową, kontrolę pętli HIL oraz deterministyczne wyliczanie metryk).
+	\item rygorystyczną separację warstwy prezentacji od logiki biznesowej (\textit{ang. Separation of Concerns}), gwarantującą niezależny rozwój i utrzymanie komponentów.
+	      Skrypty Python oraz mikrokontroler ESP32 odpowiadają za komunikację sieciową, kontrolę pętli HIL i akwizycję danych, natomiast metryki są obliczane w warstwie hosta.
 \end{itemize}
 
 Powyższe wymagania sprawiły, że natywne narzędzia dostępne w ekosystemie języka Python ustąpiły miejsca nowoczesnemu frameworkowi webowemu.
 Dostępność wyników analizy bezpośrednio w silniku przeglądarki jest współcześnie standardem nie tylko w systemach biznesowych, ale i w specjalistycznych narzędziach inżynierskich.
-Rozwiązanie to pozwala na błyskawiczne porównywanie wyników i bezproblemowe współdzielenie wniosków z pozostałymi członkami zespołu oraz interesariuszami projektu, wykorzystując powszechnie dostępne przeglądarki na urządzeniach stacjonarnych i mobilnych.
+Rozwiązanie to ułatwia porównywanie wyników i współdzielenie wniosków z pozostałymi członkami zespołu oraz interesariuszami projektu za pośrednictwem powszechnie dostępnych przeglądarek.
 
 \section{Stos technologiczny aplikacji webowej}
 \label{sec:stos-technologiczny-aplikacji-webowej}
 
-Przeprowadzono dobór stosu technologicznego dla projektowanej aplikacji webowej uwzględniając zarówno wymagania funkcjonalne i niefunkcjonalne narzędzia analitycznego, jak i długoterminowe konsekwencje utrzymaniowe wdrożenia.
+Doboru stosu technologicznego dla projektowanej aplikacji webowej dokonano z uwzględnieniem wymagań funkcjonalnych i niefunkcjonalnych narzędzia analitycznego oraz długoterminowych konsekwencji utrzymaniowych wdrożenia.
 Analizie poddano alternatywne podejścia od rozwiązań opartych na środowisku Python, przez bezpośrednie wykorzystanie języka JavaScript, aż po nowoczesne frameworki front-endowe.
 Zostały ocenione pod kątem wydajności, skalowalności, ergonomii rozwoju oraz możliwości publikacji aplikacji jako zasobu dostępnego przez przeglądarkę internetową.
 
@@ -52,7 +53,7 @@ W konsekwencji rozwiązanie tego typu wymaga infrastruktury serwerowej, podczas 
 \subsection{HTML z JavaScript}
 \label{subsec:html-z-javascript}
 
-Drugim rozważanym podejściem było zrezygnowanie z aplikacji serwerowej i implementacja interfejsu z wykorzystaniem języka JavaScript bez dodatkowej warstwy abstrakcji w postaci frameworka (\textit{ang. Vanilla JS}).
+Drugim rozważanym podejściem była rezygnacja z aplikacji serwerowej i implementacja interfejsu z wykorzystaniem języka JavaScript bez dodatkowej warstwy abstrakcji w postaci frameworka (\textit{ang. Vanilla JS}).
 Ponieważ warstwa wizualizacyjna wykorzystuje bibliotekę Chart.js, a dane wejściowe są przechowywane w plikach JSON, możliwe byłoby zrealizowanie całej aplikacji z wykorzystaniem standardowych interfejsów programistycznych udostępnianych przez przeglądarkę.
 
 Podejście to jest jednak mniej korzystne wraz ze wzrostem złożoności interfejsu.
@@ -73,12 +74,12 @@ Wraz ze wzrostem złożoności aplikacji zwiększałoby to nakład pracy związa
 \label{subsec:technologie-i-frameworki-webowe}
 
 W celu wyboru optymalnego fundamentu dla interfejsu użytkownika, konieczne było przeanalizowanie wiodących rozwiązań na rynku technologii front-endowych.
-Współczesny ekosystem aplikacji webowych zdominowany jest przez cztery główne technologie: React, Angular, Vue.js oraz Svelte.
+Współczesny ekosystem aplikacji webowych obejmuje między innymi cztery ważne technologie: React, Angular, Vue.js oraz Svelte.
 Aby decyzja architektoniczna opierała się na obiektywnych przesłankach, przeanalizowano długoterminowe trendy popularności oraz satysfakcji programistów na podstawie dwóch największych, globalnych badań społeczności IT: \textit{Stack Overflow Developer Survey} z lat 2018-2025 \cite{so_survey_2018, so_survey_2019, so_survey_2020, so_survey_2021, so_survey_2022, so_survey_2023, so_survey_2024, so_survey_2025} oraz \textit{JetBrains The State of Developer Ecosystem} z lat 2017-2023 \cite{jb_survey_2017, jb_survey_2018, jb_survey_2019, jb_survey_2020, jb_survey_2021, jb_survey_2022, jb_survey_2023}.
 
 Analiza historyczna danych ze \textit{Stack Overflow} ukazuje wyraźną ewolucję rynku na przestrzeni lat.
-W 2018 roku dominującą technologią był Angular (36,9\%), wyprzedzający bibliotekę React (27,8\%).
-W kolejnych latach trend ten uległ silnemu odwróceniu - React odnotowywał stały wzrost, osiągając w 2025 roku pozycję bezapelacyjnego lidera z wynikiem 44,7\% wskazań w kategorii najpopularniejszych frameworków i technologii webowych.
+W 2018 roku w przyjętym zestawieniu Angular uzyskał 36,9\% wskazań, wyprzedzając bibliotekę React (27,8\%).
+W kolejnych latach trend ten uległ odwróceniu: React odnotowywał wzrost, osiągając w 2025 roku 44,7\% wskazań w kategorii najpopularniejszych frameworków i technologii webowych.
 Angular, po początkowych spadkach, ustabilizował swoją pozycję rynkową na poziomie 17-18\%.
 Równolegle, niezwykle silną pozycję ugruntował framework Vue.js, który według badań Stack Overflow wykazuje niemal identyczną adopcję co Angular (17,6\% w 2025 roku).
 Z kolei raporty \textit{JetBrains}, skupiające się na realnym, codziennym wykorzystywaniu technologii w projektach, pozycjonują Vue.js jeszcze wyżej.
@@ -114,7 +115,7 @@ W analizie uwzględniono następujące technologie:
 	      Wprowadza elegancką architekturę plików jednokomponentowych (SFC - \textit{Single-File Components}), w których widok (HTML), style (CSS) i logika (JavaScript/TypeScript) są wyraźnie odseparowane w ramach jednego spójnego pliku.
 	      Wersja 3 frameworka oferuje zaawansowany i wysoce zoptymalizowany system reaktywności (\textit{Composition API}), pozwalający na automatyczne śledzenie zależności i aktualizowanie interfejsu przy pracy na dużych zbiorach danych, przy jednoczesnym zachowaniu niskiego progu wejścia \cite{vuejs_guide_introduction}.
 
-	\item \textbf{Svelte} - framework proponujący radykalnie odmienne podejście do budowy interfejsów, całkowicie odrzucając koncepcję wirtualnego modelu DOM.
+	\item \textbf{Svelte} - framework proponujący odmienne podejście do budowy interfejsów, w którym kompilacja ogranicza znaczenie wirtualnego modelu DOM.
 	      Svelte działa jako kompilator, który podczas fazy budowania aplikacji (\textit{ang. build step}) analizuje kod i tłumaczy go na wysoce zoptymalizowane, natywne operacje JavaScript aktualizujące bezpośrednio rzeczywisty model DOM.
 	      Gwarantuje to ekstremalnie wysoką wydajność, jednak ekosystem dostępnych bibliotek analitycznych i gotowych komponentów pozostaje wyraźnie mniejszy w porównaniu do wyżej wymienionych technologii \cite{svelte_welcome}.
 \end{itemize}
@@ -127,18 +128,17 @@ W praktyce inżynierskiej, stworzenie pełnoprawnej aplikacji webowej wymaga jed
 Konieczność ręcznej integracji i konfiguracji tych elementów nierzadko prowadzi do powstawania niespójnych architektonicznie rozwiązań.
 
 Odpowiedzią na te wyzwania architektoniczne jest zastosowanie meta-frameworków.
-Są to wysoce ustrukturyzowanych środowisk zbudowanych na fundamencie podstawowych bibliotek, narzucające ustandaryzowaną architekturę zgodnie z paradygmatem \textit{konwencja ponad konfiguracją} (\textit{ang. Convention over Configuration}).
+Są to wysoce ustrukturyzowane środowiska zbudowane na fundamencie podstawowych bibliotek, narzucające ustandaryzowaną architekturę zgodnie z paradygmatem \textit{konwencja ponad konfiguracją} (\textit{ang. Convention over Configuration}).
 Do dominujących rozwiązań w tej kategorii należą \textbf{Next.js} (zbudowany wokół biblioteki React) \cite{nextjs_what_is_nextjs} oraz \textbf{Nuxt} (oparty na frameworku Vue.js) \cite{nuxt_introduction}.
 
 Kluczową przewagą zastosowania meta-frameworków, o fundamentalnym znaczeniu dla projektowanej aplikacji analitycznej, jest elastyczność w doborze trybu renderowania aplikacji.
 Tradycyjne środowiska implementują zazwyczaj pojedynczy model dystrybucji, co może stanowić istotne ograniczenie.
-Meta-frameworki pozwalają natomiast na per-stronnicowe lub globalne definiowanie strategii budowania:
+Meta-frameworki pozwalają natomiast na definiowanie strategii renderowania globalnie lub dla poszczególnych tras:
 
 \begin{itemize}
 	\item \textbf{CSR (\textit{ang. Client-Side Rendering}):}
-	      Klasyczne podejście wykorzystywane w aplikacjach typu jednostronicowych (\textit{ang. SPA - Single Page Application}).
-	      Przeglądarka pobiera pusty dokument HTML oraz skompilowany plik JavaScript.
-	      Cały proces rysowania interfejsu i pobierania danych odbywa się na urządzeniu końcowym (po stronie klienta).
+	      Podejście wykorzystywane w aplikacjach jednostronicowych (\textit{ang. SPA - Single Page Application}).
+	      Przeglądarka pobiera minimalny dokument HTML oraz skompilowany plik JavaScript, Cały proces rysowania interfejsu i pobierania danych odbywa się na urządzeniu końcowym (po stronie klienta).
 	      Pozwala to na maksymalną interaktywność i płynność działania aplikacji (co jest kluczowe przy obsłudze dynamicznych wykresów analitycznych).
 
 	\item \textbf{SSR (\textit{ang. Server-Side Rendering}):}
@@ -149,11 +149,10 @@ Meta-frameworki pozwalają natomiast na per-stronnicowe lub globalne definiowani
 	      Cała aplikacja wraz z danymi jest renderowana do statycznych plików HTML, CSS i JS wyłącznie w momencie procesu budowania (\textit{ang. build time}).
 	      Gotowe zasoby mogą być następnie błyskawicznie i tanio serwowane (hostowane) z wykorzystaniem mechanizmów CDN (\textit{ang. Content Delivery Network}).
 
-	\item \textbf{Renderowanie Uniwersalne (\textit{ang. Universal Rendering}) z procesem uwadniania (\textit{ang. Hydration}):}
-	      Podejście hybrydowe, natywnie wspierane przez framework Nuxt.
-	      Pozwala ono na wygenerowanie kompletnego, statycznego kodu HTML (często w trybie SSG) gwarantującego błyskawiczny czas początkowego ładowania.
-	      Natychmiast po załadowaniu w przeglądarce, skrypty frameworka wykonują proces \textit{uwadniania} podłączając mechanizmy reaktywności i obsługi zdarzeń.
-	      Od tego momentu dokument funkcjonuje jako pełnoprawna aplikacja SPA, oferująca maksymalną wydajność bez konieczności odpytywania serwera przy kolejnych interakcjach.
+	\item \textbf{Renderowanie uniwersalne (\textit{ang. Universal Rendering}) z procesem uwadniania (\textit{ang. Hydration}):}
+	      Podejście wspierane przez framework Nuxt, w którym początkowy dokument HTML jest generowany po stronie serwera.
+	      Po załadowaniu strony skrypty frameworka wykonują proces \textit{uwadniania}, podłączając mechanizmy reaktywności i obsługi zdarzeń.
+	      Dalsza interakcja może odbywać się bez pełnego przeładowywania strony, jednak szczegółowy sposób generowania i dostarczania treści zależy od konfiguracji wdrożenia.
 \end{itemize}
 
 Rozbudowane meta-frameworki rozwiązują również problemy zarządzania zasobami i automatycznej strukturyzacji projektu (np. mapowanie struktury folderów bezpośrednio na adresy URL, automatyczny import komponentów), co znacząco obniża dług techniczny i redukuje czas potrzebny na wdrożenie aplikacji.
@@ -163,18 +162,16 @@ Zdolność płynnego przejścia ze statycznie wygenerowanej struktury wstępnej 
 \section{Architektura aplikacji analitycznej w środowisku Nuxt}
 \label{sec:architektura-aplikacji-analitycznej-w-srodowisku-nuxt}
 
-Na podstawie przeprowadzonego porównania technologii jako fundament warstwy aplikacyjnej wybrano meta-framework \textbf{Nuxt.js}.
-Rozwiązanie to pozwoliło w pełni wykorzystać potencjał oraz elastyczność ekosystemu Vue.js, eliminując jednocześnie konieczność manualnego konfigurowania środowiska budowania (zintegrowanego z narzędziem \textbf{Vite} \cite{vite_guide}, którego autorem jest \textbf{Evan You} - twórca \textbf{Vue.js}) oraz infrastruktury trasowania.
+Na podstawie przeprowadzonego porównania technologii jako fundament warstwy aplikacyjnej wybrano meta-framework \textbf{Nuxt}.
+Rozwiązanie to pozwoliło wykorzystać potencjał i elastyczność ekosystemu Vue.js, ograniczając konieczność ręcznego konfigurowania środowiska budowania, zintegrowanego z narzędziem \textbf{Vite} \cite{vite_guide}, oraz infrastruktury trasowania.
 Kluczowym argumentem przemawiającym za wyborem Nuxta, z punktu widzenia wzorca \textit{konwencja ponad konfiguracją}, była możliwość zautomatyzowania powtarzalnych procesów deweloperskich.
 Obejmuje to między innymi mechanizm automatycznego wczytywania modułów i komponentów (\textit{ang. auto-imports}) oraz natywne wsparcie dla silnego typowania w języku TypeScript bez wymogu tworzenia dodatkowych plików konfiguracyjnych.
 
-Jednym z najważniejszych aspektów infrastrukturalnych, który zdeterminował wybór tego frameworka, była jego zdolność do obsługi renderowania hybrydowego (\textit{Hybrid Rendering}) dostarczana przez wbudowany silnik serwerowy \textbf{Nitro}.
-W odróżnieniu od klasycznych aplikacji SPA, w których przeglądarka pobiera pusty szkielet i musi samodzielnie zainicjować pobieranie skryptów, aplikacja zrealizowana w środowisku Nuxt generuje kompletny dokument HTML już po stronie serwera docelowego.
-Takie podejście znacząco przyspiesza początkowy czas renderowania (\textit{ang. Initial Page Load}) i optymalizuje widoczność narzędzia dla wyszukiwarek (\textit{SEO}).
-Jednak natychmiast po załadowaniu pierwszego widoku w przeglądarce klienta, skrypty frameworka wykonują proces uwadniania podłączając mechanizmy reaktywności do statycznego dotąd dokumentu.
-Od tego momentu aplikacja płynnie transformuje się w pełnoprawną aplikację jednostronicową (SPA), co gwarantuje natychmiastową reakcję na interakcje użytkownika i elastyczną nawigację bez przeładowywania strony.
+Jednym z najważniejszych aspektów infrastrukturalnych, który wpłynął na wybór tego frameworka, była możliwość obsługi różnych strategii renderowania z wykorzystaniem silnika serwerowego \textbf{Nitro}.
+W konfiguracji Nuxt początkowy dokument może być generowany po stronie serwera, a następnie uwadniany w przeglądarce.
+Takie podejście może skrócić czas początkowego renderowania (\textit{ang. Initial Page Load}), natomiast jego wpływ na SEO i wydajność zależy od wybranej strategii renderowania oraz konfiguracji wdrożenia.
 
-Możliwości silnika Nitro pozwoliły na bezproblemowe wdrożenie (\textit{ang. deployment}) środowiska analitycznego w architekturze brzegowej (\textit{ang. Edge Computing}), z wykorzystaniem globalnej infrastruktury \textbf{Cloudflare}.
+Możliwości silnika Nitro pozwoliły wdrożyć środowisko analityczne w architekturze brzegowej (\textit{ang. Edge Computing}) z wykorzystaniem infrastruktury \textbf{Cloudflare}.
 Dzięki temu pliki konfiguracyjne JSON z wynikami testów oraz sama logika interfejsu mogą być serwowane z fizycznych serwerów zlokalizowanych możliwie najbliżej użytkownika końcowego.
 Taka architektura pozwala zachować rygorystyczne oddzielenie ciężkich operacji transformacyjnych i renderowania interaktywnych wykresów Chart.js w pamięci lokalnej klienta od wydajnego dostarczania początkowej struktury widoków, gwarantując maksymalną wydajność całego systemu analitycznego.
 
@@ -190,7 +187,7 @@ Taka architektura pozwala zachować rygorystyczne oddzielenie ciężkich operacj
 
 Jednym z kluczowych wyzwań przy projektowaniu rozbudowanych paneli analitycznych (\textit{ang. Dashboards}) jest narastająca złożoność kodu źródłowego.
 Połączenie w jednym pliku procesów manipulacji danymi JSON z deklaracją znaczników wizualnych HTML niemal zawsze prowadzi do degradacji architektury (\textit{Spaghetti Code}).
-Framework Nuxt narzuca strukturalne rozwiązanie tego problemu poprzez implementacje paradygmat podziału odpowiedzialności \textit{ang. Separation of Concerns} za pomocą dedykowanej architektury systemu plików.
+Framework Nuxt wspiera rozwiązanie tego problemu poprzez implementację paradygmatu podziału odpowiedzialności (\textit{ang. Separation of Concerns}) za pomocą dedykowanej struktury systemu plików.
 
 W niniejszym projekcie główne procesy aplikacyjne zostały rygorystycznie podzielone na niezależne i odseparowane od siebie katalogi robocze, których poprawne zdefiniowanie automatycznie aktywuje odpowiednie mechanizmy środowiska Nuxt.
 
@@ -291,26 +288,24 @@ Wzorzec ten hermetycznie grupuje deklarację interfejsu w bloku \texttt{<templat
 
 Takie podejście umożliwiło rozbicie potężnego interfejsu panelu analitycznego na serię drobnych, łatwych w testowaniu klocków.
 Doskonałym przykładem jest komponent filtrów sterujących osią częstotliwości, który można bez modyfikacji kodu wykorzystywać wielokrotnie w obrębie całego projektu.
-Framework Nuxt dokonuje ich asynchronicznego importu.
+Framework Nuxt może automatycznie importować komponenty wykorzystywane w szablonach.
 
-Wyniki analizy przeprowadzanych przez moduł \texttt{TestEngine} tworzą obszerny zbiór danych w formie bazy danych, ale także pliku \texttt{JSON}.
-Wyniki te zostały zmagazynowane jako statyczny zestaw wpisów i osadzone bezpośrednio wewnątrz struktury projektu (w dedykowanym katalogu zasobów statycznych \texttt{assets/data.json}).
+Wyniki analizy przeprowadzanej przez moduł \texttt{TestEngine} są zapisywane w bazie danych oraz eksportowane między innymi do pliku \texttt{JSON}.
+W projekcie wyniki te są przechowywane jako statyczny zestaw wpisów w pliku \texttt{app/assets/data.json}, który jest importowany przez moduł analityczny.
 
-Takie rozwiązanie inżynierskie eliminuje obciążenie związane z opóźnieniami sieciowymi przy asynchronicznym żądaniu i pobieraniu danych.
-Narzędzie kompilujące Vite natywnie rozwiązuje tę ścieżkę importu już w fazie tworzenia paczki, efektywnie wplatając zbiory surowych wyników bezpośrednio do wykonywalnej warstwy logiki klienckiej.
+Takie rozwiązanie eliminuje dodatkowe żądanie sieciowe wykonywane podczas pobierania tego pliku przez przeglądarkę.
+Import jest rozwiązywany przez narzędzia budowania aplikacji, a dane są dołączane do paczki klienta lub obsługiwane zgodnie z konfiguracją bundlera.
 
 \subsection{Zarządzanie stanem i reaktywna logika biznesowa}
 \label{subsec:zarzadzanie-stanem-i-reaktywna-logika-biznesowa}
 
-W architekturze nowoczesnych aplikacji klasy SPA wysoce niewskazane jest osadzanie logiki odpowiedzialnej za przekształcanie, filtrowanie czy agregację danych bezpośrednio w kodzie renderującym interfejs graficzny (tj.
-wewnątrz definicji komponentów \texttt{Vue}).
-Takie sprzężenie (ang.
-\textit{tight coupling}) drastycznie obniża testowalność kodu i prowadzi do wielokrotnego powielania tych samych bloków operacyjnych.
+W architekturze nowoczesnych aplikacji klasy SPA nie zaleca się umieszczania całej logiki odpowiedzialnej za przekształcanie, filtrowanie czy agregację danych bezpośrednio w kodzie renderującym interfejs graficzny, czyli wewnątrz komponentów \texttt{Vue}.
+Takie sprzężenie (\textit{ang. tight coupling}) może obniżać testowalność kodu i sprzyjać powielaniu tych samych operacji.
 
 W ramach implementacji panelu analitycznego \textit{ESPy-Nexus}, problem ten rozwiązano poprzez całkowite wyabstrahowanie logiki biznesowej do warstwy tzw. \textit{Composables}.
 Korzystając z mechanizmów \textit{Composition API} dostarczanych przez bibliotekę Vue 3 zaprojektowano wyizolowany, reaktywny stan globalny, hermetycznie zamknięty wewnątrz własnego API: \texttt{useAnalytics()}.
 
-Zdefiniowany w katalogu \texttt{composables/} moduł analityczny przechowuje i udostępnia wszystkim komponentom w systemie kompletny model stanu aplikacji (np. listę wyselekcjonowanych do analizy protokołów, aktualnie wybrany zakres częstotliwości czy rodzaj topologii sieciowej).
+Zdefiniowany w katalogu \texttt{composables/} moduł analityczny przechowuje i udostępnia komponentom model stanu aplikacji, obejmujący między innymi wybrane serie danych, zakres częstotliwości oraz ustawienia osi wykresu.
 Oparcie logiki na funkcyjnym API znacząco podnosi jakość i spójność struktury.
 
 Zamiast implementacji skomplikowanych bibliotek do zarządzania stanem globalnym (takich jak Pinia \cite{pinia_introduction}), framework Nuxt oferuje zoptymalizowane, natywne rozwiązanie - komendę \texttt{useState()}.
@@ -366,13 +361,13 @@ export const useAnalytics = () => {
 \end{minted}
 \end{listing}
 
-Drugim z kluczowych mechanizmów architektonicznych wprowadzonych na poziomie kontrolera \texttt{useAnalytics} były \textit{Własności Obliczane} (\textit{ang. Computed Properties}).
+Drugim z kluczowych mechanizmów architektonicznych wprowadzonych na poziomie modułu \texttt{useAnalytics} są właściwości obliczane (\textit{ang. Computed Properties}).
 Ze względu na fakt, że plik wejściowy JSON może zawierać dziesiątki tysięcy rekordów o wielu stopniach parametryzacji, klasyczne i powtarzalne iterowanie przez całą tablicę podczas zmiany wybranego filtra stanowiłoby ogromne obciążenie dla procesora maszyny klienckiej.
 
-Reaktywny mechanizm \texttt{computed()} wykorzystany w architekturze Vue buduje wewnętrzny układ zależności (tzw. graf drzewa stanów).
-Pule z dostępnymi dla inżyniera opcjami wyboru testów (np. \texttt{availableTopologies} czy \texttt{availableProtocols}) są obliczane wyłącznie jeden raz w momencie wczytania struktury JSON, a wyniki te zostają zbuforowane ( \textit{ang. cached}) w wewnętrznej pamięci podręcznej frameworka.
-Dopóki macierz danych podstawowych (\texttt{rawDataRef}) nie ulegnie modyfikacji, co w środowisku statycznym nie następuje, silnik omija bezcelowe przeliczanie list filtrów (Listing \ref{lst:use_analytics_computed}).
-Oszczędność cykli obliczeniowych w środowiskach wykonawczych JavaScript jest warunkiem koniecznym do poprawnego wyrenderowania wykresów HIL w częstotliwości 60 klatek na sekundę.
+Reaktywny mechanizm \texttt{computed()} wykorzystywany w architekturze Vue buduje wewnętrzny graf zależności.
+Wartości takie jak \texttt{availableTopologies} czy \texttt{availableProtocols} są obliczane na podstawie reaktywnych danych i buforowane do czasu zmiany zależności.
+Dzięki temu, dopóki macierz danych podstawowych (\texttt{rawDataRef}) się nie zmieni, Vue nie wykonuje ponownie niepotrzebnych obliczeń (Listing \ref{lst:use_analytics_computed}).
+Mechanizm ten ogranicza koszt obliczeń, ale nie stanowi gwarancji utrzymania częstotliwości odświeżania na poziomie 60 klatek na sekundę.
 
 \begin{listing}[htbp]
 	\caption{Mechanika agregacji i buforowania danych słownikowych (\texttt{useAnalytics.ts}) \cite{espy_nexus_nuxt_dashboard}.}
@@ -405,32 +400,32 @@ Z biegiem czasu, w celu przyspieszenia prac nad powtarzalnymi elementami aplikac
 Zrewolucjonizował on podejście do projektowania oferując gotowe zestawy klas (np. \texttt{btn btn-primary}) oraz zintegrowane skrypty JavaScript obsługujące logikę komponentów (np. modali czy siatek responsywnych), które można wdrożyć błyskawicznie z wykorzystaniem sieci CDN.
 Jednakże, monolityczny charakter takich bibliotek często prowadzi do problemów związanych z generycznością komponentów, nadpisywaniem stylów w obrębie projektu oraz trudnościami w dostosowywaniu gotowych elementów do indywidualnych potrzeb projektowych.
 
-Odpowiedzią na te problemy stało się wprowadzenie metodologii \textit{Utility-First}, spopularyzowanej przez kompilator \textbf{Tailwind CSS} \cite{tailwindcss_installation_vite}.
+Odpowiedzią na te problemy stało się wprowadzenie metodologii \textit{Utility-First}, spopularyzowanej przez framework \textbf{Tailwind CSS} \cite{tailwindcss_installation_vite}.
 Dostarcza on potężny zestaw niskopoziomowych klas narzędziowych (np. \texttt{flex, text-center, bg-red-500}), które aplikuje się bezpośrednio w strukturze znaczników HTML.
-podobnie jak w przypadku styli Bootstrap.
+Podobnie jak w przypadku stylów Bootstrap, klasy te opisują wygląd elementów bezpośrednio w znacznikach.
 Takie podejście drastycznie zwiększa elastyczność i eliminuje problem globalnego nakładania się stylów, ponieważ style komponentu są zdefiniowane i zamknięte w miejscu jego występowania.
-Co niezwykle istotne, Tailwind działa w oparciu o mechanizm JIT (\textit{ang. Just-In-Time compilation}) - silnik skanuje pliki źródłowe wykrywając użyte klasy i generuje plik CSS zawierający wyłącznie ten kod, który faktycznie został użyty.
-Gwarantuje to niezwykle niską wagę paczki wynikowej aplikacji produkcyjnej (\textit{ang. zero-runtime}).
+Współczesne wersje Tailwind CSS analizują pliki źródłowe i generują CSS dla użytych klas, co ogranicza rozmiar produkcyjnego arkusza stylów.
+Nie oznacza to jednak całkowitego braku kodu wykonywanego w przeglądarce.
 
 O ile Tailwind rozwiązuje problem stylizacji graficznej, o tyle nie dostarcza on biblioteki komponentów, mechanizmów dostępności cyfrowej (\textit{Accessibility}), ani obsługi zdarzeń dla złożonych elementów nawigacyjnych.
 Z tego względu jako docelowy fundament warstwy wizualnej środowiska \textit{ESPy-Nexus} wybrano \textbf{Nuxt UI}.
-Jest to natywna, wszechstronna biblioteka interfejsu (współpracująca również z czystym środowiskiem Vue), dostarczająca ponad 125 gotowych do użycia, wysoce responsywnych komponentów.
+Jest to biblioteka komponentów interfejsu przeznaczona dla Nuxt i Vue, dostarczająca gotowe, responsywne komponenty.
 Łączy ona w sobie swobodę projektowania graficznego z kompilatora Tailwind CSS z rygorystycznymi standardami inżynierii oprogramowania \cite{nuxt_ui_getting_started}.
 
 Kluczowym aspektem architektury Nuxt UI jest zastosowanie silnika \textbf{Reka UI} jako warstwy fundamentalnej (\textit{ang. primitive layer}).
-Warto nadmienić, że mechanika ta wywodzi się historycznie z popularnego w ekosystemie React projektu \textit{Radix UI}, z którego następnie wydzielono dedykowaną implementację zoptymalizowaną specjalnie pod system reaktywności frameworka Vue (Reka UI).
+Warto nadmienić, że Reka UI jest biblioteką prymitywów interfejsu dla Vue, inspirowaną rozwiązaniami znanymi z ekosystemu React, w szczególności z projektu Radix UI.
 Integracja ta gwarantuje natywną dostępność projektowanego panelu:
 \begin{itemize}
 	\item \textbf{Zgodność ze standardem WAI-ARIA:}
 	      komponenty Nuxt UI posiadają wbudowaną semantykę ról, co pozwala na bezproblemową nawigację czytnikom ekranowym (\textit{ang. Screen Readers}).
 	\item \textbf{Inteligentne zarządzanie fokusem:}
 	      komponenty złożone, takie jak okna dialogowe (\texttt{UModal}) czy akordeony (\texttt{UAccordion}), automatycznie zarządzają przenoszeniem uwagi (fokusu) po ich aktywacji, co znacząco poprawia komfort nawigacji z poziomu klawiatury.
-	\item \textbf{Keyboard Navigation:}
-	      wbudowane wsparcie klawiatury dla złożonych komponentów, takich jak zakładki i okna dialogowe.
+	\item \textbf{Nawigacja klawiaturą:}
+	      wbudowane wsparcie obsługi klawiatury dla złożonych komponentów, takich jak zakładki i okna dialogowe.
 \end{itemize}
 
 Wykorzystanie pakietu Nuxt UI pozwoliło wdrożyć spójny system projektowy oparty na palecie siedmiu kolorów semantycznych (\textit{primary, secondary, success, info, warning, error, neutral}).
-Eliminuje to konieczność używania bezpośrednich wartości kolorystycznych (\textit{ang. Hardcoding}) i gwarantuje płynną obsługę wbudowanego trybu ciemnego i jasnego (\textit{ang. Color Mode}).
+Ogranicza to konieczność używania bezpośrednich wartości kolorystycznych (\textit{ang. hardcoding}) i ułatwia obsługę trybu ciemnego oraz jasnego (\textit{ang. Color Mode}).
 Przykład wykorzystania gotowych kontrolerów do budowy zaawansowanego panelu filtrów, prezentujący deklaratywną integrację przycisków (\texttt{UButton}) oraz grupy checkboxów (\texttt{UCheckboxGroup}), wplecione w menu akordeonowe (\texttt{UAccordion}), został zaprezentowany na Listingu \ref{lst:data_explorer_filters}.
 
 \begin{listing}[htbp]
@@ -480,7 +475,7 @@ Wymagała ona zaimplementowania mechanizmu prezentacji w postaci tabelarycznej t
 Wykorzystanie standardowego elementu HTML \texttt{<table>} nie zapewnia mechanizmów takich jak filtrowanie, sortowanie czy paginacja, dlatego ich implementacja wymagałaby stworzenia dodatkowej logiki aplikacyjnej.
 
 Problem rozwiązano z wykorzystaniem biblioteki TanStack Table (\texttt{@tanstack/vue-table}) - bezgłowego (\textit{ang. headless}) silnika do obsługi tabel.
-Podejście headless oznacza, że biblioteka dostarcza logikę, stan oraz interfejs programistyczny odpowiedzialny za operacje na danych, takie jak filtrowanie, sortowanie i paginacja, nie narzucając jednocześnie struktury HTML, ani warstwy wizualnej komponentu.
+Podejście headless oznacza, że biblioteka dostarcza logikę, stan oraz interfejs programistyczny odpowiedzialny za operacje na danych, takie jak filtrowanie, sortowanie i paginacja, nie narzucając jednocześnie struktury HTML ani warstwy wizualnej komponentu.
 Dzięki temu sposób prezentacji danych pozostaje w pełni kontrolowany przez aplikację.
 Wykorzystane w implementacji modele wierszy umożliwiają kolejne przekształcanie zbioru danych, między innymi poprzez filtrowanie, sortowanie oraz paginację, a następnie przekazanie wynikowego zbioru wierszy do warstwy prezentacji (Rys. \ref{fig:espy-nexus-data-table}).
 Rozwiązanie to jest w pełni zintegrowane z komponentem Nuxt UI \texttt{<UTable>} (Listing \ref{lst:data_vue_table}).
@@ -515,20 +510,22 @@ Rozwiązanie to jest w pełni zintegrowane z komponentem Nuxt UI \texttt{<UTable
 \label{subsec:wizualizacja-wynikow-i-rozszerzanie-natywnych-bibliotek}
 
 Zasadniczym celem stworzonego środowiska webowego jest sprawna i interaktywna wizualizacja parametrów pracy sieci bezprzewodowych.
-Wymagało to zastosowania biblioteki graficznej zdolnej do natychmiastowego renderowania tysięcy punktów czasowych w przeglądarce, bez znaczącego spadku wydajności interfejsu (utrzymanie \textit{framerate'u} na poziomie 60 klatek na sekundę).
+Wymagało to zastosowania biblioteki graficznej zdolnej do renderowania wielu punktów w przeglądarce przy zachowaniu akceptowalnej płynności interfejsu.
 W tym celu zaimplementowano bibliotekę \textbf{Chart.js} \cite{chartjs_documentation} - wiodące rozwiązanie wykorzystujące element HTML5 \texttt{<canvas>}.
 
-Integracja zewnętrznej, natywnej biblioteki JavaScript z nowoczesnym cyklem życia frameworka Vue (\textit{Component Lifecycle}) została zrealizowana przy pomocy lekkiego mechanizmu pośredniczącego (\textit{ang. wrapper}) dostarczonego przez pakiet \texttt{vue-chartjs}.
-Pozwala to na automatyczne nasłuchiwanie zmian w danych wejściowych i płynną re-alokację pamięci na obiekcie \texttt{<canvas>}, co całkowicie eliminuje niebezpieczeństwo wycieków pamięci podczas częstego przerysowywania widoków.
+Integracja biblioteki JavaScript z cyklem życia frameworka Vue (\textit{ang. Component Lifecycle}) została zrealizowana za pomocą komponentu pośredniczącego (\textit{ang. wrapper}) dostarczonego przez pakiet \texttt{vue-chartjs}.
+Komponent ten przekazuje dane i konfigurację do Chart.js oraz ułatwia aktualizację wykresu.
+Nie eliminuje jednak automatycznie wszystkich problemów związanych z zarządzaniem zasobami.
+Ich poprawne zwalnianie zależy również od implementacji komponentu.
 
-Wizualizacja wyników z pętli testów typu Hardware-in-the-Loop obnażyła istotny problem ergonomiczny.
-Przy włączeniu podglądu dla wielu topologii sieciowych i jednoczesnym przedstawieniu tysięcy wyników analizy na jednym wykresie, punkty danych znajdują się blisko siebie na osi X (częstotliwości) w domyślnym trybie interakcji biblioteki Chart.js \texttt{nearest} ukaże wartość dla punktu jedynie podczas fizycznego najechania kursorem na jego obszar.
+Wizualizacja wyników z pętli testów typu Hardware-in-the-Loop ujawniła istotny problem ergonomiczny.
+Przy włączeniu podglądu dla wielu serii i jednoczesnym przedstawieniu wielu wyników analizy na jednym wykresie punkty danych znajdują się blisko siebie na osi X (częstotliwości).
+W domyślnym trybie interakcji biblioteki Chart.js, \texttt{nearest}, wartość punktu jest wskazywana na podstawie jego położenia względem kursora.
 Alternatywnie, tryb \texttt{index} umożliwia wyświetlenie wszystkich punktów w danej kolumnie.
-Żaden z tych trybów nie jest jednak w pełni ergonomiczny, ponieważ w przypadku gęsto upakowanych danych, szczególnie gdy wartości przebiegów nakładają się, najechanie kursorem na obszar wykresu albo ukaże jedynie pojedynczy punkt, albo \texttt{tooltip} zostanie wyświetlony dla wszystkich punktów w kolumnie, co całkowicie zaciemnia widok.
+Żaden z tych trybów nie jest jednak w pełni ergonomiczny, ponieważ w przypadku gęsto upakowanych danych, szczególnie gdy wartości przebiegów nakładają się, najechanie kursorem na obszar wykresu może wskazać tylko pojedynczy punkt albo wyświetlić zbyt wiele podpowiedzi jednocześnie.
 W celu poprawy komfortu analizy wizualnej, wprowadzono niestandardowy tryb interakcji o nazwie \texttt{hilMode}, który łączy zalety obu natywnych trybów.
 W tym trybie, po najechaniu kursorem na obszar wykresu, algorytm wyszukuje punkt danych leżący najbliżej kursora w osi Y (opóźnienie) i wyświetla jego etykietę informacyjną.
-Jak zaprezentowano na Listingu \ref{lst:chartjs_hilmode}.
-mechanizm ten modyfikuje natywną funkcję \texttt{Interaction.modes.index}, wprowadzając matematyczną tolerancję i progi zderzeń (stałe \texttt{MAX\_TOOLTIP\_DISTANCE\_Y} oraz \texttt{TOOLTIP\_OVERLAP\_TOLERANCE\_Y}).
+Jak zaprezentowano na Listingu \ref{lst:chartjs_hilmode}, mechanizm ten wykorzystuje natywny tryb \texttt{Interaction.modes.index} jako etap wstępny, a następnie stosuje tolerancję odległości i próg nakładania się punktów (stałe \texttt{MAX\_TOOLTIP\_DISTANCE\_Y} oraz \texttt{TOOLTIP\_OVERLAP\_TOLERANCE\_Y}).
 Dzięki tej ingerencji, po najechaniu kursorem na gęsto upakowany obszar, etykiety informacyjne aktywowane są wyłącznie dla tych przebiegów sygnału, których fizyczna wartość osi Y znajduje się w akceptowalnej bliskości położenia wskaźnika myszy (wartość \texttt{eventY}).
 Pozostałe punkty leżące w tej samej kolumnie (na osi X), lecz oddalone na osi Y, są odrzucane z tablicy aktywnych elementów.
 
@@ -587,22 +584,21 @@ Interaction.modes.hilMode = function (
 \subsection{Umiędzynarodowienie i struktura metadanych (i18n \& SEO)}
 \label{subsec:umiedzynarodowienie-i-struktura-metadanych}
 
-Ostatnim, lecz niezwykle istotnym z punktu widzenia inżynierii oprogramowania i jakości dostarczanego produktu aspektem, było zaimplementowanie mechanizmów umiędzynarodowienia (ang.
-\textit{Internationalization - i18n}) oraz optymalizacji metadanych.
+Ostatnim, lecz istotnym z punktu widzenia jakości dostarczanego produktu aspektem było zaimplementowanie mechanizmów umiędzynarodowienia (\textit{ang. Internationalization - i18n}) oraz zarządzania metadanymi.
 Ze względu na fakt, że wyniki badań systemów wbudowanych (HIL) często prezentowane są w wielonarodowych zespołach, interfejs \textit{ESPy-Nexus} został zaprojektowany jako aplikacja dwujęzyczna (ze wsparciem języka polskiego i angielskiego).
 
 Proces tłumaczenia interfejsu (w tym treści przycisków, powiadomień oraz etykiet wykresów) zrealizowano przy pomocy oficjalnego modułu \texttt{@nuxtjs/i18n} \cite{nuxt_i18n_getting_started}.
-Architektura tego rozwiązania wyklucza zjawisko wpisywania statycznych tekstów (\textit{ang. Hardcoding}) w pliki widoków (\texttt{.vue}).
+Rozwiązanie to ogranicza konieczność wpisywania statycznych tekstów (\textit{ang. hardcoding}) w plikach widoków (\texttt{.vue}).
 Zamiast tego, wszystkie zasoby tekstowe zostały przeniesione do zewnętrznych słowników w formacie JSON (\texttt{pl.json}, \texttt{en.json}).
 
 Konfigurację silnika i18n zoptymalizowano do pracy ze strategią \texttt{prefix\_except\_default}.
 Oznacza to, że wersja główna aplikacji operuje na podstawowej ścieżce URL (np. \texttt{/data}), podczas gdy warianty poboczne otrzymują stosowny przedrostek (np. \texttt{/en/data}).
-Dzięki wykorzystaniu detekcji przeglądarki (\texttt{detectBrowserLanguage}) opartej na plikach \textit{cookie}, przy pierwszej wizycie aplikacja automatycznie rozwiązuje preferencje użytkownika i podłącza odpowiedni słownik, nie wymagając od niego ręcznej interwencji w panelu ustawień.
-W kodzie komponentów teksty rozwiązywane są asynchronicznie za pomocą funkcji \texttt{\$t('klucz\_w\_slowniku')}, co zapewnia pełną reaktywność w momencie zmiany języka bez konieczności przeładowania strony.
+Dzięki wykorzystaniu detekcji języka przeglądarki (\texttt{detectBrowserLanguage}) i pliku cookie przy pierwszej wizycie aplikacja może dobrać preferowany język użytkownika.
+W kodzie komponentów teksty są rozwiązywane reaktywnie za pomocą funkcji \texttt{\$t('klucz\_w\_slowniku')}, co umożliwia zmianę języka bez przeładowania strony.
 
 Ze względu na wykorzystanie renderingu hybrydowego (wzmiankowanego w podrozdziale \ref{subsec:meta-frameworki-i-mechanizmy-renderowania}), aplikacja Nuxt zasilana silnikiem Nitro zdolna jest do generowania struktury metadanych HTML po stronie serwera.
 Wykorzystano tę cechę do głębokiej integracji ze standardami optymalizacji dla wyszukiwarek (\textit{SEO}) oraz protokołem \textbf{Open Graph} (og), używanym przez platformy społecznościowe (np. X/Twitter, LinkedIn, Slack) do generowania bogatych wizytówek linków.
 
-Deklaratywne definiowanie metadanych w ekosystemie Vue 3 zrealizowano przy pomocy globalnego mechanizmu \texttt{useSeoMeta()}, implementowanego na poziomie pliku uruchomieniowego \texttt{app.vue} oraz poszczególnych widoków.
-Jak zilustrowano na Listingu \ref{lst:app_vue}, tagi te (takie jak \texttt{og:title}, \texttt{og:image} czy \texttt{twitter:card}) są dynamicznie rozwiązywane z użyciem wstrzykniętych słowników językowych z modułu i18n.
-Zapewnia to integralność treści - metadane indeksowane przez wyszukiwarki zawsze odpowiadają wybranej wersji językowej aplikacji.
+Deklaratywne definiowanie metadanych w ekosystemie Vue 3 zrealizowano za pomocą globalnego mechanizmu \texttt{useSeoMeta()} w pliku \texttt{app.vue} oraz dodatkowo w poszczególnych widokach.
+Jak zilustrowano na Listingu \ref{lst:app_vue}, część metadanych, w tym tytuł i opisy, jest dynamicznie rozwiązywana z wykorzystaniem słowników językowych modułu i18n.
+Pozostałe wartości, takie jak obraz Open Graph, autor i karta Twittera, są stałe w przedstawionej konfiguracji.

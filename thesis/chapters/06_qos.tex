@@ -251,10 +251,10 @@ Słownik grupujący te dane (\texttt{burst\_events}) pozwala na dokładne wskaza
 
 W ewaluacji kanałów transmisyjnych powszechnie stosowaną miarą jest przepustowość (\textit{ang. Throughput}).
 Metryka ta określa całkowitą ilość danych przesyłanych przez medium w jednostce czasu.
-Z perspektywy inżynierii systemów wbudowanych oraz warstwy aplikacji, klasyczny \textit{Throughput} bywa jednak mylący -- uwzględnia on bowiem narzuty protokołów (nagłówki ramek MAC, IP, TCP/UDP), sygnały sterujące (np. pakiety \texttt{ACK}) oraz, co najważniejsze, retransmisje zgubionych pakietów.
+Z perspektywy inżynierii systemów wbudowanych oraz warstwy aplikacji, klasyczny \textit{Throughput} bywa jednak mylący - uwzględnia on bowiem narzuty protokołów (nagłówki ramek MAC, IP, TCP/UDP), sygnały sterujące (np. pakiety \texttt{ACK}) oraz, co najważniejsze, retransmisje zgubionych pakietów.
 
 W systemach HIL, gdzie liczy się wyłącznie transfer faktycznych, poprawnych danych telemetrycznych lub komend sterujących, stosuje się rygorystyczną metrykę \textbf{Wydajności użytecznej} (\textit{ang. Goodput}).
-Definiuje ona liczbę unikalnych, pomyślnie zdekodowanych bajtów aplikacji (tzw. ładunku użytecznego -- \textit{Payload}), dostarczonych do docelowego procesu operacyjnego w jednostce czasu.
+Definiuje ona liczbę unikalnych, pomyślnie zdekodowanych bajtów aplikacji (tzw. ładunku użytecznego - \textit{Payload}), dostarczonych do docelowego procesu operacyjnego w jednostce czasu.
 
 \subsection{Model matematyczny i problem brzegowy (Fencepost Error)}
 
@@ -266,7 +266,7 @@ W związku z tym, pierwszy odebrany pakiet pełni wyłącznie rolę wyzwalacza p
 Zjawisko to w informatyce znane jest jako \textbf{błąd palików} (ang.
 \textit{Fencepost Error} / \textit{Off-by-one}).
 
-Wzór na przepływność użyteczną, z uwzględnieniem matematycznej poprawki, przyjmuje postać: $$Goodput = \frac{(N_{unique} - 1) \cdot S_{payload}}{\Delta T} \quad [B/s]$$ gdzie: $N_{unique}$ -- całkowita liczba unikalnych i poprawnie odebranych pakietów, $S_{payload}$ -- zadeklarowany, czysty rozmiar struktury badawczej (w bajtach), $\Delta T$ -- rzeczywisty czas trwania akwizycji z perspektywy odbiorcy (w sekundach).
+Wzór na przepływność użyteczną, z uwzględnieniem matematycznej poprawki, przyjmuje postać: $$Goodput = \frac{(N_{unique} - 1) \cdot S_{payload}}{\Delta T} \quad [B/s]$$ gdzie: $N_{unique}$ - całkowita liczba unikalnych i poprawnie odebranych pakietów, $S_{payload}$ - zadeklarowany, czysty rozmiar struktury badawczej (w bajtach), $\Delta T$ - rzeczywisty czas trwania akwizycji z perspektywy odbiorcy (w sekundach).
 
 Wynik ten konwertowany jest następnie na standardowe dla telekomunikacji Megabity na sekundę ($Mbps$), wykorzystując przelicznik: $1 Mbps = 1 000 000 \text{ bitów}/s$.
 
@@ -304,3 +304,74 @@ Odbiornik ESP32 dekoduje całą serię pakietów niemal w tej samej mikrosekundz
 Powoduje to ekstremalne zwężenie mianownika ($\Delta T$) w oknie odbiorczym, co matematycznie winduje chwilowy \textit{Goodput} poza teoretyczne możliwości nadajnika (komputera PC).
 
 W ten sposób metryka wydajności użytecznej pośrednio, acz precyzyjnie, identyfikuje stany niestabilności kolejek protokołów TCP/UDP w środowiskach czasu rzeczywistego.
+
+\section{Defekty kolejności i anomalie chronologiczne (Out-of-Order)}
+\label{sec:ooo}
+
+W środowiskach sieciowych opartych na komutacji pakietów, pojedyncze datagramy mogą wędrować od nadajnika do odbiorcy różnymi ścieżkami routingu, a także podlegać zróżnicowanym czasom kolejkowania w buforach sprzętowych.
+Zjawisko to prowadzi do sytuacji, w której pakiety docierają do celu w innej kolejności, niż zostały wygenerowane.
+Określa się to mianem transmisji poza kolejnością (\textit{ang. OoO - Out-of-Order}).
+
+Z perspektywy automatyki i telemetrii operującej w pętli sprzętowej (HIL), naruszenie chronologii jest błędem krytycznym.
+Jeśli komputer sterujący wyśle pakiety z nowymi zadanymi współrzędnymi dla ramienia robota (np. pakiet nr 100, a następnie pakiet nr 101), a na skutek anomalii sieciowej pakiet nr 100 dotrze do mikrokontrolera jako ostatni, system nadpisze najnowszą wartość przestarzałą komendą, powodując gwałtowne i niebezpieczne cofnięcie stanu maszyny.
+
+Protokoły transportowe zorientowane na połączenie (takie jak TCP) posiadają sprzętowe mechanizmy buforowania i porządkowania ramek (okna przesuwne), ukrywając defekty kolejności przed warstwą aplikacji kosztem drastycznego wzrostu opóźnień (zjawisko \textit{Head-of-Line Blocking}).
+Z kolei protokoły bezpołączeniowe (UDP) przepuszczają anomalie chronologiczne bezpośrednio do programu użytkownika.
+Z tego względu implementacja detektora OoO była niezbędna do rzetelnego porównania wpływu stosu sieciowego na bezpieczeństwo sterowania.
+
+\subsection{Algorytm detekcji i odrzucanie powtórzeń (MAC Stutter)}
+
+Dane wejściowe do modułu analizy kolejności stanowią unikalne identyfikatory pakietów (\texttt{packet\_id}), posortowane rosnąco według rzeczywistego czasu ich fizycznego odbioru przez mikrokontroler (stempel \texttt{esp\_rx\_ts}).
+
+Zaimplementowany algorytm (Listing \ref{lst:ooo_detection}) opiera się na idei śledzenia "frontu chronologicznego".
+System definiuje zmienną $ID_{max}$, przechowującą najwyższy zaobserwowany do tej pory identyfikator.
+Przetwarzając strumień, dla każdego kolejnego pakietu o identyfikatorze $ID_i$ weryfikowane są trzy stany:
+\begin{enumerate}
+    \item $ID_i > ID_{max}$ - pakiet nowszy niż dotychczasowy front.
+          System aktualizuje $ID_{max} = ID_i$.
+          Przebieg prawidłowy.
+    \item $ID_i < ID_{max}$ - pakiet starszy niż najnowsza znana wartość.
+          Oznacza to ewidentne naruszenie chronologii - pakiet opóźnił się w sieci na tyle, że dotarł już po odebraniu nowszej komendy.
+          Zdarzenie to jest rejestrowane jako błąd \textit{Out-of-Order}.
+    \item $ID_i == ID_{max}$ - identyfikator równy obecnemu frontowi.
+          Sytuacja ta oznacza natychmiastową retransmisję na warstwie sprzętowej (ang.
+          \textit{MAC Layer Stutter}).
+          Choć pakiet dotarł po raz drugi, nie zaburza on stanu maszyny, wobec czego jest świadomie ignorowany przez detektor OoO, chroniąc metrykę przed fałszywie pozytywnymi wynikami.
+\end{enumerate}
+
+\begin{listing}[htbp]
+    \caption{Algorytm śledzenia frontu chronologicznego z ignorowaniem powtórzeń z warstwy łącza danych (\texttt{out\_of\_order.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:ooo_detection}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+max_id_seen = -1
+
+for current_id in received_ids.dropna().astype(int):
+    # Prawidłowy rozwój chronologii
+    if current_id > max_id_seen:
+        max_id_seen = current_id
+        
+    # Naruszenie chronologii - "duch" lub pakiet, który ugrzązł w sieci
+    elif current_id < max_id_seen:
+        ooo_ids.append(current_id)
+        
+        # Wyliczenie przesunięcia (dystansu) od frontu
+        displacement = max_id_seen - current_id
+        if displacement > max_displacement:
+            max_displacement = displacement
+
+    # Bezpośredni duplikat (np. wynikający ze zgubionego ACK w 802.11)
+    else:
+        # current_id == max_id_seen
+        # Ignorowane w celu uniknięcia zaburzenia metryki OoO
+        pass
+\end{minted}
+\end{listing}
+
+\subsection{Wskaźnik maksymalnego przesunięcia (Max Displacement)}
+
+Sama informacja o wystąpieniu zaburzenia kolejności jest niewystarczająca do oceny głębokości problemu.
+Algorytm na bieżąco oblicza również wskaźnik \textbf{Maksymalnego przesunięcia w strumieniu} (\textit{ang. Max ID Displacement}).
+Jest on definiowany jako największa zanotowana różnica pomiędzy frontem chronologicznym a identyfikatorem opóźnionego pakietu: $$Displacement_{max} = \max(ID_{max} - ID_{OoO})$$
+
+Wartość ta pozwala oszacować, o ile generacji stanów cofnęłaby się sterowana maszyna w przypadku braku sprzętowej filtracji po stronie odbiorczej.
+Zjawisko występowania opóźnionych pakietów typu \textit{Ghost}, o wysokich wartościach współczynnika \textit{Displacement}, jest szczególnie niebezpieczne i wymusza stosowanie dodatkowych rozwiązań w oprogramowaniu docelowym węzła HIL.

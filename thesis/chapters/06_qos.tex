@@ -1,5 +1,80 @@
-\chapter{Metryki jakości usług (QoS) w systemach wbudowanych}
+\chapter{Metryki oceny jakości transmisji danych (QoS)}
 \label{chap:qos}
 
-Prace w toku.
-..
+W klasycznych aplikacjach internetowych nadrzędnym kryterium oceny sieci jest najczęściej maksymalna przepustowość (\textit{ang. Throughput}).
+Jednak w kontekście systemów wbudowanych oraz układów sterowania pracujących w czasie rzeczywistym (np. telemetria dronów, robotyka przemysłowa), paradygmat ten ulega całkowitej zmianie.
+Informacja sterująca dostarczona zbyt późno jest często równie bezużyteczna, co informacja całkowicie utracona.
+
+Do rzetelnej oceny przydatności danego protokołu komunikacyjnego w systemach rygorystycznych czasowo stosuje się metryki \textbf{Jakości Usług} (\textit{ang. QoS - Quality of Service}).
+W systemach HIL, QoS stanowi zbiór wskaźników, które pozwalają obiektywnie ocenić determinizm, niezawodność oraz stabilność kanału transmisyjnego.
+Metryki te są jedynym sposobem na wykazanie, jak sprzętowy stos TCP/IP (LwIP) oraz system operacyjny (FreeRTOS) zachowują się w warunkach skrajnego obciążenia i nasycenia buforów (\textit{ang. Stress Testing}).
+
+W niniejszym rozdziale zaprezentowano zestaw autorskich algorytmów analitycznych, wykorzystanych do wyliczenia wskaźników QoS.
+Zdefiniowano matematyczne podstawy wyliczania skuteczności dostarczania (PDR), fluktuacji opóźnień (Jitter), zjawiska utraty seryjnej (\textit{Burst Loss}), użytecznej wydajności (\textit{Goodput}), anomalii kolejności pakietów, a także zjawiska zatoru buforów (\textit{Queuing Delay}), stanowiących fundament oceny środowiska pomiarowego.
+
+\section{Mechanizm transformacji danych (DownlinkAnalyzer)}
+\label{sec:qos_downlink_analyzer}
+
+Surowe dane wyekstrahowane z mikrokontrolera (omówione w rozdziale \ref{chap:hil}), składające się wyłącznie z identyfikatorów pakietów oraz stempli czasowych (\textit{timestamps}), pozbawione są użytecznego kontekstu analitycznego.
+Transformacja tych elementarnych logów w zaawansowane wskaźniki QoS realizowana jest przez dedykowany moduł \texttt{DownlinkAnalyzer}.
+
+Stanowi on rdzeń obliczeniowy fazy transformacji w rurociągu ETL.
+Główną metodą orkiestrującą proces wyliczeń jest funkcja \texttt{calculate\_all\_metrics()}.
+Przyjmuje ona na wejściu połączoną, pełną macierz zdarzeń jako \texttt{pd.DataFrame} dla danego id scenariusza z relacyjnej bazy danych (zawierającą czasy nadania z komputera PC oraz czasy odbioru z układu ESP32), a następnie równolegle uruchamia izolowane sub-algorytmy analityczne dla każdej z kategorii QoS.
+
+Zastosowanie takiego podejścia gwarantuje pełną standaryzację wyników.
+Niezależnie od wybranej topologii sieciowej czy protokołu, wynikiem działania algorytmu jest zawsze ujednolicony, deterministyczny raport.
+Przykładowy zrzut struktury obliczonych metryk dla idealnego scenariusza testowego (linia bazowa) zaprezentowano na Listingu \ref{lst:qos_sample_output}.
+Warto jednak zaznaczyć, że ten raport nie pochodzi z pomiaru zewnętrznego, lecz z testowego scenariusza wygenerowanego przez klasę \texttt{MockTestScenario} z modułu \texttt{espy\_nexus.metrics.simulation}.
+W wariancie bazowym ustawiono wartość \texttt{AnomalyType.IDEAL}, co oznacza, że generator tworzył zbiór danych złożony z pięciu pakietów o identyfikatorach $0\ldots4$, z czasami nadania $[1{,}000{,}000, 1{,}000{,}100, 1{,}000{,}200, 1{,}000{,}300, 1{,}000{,}400]$ us oraz z czasami odbioru $[100, 200, 300, 400, 500]$ us.
+Tak przygotowany zestaw odpowiada idealnemu interwałowi $100\ \mu s$, zerowej utracie pakietów, braku duplikatów i zerowemu jitterowi, co odzwierciedla się w wyniku przedstawionym poniżej.
+Podział ten wyznacza strukturę dalszej części niniejszego rozdziału, w której szczegółowo omówiono znaczenie każdej z sekcji.
+
+\begin{listing}[htbp]
+    \caption{Struktura raportu QoS generowanego przez metodę \texttt{calculate\_all\_metrics()} dla pojedynczego scenariusza testowego \cite{espy_nexus_python_host}.}
+    \label{lst:qos_sample_output}
+    \begin{minted}[fontsize=\footnotesize, linenos]{text}
+--- PDR Analysis & Duplicate Detection ---
+PDR: 100.00%
+Total Expected: 5
+Unique Received: 5
+Lost Count: 0
+MAC Duplicates: 0
+Ghost Duplicates: 0
+
+--- Jitter Analysis ---
+Expected IAT: 100.00 us
+Mean IAT: 100.00 us
+Mean Error from Expected: 0.00 us
+Jitter (Std Dev): 0.00 us
+Coefficient of Variation: 0.00 %
+Max IAT: 100.00 us
+Min IAT: 100.00 us
+Max Deviation from Mean: 0.00 us
+Min Deviation from Mean: 0.00 us
+
+--- Burst Loss Analysis ---
+Total Burst Events: 0
+Max Burst Length: 0
+Max Blackout Time (ms): 0.00
+Burst Events by Length:
+
+--- Goodput Analysis ---
+Goodput: 200000.00 B/s
+Efficiency: 100.00 %
+Goodput: 195.31 KB/s
+Goodput: 1.60 Mbps
+
+--- Out-of-Order Analysis ---
+Total Out-of-Order Count: 0
+Out-of-Order IDs: []
+Max ID Displacement: 0
+
+--- Timing Trends Analysis (Queuing Delay & Hardware Drift) ---
+Clock Drift: 0.00 ppm
+Max Queuing Delay: 0.00 us
+Avg Queuing Delay: 0.00 us
+Queuing Delay Percent: 0.00%
+Queuing Delay Trend Slope: 0.000000 us/us
+\end{minted}
+\end{listing}

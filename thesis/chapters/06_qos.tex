@@ -375,3 +375,65 @@ Jest on definiowany jako największa zanotowana różnica pomiędzy frontem chro
 
 Wartość ta pozwala oszacować, o ile generacji stanów cofnęłaby się sterowana maszyna w przypadku braku sprzętowej filtracji po stronie odbiorczej.
 Zjawisko występowania opóźnionych pakietów typu \textit{Ghost}, o wysokich wartościach współczynnika \textit{Displacement}, jest szczególnie niebezpieczne i wymusza stosowanie dodatkowych rozwiązań w oprogramowaniu docelowym węzła HIL.
+
+\section{Trendy czasowe, zator buforów i dryft sprzętowy (Queuing Delay)}
+\label{sec:timing_trends}
+
+Ostatnim, lecz niezwykle krytycznym z punktu widzenia stabilności systemów sterowania aspektem, jest analiza trendów długoterminowych.
+Krótkotrwałe opóźnienia i skoki Jittera (omówione w podrozdziale \ref{sec:jitter}) są w dużej mierze zjawiskiem naturalnym.
+Jednakże, jeśli opóźnienie między komputerem PC a układem ESP32 rośnie sukcesywnie w czasie trwania całego eksperymentu, świadczy to o fundamentalnej niewydolności łącza i występowaniu zjawiska zatoru buforów (\textit{ang. Bufferbloat}).
+
+Pakiety generowane szybciej, niż sieć jest w stanie je fizycznie wytransmitować, odkładają się w kolejkach rutera (L3) lub na stosie systemu operacyjnego (L4).
+Stale powiększająca się kolejka powoduje nieskończony wzrost opóźnienia, co ostatecznie doprowadzi do całkowitej utraty stabilności maszyny (np. dron otrzyma komendę stabilizującą z kilkusekundowym opóźnieniem).
+
+\subsection{Względne opóźnienie jednokierunkowe (Relative OWD)}
+
+Precyzyjny pomiar czasu przelotu w jedną stronę (\textit{ang. OWD - One-Way Delay}) wymagałby idealnej synchronizacji zegara komputera z zegarem ESP32.
+Aby obejść ten problem bez konieczności wdrażania kosztownych modułów sprzętowych moduł analityczny oblicza \textbf{Względne opóźnienie kolejkowania}.
+Jak zilustrowano na Listingu \ref{lst:timing_trends}, początkowo wyznaczany jest surowy wektor różnicy czasu: $$OWD_{raw} = T_{ESP32} - T_{PC}$$ Wektor ten obarczony jest stałym, nieznanym błędem braku synchronizacji (\textit{Clock Offset}).
+Następnie dokonywana jest normalizacja osi Y: system odnajduje pakiet, który pokonał trasę najszybciej (zakładając, że nie doświadczył on żadnego kolejkowania w ruterze) i odejmuje jego czas od wszystkich pozostałych: $$Delay_{queue} = OWD_{raw} - \min(OWD_{raw})$$ Dzięki tej transformacji błąd synchronizacji ulega całkowitej redukcji, a uzyskana wartość bezpośrednio (w mikrosekundach) odzwierciedla czas, jaki poszczególne pakiety spędziły bezczynnie w buforach sieciowych.
+
+\subsection{Regresja liniowa i detekcja zatorów (Queuing Delay)}
+
+Aby zmatematyzować kierunek zmian zatoru buforów, zaimplementowano algorytm regresji liniowej wykorzystujący metodę najmniejszych kwadratów (\textit{Least Squares}) z biblioteki \texttt{NumPy}.
+Funkcja \texttt{np.polyfit(x, y, 1)} dopasowuje do wykresu opóźnień wielomian pierwszego stopnia w postaci $y = ax + b$, wyodrębniając współczynnik kierunkowy prostej $a$ (\texttt{slope}).
+\begin{itemize}
+    \item Jeśli $a \approx 0$ - Opóźnienie jest stabilne, sieć nadąża z transmisją.
+    \item Jeśli $a \gg 0$ - Występuje zjawisko \textit{Queuing Delay}.
+          Bufor puchnie, opóźnienia rosną w czasie nieskończenie.
+          Łącze uległo całkowitemu nasyceniu.
+\end{itemize}
+
+\subsection{Zjawisko dryftu rezonatora kwarcowego (Clock Drift)}
+
+W systemach HIL należy również uwzględnić niedoskonałości samej platformy wbudowanej.
+Taktowanie procesora ESP32 opiera się na fizycznym rezonatorze kwarcowym, którego częstotliwość rezonansowa oscyluje pod wpływem temperatury i napięcia zasilania.
+Względem stabilnego wzorca w komputerze PC, zegar mikrokontrolera ulega zjawisku dryftu (\textit{ang. Clock Drift}).
+
+Algorytm mierzy różnicę w postrzeganiu całkowitego czasu trwania eksperymentu przez PC ($\Delta T_{PC}$) oraz ESP32 ($\Delta T_{ESP32}$), wyrażając błąd w częściach na milion (\textit{ang. PPM - Parts Per Million}): $$Drift_{PPM} = \left( \frac{\Delta T_{ESP32} - \Delta T_{PC}}{\Delta T_{PC}} \right) \cdot 10^6$$ Wartości rzędu kilkudziesięciu PPM są naturalnym zjawiskiem fizycznym dla tanich rezonatorów kwarcowych i potwierdzają najwyższą, sprzętową czułość zaprojektowanego systemu pomiarowego.
+
+\begin{listing}[htbp]
+    \caption{Wektorowa redukcja błędu synchronizacji oraz analiza regresji liniowej za pomocą biblioteki NumPy (\texttt{timing\_trends.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:timing_trends}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+# Wektor surowej różnicy stempli czasowych (obarczony offsetem zegarów)
+owd_raw = esp_timestamps - pc_timestamps
+
+# Normalizacja - zakładamy, że najszybszy pakiet nie czekał w buforze routera.
+# Redukuje to oś Y do zera, izolując czysty czas utykania w kolejkach sieci.
+owd_rel = owd_raw - owd_raw.min()
+
+max_queuing_delay_us = float(owd_rel.max())
+
+# Analiza trendu liniowego (kierunku narastania opóźnienia)
+try:
+    # Normalizacja osi X dla wyższej precyzji zmiennoprzecinkowej regresji
+    x = pc_timestamps - pc_timestamps.iloc[0]
+    
+    # Wielomian pierwszego stopnia (y = ax + b), wyciągnięcie współczynnika 'a'
+    poly = np.polyfit(x, owd_rel, 1)
+    slope = float(poly[0])
+except Exception:
+    slope = 0.0
+\end{minted}
+\end{listing}

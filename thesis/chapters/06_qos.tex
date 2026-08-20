@@ -137,7 +137,7 @@ if total_duplicates > 0:
 \end{listing}
 
 \section{Zmienność opóźnień i stabilność czasowa (Jitter)}
-\label{sec:metryka_jitter}
+\label{sec:jitter}
 
 Niezawodność sterowania w systemach wbudowanych określa się nie tylko poprzez wskaźnik skuteczności dostarczania (PDR), ale przede wszystkim poprzez płynność tego procesu.
 W idealnych, teoretycznych warunkach sieciowych pakiety danych nadawane ze stałą częstotliwością $f$ powinny docierać do mikrokontrolera w równych, perfekcyjnych odstępach czasu, znanych jako \textbf{oczekiwany czas między pakietami} (\textit{ang. IAT - Expected Inter-Arrival Time}), zdefiniowany jako $IAT_{expected} = \frac{1}{f}$.
@@ -184,3 +184,64 @@ if pd.isna(std_val):
 cv_val = (std_val / mean_val * 100.0) if mean_val > 0 else 0.0
 \end{minted}
 \end{listing}
+
+\section{Zjawisko utraty ciągłej i czas zamrożenia sterowania (Burst Loss)}
+\label{sec:burst_loss}
+
+Analiza samego wskaźnika PDR (omówionego w podrozdziale \ref{sec:pdr}) jest niewystarczająca do rzetelnej oceny łącza w systemach rygorystycznych czasowo.
+Z perspektywy teorii sterowania i algorytmów takich jak regulatory PID, utrata 5\% pakietów rozproszonych równomiernie w czasie całego eksperymentu (pojedyncze zguby) jest łatwa do skompensowania dzięki sprzętowej interpolacji i stanowi niewielkie zagrożenie dla stabilności układu.
+Zjawiskiem krytycznym jest sytuacja, w której te same 5\% strat następuje w sposób ciągły, jeden pakiet po drugim.
+
+Sytuacja ta definiowana jest jako \textbf{Zjawisko utraty ciągłej} (\textit{ang. Burst Loss}).
+Następuje ona najczęściej w wyniku tymczasowego zerwania łącza radiowego, głębokich interferencji fal elektromagnetycznych lub przepełnienia buforów odbiorczych rutera, który zaczyna bezpowrotnie odrzucać nadchodzące ramki (tzw. \textit{Buffer Drop}).
+
+\subsection{Model matematyczny i czas Blackoutu}
+
+Na potrzeby analizy, strumień transmisyjny można przedstawić jako ciąg binarny, w którym poprawny odbiór pakietu oznaczony jest jako 1, a jego utrata jako 0.
+Pojedyncze zdarzenie utraty seryjnej (\textit{Burst Event}) identyfikowane jest jako podciąg składający się wyłącznie z zer.
+Długość tego zdarzenia $L_B$ równa się liczbie utraconych po sobie pakietów.
+
+W module \texttt{DownlinkAnalyzer} zaimplementowano algorytm poszukujący zdarzenia o maksymalnej długości, określonego jako $\max(L_B)$.
+Znalezienie tej wartości pozwala na wyliczenie najważniejszej fizycznej metryki z punktu widzenia bezpieczeństwa maszyny - \textbf{Maksymalnego czasu braku sterowania} (ang.
+\textit{Max Blackout Time}), zdefiniowanego wzorem:
+$$T_{blackout} = \max(L_B) \cdot IAT_{expected}$$
+Wartość ta, wyrażana w milisekundach, precyzyjnie określa przez jak długi czas fizyczne urządzenie (np. dron lub ramię robota) poruszało się "na oślep", nie odbierając żadnych nowych komend od komputera sterującego.
+W systemach klasy HIL wyznaczenie wartości $T_{blackout}$ pozwala na optymalne ustawienie sprzętowego układu \textit{Watchdog}, który w przypadku przekroczenia bezpiecznego czasu odetnie zasilanie maszyn.
+
+\subsection{Optymalizacja detekcji zdarzeń (Hash Set)}
+
+Ze względu na gigantyczny wolumen przetwarzanych danych (dziesiątki tysięcy pakietów na pojedynczy test), klasyczne przeszukiwanie tablic w celu odnalezienia brakujących identyfikatorów skutkowałoby drastycznym spadkiem wydajności rurociągu analitycznego.
+Jak zilustrowano na Listingu \ref{lst:burst_loss_hash}, problem ten rozwiązano transformując wektor odebranych identyfikatorów w strukturę zbioru (ang.
+\textit{Hash Set}).
+Umożliwiło to zredukowanie złożoności obliczeniowej sprawdzania obecności pakietu w pamięci z liniowej $O(N)$ do stałej $O(1)$.
+
+\begin{listing}[htbp]
+    \caption{Wydajny algorytm detekcji zdarzeń Burst Loss z wykorzystaniem struktury zbiorów o złożoności stałej $O(1)$ (\texttt{burst\_loss.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:burst_loss_hash}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+# Konwersja wektora Pandas na strukturę Hash Set dla wyszukiwań w czasie O(1)
+received_set = set(received_ids.dropna().astype(int))
+
+burst_events: dict[int, list[int]] = {}
+current_burst_len = 0
+current_burst_start = -1
+
+# Iteracja po wzorcowej, teoretycznej ciągłości identyfikatorów
+for packet_id in range(total_sent):
+    if packet_id not in received_set:
+        # Rejestracja momentu początkowego zaniku sterowania
+        if current_burst_len == 0:
+            current_burst_start = packet_id
+        current_burst_len += 1
+    else:
+        # Zapisanie wykrytej serii i reset licznika po powrocie łącza
+        if current_burst_len > 0:
+            burst_events.setdefault(current_burst_len, []).append(
+                current_burst_start
+            )
+            current_burst_len = 0
+\end{minted}
+\end{listing}
+
+Algorytm nie tylko zlicza brakujące pakiety, ale przede wszystkim rejestruje początkowe identyfikatory (\texttt{current\_burst\_start}) każdego zdarzenia.
+Słownik grupujący te dane (\texttt{burst\_events}) pozwala na dokładne wskazanie w osi czasu momentu, w którym doszło do utraty stabilności radiowej.

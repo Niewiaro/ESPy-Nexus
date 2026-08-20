@@ -81,6 +81,89 @@ Queuing Delay Trend Slope: 0.000000 us/us
 \end{minted}
 \end{listing}
 
+\section{Walidacja metryk na scenariuszach mock}
+\label{sec:qos_mock_scenarios}
+
+W celu sprawdzenia poprawności implementacji analizatora przygotowano zestaw deterministycznych scenariuszy mock.
+Każdy scenariusz składa się z pięciu oczekiwanych pakietów o identyfikatorach od $0$ do $4$, nadawanych co $100~\mu s$.
+Dane wejściowe mają strukturę wynikającą ze złączenia zewnętrznego: kolumna \texttt{pc\_tx\_ts} zawiera stempel nadania po stronie komputera, natomiast \texttt{esp\_rx\_ts} stempel odbioru na mikrokontrolerze.
+Wartość \texttt{NaN} oznacza brak odpowiadającego rekordu RX.
+
+Analizator uruchomiono dla \texttt{payload\_size\_bytes = 20} oraz \texttt{frequency\_hz = 10000}.
+Scenariusz \texttt{IDEAL}, przedstawiony wcześniej, stanowi linię bazową.
+Pozostałe scenariusze celowo wprowadzają pojedynczy rodzaj anomalii albo ich kombinację:
+
+\begin{itemize}
+    \item \texttt{PDR\_AND\_DUPLICATES} - utrata pakietu o identyfikatorze $2$ oraz duplikaty identyfikatorów $0$ i $1$;
+    \item \texttt{JITTER} - nieregularne odstępy między stemplami odbioru przy zachowaniu kompletności zbioru;
+    \item \texttt{BURST\_LOSS} - ciągła utrata pakietów o identyfikatorach $1$--$3$;
+    \item \texttt{GOODPUT} - utrata pakietu o identyfikatorze $3$ oraz duplikat identyfikatora $2$;
+    \item \texttt{OUT\_OF\_ORDER} - zamiana kolejności odbioru pakietów $2$ i $3$;
+    \item \texttt{QUEUING\_AND\_DRIFT} - narastające opóźnienie odbioru względem kolejnych stempli nadania.
+\end{itemize}
+
+Poniższy przykład ilustruje sposób interpretacji danych wejściowych dla scenariusza \texttt{PDR\_AND\_DUPLICATES}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Dane wejściowe scenariusza \texttt{PDR\_AND\_DUPLICATES}.}
+    \label{tab:qos_mock_pdr_input}
+    \begin{tabular}{|c|r|r|}
+        \hline
+        \textbf{packet\_id} & \textbf{pc\_tx\_ts} & \textbf{esp\_rx\_ts} \\
+        \hline
+        0                   & 1\,000\,000         & 100                  \\
+        0                   & 1\,000\,000         & 250                  \\
+        1                   & 1\,000\,100         & 200                  \\
+        1                   & 1\,000\,100         & 210                  \\
+        2                   & 1\,000\,200         & --                   \\
+        3                   & 1\,000\,300         & 400                  \\
+        4                   & 1\,000\,400         & 500                  \\
+        \hline
+    \end{tabular}
+\end{table}
+
+W tym przypadku odebrano cztery różne identyfikatory spośród pięciu oczekiwanych, dlatego: \[ PDR = \frac{4}{5} \cdot 100\% = 80\%.
+\]
+Jeden brakujący identyfikator ($2$) tworzy zdarzenie \textit{Burst Loss} o długości $1$, a przy $IAT_{expected}=100~\mu s$ daje przybliżony czas blackoutu równy ${,}10$ ms.
+Dodatkowe rekordy dla identyfikatorów $0$ i $1$ są duplikatami.
+Pierwszy z nich występuje bezpośrednio po swoim poprzedniku, więc algorytm klasyfikuje go jako \texttt{MAC Duplicate}; drugi jest oddzielony innym identyfikatorem i trafia do kategorii \texttt{Ghost Duplicate}.
+
+Po usunięciu duplikatów i uporządkowaniu rekordów według identyfikatora analizator otrzymuje stemple $[100, 200, 400, 500]~\mu s$.
+Różnice między nimi wynoszą $[100, 200, 100]~\mu s$, stąd średni IAT wynosi $133{,}33~\mu s$, a odchylenie standardowe próby, używane jako jitter, $57{,}74~\mu s$.
+Dla czterech unikalnych pakietów i ładunku $20$~B goodput jest obliczany jako: \[ Goodput = \frac{(4-1) \cdot 20~\mathrm{B}}{400~\mu s} = 150\,000~\mathrm{B/s}.
+\]
+Względem oferowanego obciążenia $10\,000 \cdot 20 = 200\,000~\mathrm{B/s}$ daje to efektywność równą $75\%$.
+Identyfikator $0$ pojawia się po identyfikatorze $1$, dlatego detektor kolejności rejestruje jedno zdarzenie \textit{Out-of-Order} o maksymalnym przesunięciu równym $1$.
+
+Zestawienie wyników pozostałych scenariuszy przedstawiono w tabeli \ref{tab:qos_mock_results}.
+Wartości są wynikami uruchomienia \texttt{DownlinkAnalyzer}, a nie wartościami wyznaczonymi wyłącznie na podstawie założeń scenariuszy.
+Pokazuje to, że poszczególne anomalie wpływają na różne grupy metryk: utrata seryjna obniża PDR i goodput, nieregularne stemple zwiększają jitter, a zamiana kolejności może powodować zarówno wartości ujemne IAT, jak i wzrost wskaźników trendów czasowych.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Porównanie wyników scenariuszy mock dla $N_{sent}=5$, $f=10$ kHz i ładunku $20$~B~\cite{espy_nexus_python_host}.}
+    \label{tab:qos_mock_results}
+    \begin{tabular}{|l|c|c|c|c|c|c|}
+        \hline
+        \textbf{Scenariusz}           & \textbf{PDR} & \textbf{Jitter} & \textbf{Burst max} & \textbf{Goodput} & \textbf{OoO} & \textbf{Trend} \\
+                                      & [\%]         & [$\mu$s]        & [pak.]             & [B/s]            & [zdarzenia]  & [slope]        \\
+        \hline
+        \texttt{PDR\_AND\_DUPLICATES} & 80           & 57,74           & 1                  & 150\,000         & 1            & 0,00           \\
+        \texttt{JITTER}               & 100          & 58,31           & 0                  & 200\,000         & 0            & -0,10          \\
+        \texttt{BURST\_LOSS}          & 40           & 0,00            & 3                  & 50\,000          & 0            & 0,00           \\
+        \texttt{GOODPUT}              & 80           & 57,74           & 1                  & 150\,000         & 0            & 0,00           \\
+        \texttt{OUT\_OF\_ORDER}       & 100          & 141,42          & 0                  & 200\,000         & 1            & -0,10          \\
+        \texttt{QUEUING\_AND\_DRIFT}  & 100          & 17,08           & 0                  & 140\,350,88      & 0            & 0,42           \\
+        \hline
+    \end{tabular}
+\end{table}
+
+Najbardziej bezpośrednio działanie detektora strat obrazuje scenariusz \texttt{BURST\_LOSS}: trzy kolejne braki pakietów obniżają PDR do $40\%$ i wyznaczają maksymalny blackout o długości $3 \cdot 100~\mu s = 0{,}30$ ms.
+Scenariusz \texttt{JITTER} zachowuje PDR równy $100\%$, lecz zwiększa jitter do $58{,}31~\mu s$, co pokazuje, że niezawodność dostarczenia nie opisuje stabilności czasowej.
+Z kolei scenariusz \texttt{QUEUING\_AND\_DRIFT} nie zawiera strat ani duplikatów, ale wykazuje dodatni współczynnik trendu równy ${,}42~\mu s/\mu s$ oraz maksymalne względne opóźnienie $170~\mu s$.
+Wynik ten może wskazywać na narastanie opóźnienia.
+
 \section{Skuteczność dostarczania i analiza duplikatów (PDR)}
 \label{sec:pdr}
 

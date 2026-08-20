@@ -5,9 +5,9 @@ W klasycznych aplikacjach internetowych nadrzędnym kryterium oceny sieci jest n
 Jednak w kontekście systemów wbudowanych oraz układów sterowania pracujących w czasie rzeczywistym (np. telemetria dronów, robotyka przemysłowa), paradygmat ten ulega całkowitej zmianie.
 Informacja sterująca dostarczona zbyt późno jest często równie bezużyteczna, co informacja całkowicie utracona.
 
-Do rzetelnej oceny przydatności danego protokołu komunikacyjnego w systemach rygorystycznych czasowo stosuje się metryki \textbf{Jakości Usług} (\textit{ang. QoS - Quality of Service}).
-W systemach HIL, QoS stanowi zbiór wskaźników, które pozwalają obiektywnie ocenić determinizm, niezawodność oraz stabilność kanału transmisyjnego.
-Metryki te są jedynym sposobem na wykazanie, jak sprzętowy stos TCP/IP (LwIP) oraz system operacyjny (FreeRTOS) zachowują się w warunkach skrajnego obciążenia i nasycenia buforów (\textit{ang. Stress Testing}).
+Do rzetelnej oceny przydatności danego protokołu komunikacyjnego w systemach o rygorystycznych wymaganiach czasowych stosuje się metryki \textbf{jakości usług} (\textit{ang. QoS - Quality of Service}).
+W systemach HIL QoS stanowi zbiór wskaźników, które pozwalają ocenić niezawodność oraz zmienność czasową kanału transmisyjnego.
+Metryki te umożliwiają analizę zachowania stosu TCP/IP (LwIP) oraz zadań systemu FreeRTOS w warunkach skrajnego obciążenia i nasycenia buforów (\textit{ang. Stress Testing}).
 
 W niniejszym rozdziale zaprezentowano zestaw autorskich algorytmów analitycznych, wykorzystanych do wyliczenia wskaźników QoS.
 Zdefiniowano matematyczne podstawy wyliczania skuteczności dostarczania (PDR), fluktuacji opóźnień (Jitter), zjawiska utraty seryjnej (\textit{Burst Loss}), użytecznej wydajności (\textit{Goodput}), anomalii kolejności pakietów, a także zjawiska zatoru buforów (\textit{Queuing Delay}), stanowiących fundament oceny środowiska pomiarowego.
@@ -20,14 +20,16 @@ Transformacja tych elementarnych logów w zaawansowane wskaźniki QoS realizowan
 
 Stanowi on rdzeń obliczeniowy fazy transformacji w rurociągu ETL.
 Główną metodą orkiestrującą proces wyliczeń jest funkcja \texttt{calculate\_all\_metrics()}.
-Przyjmuje ona na wejściu połączoną, pełną macierz zdarzeń jako \texttt{pd.DataFrame} dla danego id scenariusza z relacyjnej bazy danych (zawierającą czasy nadania z komputera PC oraz czasy odbioru z układu ESP32), a następnie równolegle uruchamia izolowane sub-algorytmy analityczne dla każdej z kategorii QoS.
+Przyjmuje ona na wejściu połączoną macierz zdarzeń w postaci \texttt{pd.DataFrame} dla danego scenariusza z relacyjnej bazy danych.
+Macierz zawiera czasy nadania z komputera PC oraz czasy odbioru z układu ESP32.
+Następnie sekwencyjnie wywołuje wyspecjalizowane algorytmy dla poszczególnych kategorii QoS.
 
-Zastosowanie takiego podejścia gwarantuje pełną standaryzację wyników.
-Niezależnie od wybranej topologii sieciowej czy protokołu, wynikiem działania algorytmu jest zawsze ujednolicony, deterministyczny raport.
+Zastosowanie takiego podejścia zapewnia ujednoliconą strukturę wyników.
+Niezależnie od wybranej topologii sieciowej, czy protokołu, wynikiem działania analizatora jest raport zawierający te same kategorie metryk, przy założeniu poprawności i kompletności danych wejściowych.
 Przykładowy zrzut struktury obliczonych metryk dla idealnego scenariusza testowego (linia bazowa) zaprezentowano na Listingu \ref{lst:qos_sample_output}.
 Warto jednak zaznaczyć, że ten raport nie pochodzi z pomiaru zewnętrznego, lecz z testowego scenariusza wygenerowanego przez klasę \texttt{MockTestScenario} z modułu \texttt{espy\_nexus.metrics.simulation}.
-W wariancie bazowym ustawiono wartość \texttt{AnomalyType.IDEAL}, co oznacza, że generator tworzył zbiór danych złożony z pięciu pakietów o identyfikatorach $0\ldots4$, z czasami nadania $[1{,}000{,}000, 1{,}000{,}100, 1{,}000{,}200, 1{,}000{,}300, 1{,}000{,}400]$ us oraz z czasami odbioru $[100, 200, 300, 400, 500]$ us.
-Tak przygotowany zestaw odpowiada idealnemu interwałowi $100\ \mu s$, zerowej utracie pakietów, braku duplikatów i zerowemu jitterowi, co odzwierciedla się w wyniku przedstawionym poniżej.
+W wariancie bazowym ustawiono wartość \texttt{AnomalyType.IDEAL}, co oznacza, że generator tworzył zbiór danych złożony z pięciu pakietów o identyfikatorach $0\ldots4$, z czasami nadania $[1{,}000{,}000, 1{,}000{,}100, 1{,}000{,}200, 1{,}000{,}300, 1{,}000{,}400]$~us oraz z czasami odbioru $[100, 200, 300, 400, 500]$~us.
+Tak przygotowany zestaw odpowiada idealnemu interwałowi $100~\mu s$, zerowej utracie pakietów, brakowi duplikatów i zerowemu jitterowi, co odzwierciedla wynik przedstawiony poniżej.
 Podział ten wyznacza strukturę dalszej części niniejszego rozdziału, w której szczegółowo omówiono znaczenie każdej z sekcji.
 
 \begin{listing}[htbp]
@@ -83,35 +85,35 @@ Queuing Delay Trend Slope: 0.000000 us/us
 \label{sec:pdr}
 
 Najbardziej fundamentalną metryką oceny niezawodności łącza radiowego jest współczynnik dostarczenia pakietów, w literaturze oznaczany powszechnie jako \textbf{PDR} (\textit{ang. Packet Delivery Ratio}).
-Określa on stosunek liczby unikalnych wiadomości, które fizycznie dotarły do pamięci operacyjnej mikrokontrolera (RX), do całkowitej liczby pakietów wygenerowanych i wysłanych przez stację nadawczą komputera PC (TX).
+Określa on stosunek liczby unikalnych identyfikatorów pakietów odebranych przez mikrokontroler (RX) do liczby pakietów wysłanych przez komputer PC (TX), przekazanej do analizatora jako parametr \texttt{total\_sent}.
 
-Wartość PDR wyrażana jest w procentach i zdefiniowano ją poniższym wzorem matematycznym: $$PDR = \left( \frac{N_{unique}}{N_{sent}} \right) \cdot 100\%$$ gdzie: $N_{unique}$ - zbiór unikalnych identyfikatorów (\texttt{packet\_id}) poprawnie zdekodowanych przez układ ESP32, $N_{sent}$ - teoretyczna liczba wysłanych pakietów wynikająca z ustalonej macierzy badawczej (parametr \texttt{expected\_count}).
+Wartość PDR wyrażana jest w procentach i zdefiniowano ją poniższym wzorem matematycznym: $$PDR = \left( \frac{N_{unique}}{N_{sent}} \right) \cdot 100\%$$ gdzie $N_{unique}$ oznacza liczbę unikalnych identyfikatorów (\texttt{packet\_id}) poprawnie odebranych przez układ ESP32, a $N_{sent}$ oznacza liczbę wysłanych pakietów przekazaną jako parametr \texttt{total\_sent}.
 
 Z perspektywy automatyki przemysłowej i telemetrii HIL, spadek wskaźnika PDR poniżej 100\% jest zjawiskiem niepożądanym.
 W systemach sterowania w otwartej pętli utracony pakiet oznacza pominięcie ramki aktualizacji stanu (np. niewysterowanie serwomechanizmu na czas).
-Protokoły bezpołączeniowe, takie jak UDP, charakteryzują się natywną zgodą na gubienie pakietów w warunkach zagęszczenia sieci, co w połączeniu z niskim wskaźnikiem PDR pozwala udowodnić konieczność zmiany stosu technologicznego na protokoły bazujące na retransmisjach (TCP/WebSockets).
+Protokoły bezpołączeniowe, takie jak UDP, nie zapewniają retransmisji na poziomie transportowym, dlatego obserwowane straty należy interpretować razem z opóźnieniami i pozostałymi metrykami, a nie jako samodzielny dowód konieczności zmiany protokołu.
 Wiąże się to jednak z narzutem czasowym, który w systemach sterowania w czasie rzeczywistym może okazać się nieakceptowalny.
 
 \subsection{Wykrywanie duplikatów sprzętowych (MAC) i duchów (Ghosts)}
 
 Użycie protokołów gwarantujących dostarczenie informacji wiąże się ze specyficznym zjawiskiem powielania ramek.
-Pamięć mikrokontrolera docelowo rejestruje każdy zdekodowany stempel czasowy, wliczając w to pakiety odebrane wielokrotnie.
+Pamięć mikrokontrolera rejestruje każdy zdekodowany rekord, w tym rekordy odpowiadające wielokrotnemu odebraniu tego samego identyfikatora.
 Proste podzielenie całkowitej liczby odebranych pakietów przez liczbę wysłanych skutkowałoby nielogicznym wskaźnikiem PDR przekraczającym 100\%.
 Aby temu zapobiec, algorytm wykorzystuje metodę wektorową \texttt{nunique()} silnika \textit{Pandas}, izolując do licznika PDR wyłącznie unikalne wartości.
 
-Co istotniejsze, moduł analityczny \texttt{calculate\_pdr} przeprowadza głęboką inspekcję wykrytych duplikatów, kategoryzując powody ich wystąpienia.
-Zrealizowano to poprzez zastosowanie wektorowej maski przesunięcia bitowego \texttt{valid\_ids == valid\_ids.shift(1)} na chronologicznie posortowanym wektorze odebranych stempli (Listing \ref{lst:pdr_duplicates}).
-Pozwala to na podział nadmiarowości na dwie kategorie:
+Moduł analityczny \texttt{calculate\_pdr} dodatkowo klasyfikuje nadmiarowe rekordy na podstawie ich położenia w chronologicznie uporządkowanej serii identyfikatorów.
+Wykorzystuje w tym celu maskę \texttt{valid\_ids == valid\_ids.shift(1)} (Listing \ref{lst:pdr_duplicates}).
+Podział ten ma charakter heurystyczny: sama analiza identyfikatorów nie pozwala jednoznacznie ustalić przyczyny retransmisji.
+Wyróżniono dwie kategorie:
 
 \begin{itemize}
     \item \textbf{Duplikaty warstwy łącza danych (MAC Duplicates):}
           sytuacja, w której zduplikowane pakiety o tym samym identyfikatorze następują w bazie danych bezpośrednio po sobie.
-          Jest to charakterystyczny dowód na wystąpienie błędu potwierdzenia na najniższej warstwie protokołu 802.11 (Wi-Fi).
-          Mikrokontroler poprawnie odebrał pierwszą ramkę radiową, jednak odpowiedź \texttt{ACK} (potwierdzenie sprzętowe) została zgubiona w eterze.
-          Nadajnik w komputerze PC po upływie sprzętowego limitu czasu (\textit{timeout}) błyskawicznie retransmituje ten sam pakiet, który jest odbierany po raz drugi.
+          Są to duplikaty występujące bezpośrednio po poprzednim wystąpieniu tego samego identyfikatora.
+          Taki układ może odpowiadać retransmisji po utracie potwierdzenia na niższej warstwie, ale na podstawie danych aplikacyjnych nie stanowi jednoznacznego dowodu wystąpienia konkretnego zdarzenia w sieci.
     \item \textbf{Duplikaty widmowe (Ghost Duplicates):}
           sytuacja, w której duplikaty przedzielone są w czasie innymi poprawnymi pakietami.
-          Wskazuje to na anomalię routingu lub zadziałanie mechanizmu okna retransmisyjnego wyższych warstw (np. retransmisji na poziomie algorytmów stosu TCP).
+          Taki układ może wskazywać na opóźnioną retransmisję lub inną zmianę kolejności dostarczania, ale analizator nie identyfikuje jej przyczyny.
 \end{itemize}
 
 \begin{listing}[htbp]
@@ -140,20 +142,22 @@ if total_duplicates > 0:
 \label{sec:jitter}
 
 Niezawodność sterowania w systemach wbudowanych określa się nie tylko poprzez wskaźnik skuteczności dostarczania (PDR), ale przede wszystkim poprzez płynność tego procesu.
-W idealnych, teoretycznych warunkach sieciowych pakiety danych nadawane ze stałą częstotliwością $f$ powinny docierać do mikrokontrolera w równych, perfekcyjnych odstępach czasu, znanych jako \textbf{oczekiwany czas między pakietami} (\textit{ang. IAT - Expected Inter-Arrival Time}), zdefiniowany jako $IAT_{expected} = \frac{1}{f}$.
+W idealnych, teoretycznych warunkach sieciowych pakiety danych nadawane ze stałą częstotliwością $f$ powinny docierać do mikrokontrolera w równych odstępach czasu, określanych jako \textbf{oczekiwany czas między pakietami} (\textit{ang. IAT - Expected Inter-Arrival Time}).
+W implementacji, w której czas wyrażany jest w mikrosekundach, wartość ta wynosi $IAT_{expected} = \frac{10^6}{f}$~us.
 
-W rzeczywistości, zjawiska zachodzące na najniższych warstwach modelu OSI - takie jak unikanie kolizji w sieciach bezprzewodowych (algorytm CSMA/CA w Wi-Fi), narzuty związane z enkapsulacją ramek w systemie operacyjnym Windows, czy kolejkowanie w sprzętowym stosie LwIP na układzie ESP32 - wprowadzają trudne do przewidzenia opóźnienia.
+W rzeczywistości zjawiska zachodzące w różnych warstwach stosu komunikacyjnego, takie jak unikanie kolizji w sieciach bezprzewodowych (algorytm CSMA/CA w Wi-Fi), narzuty związane z obsługą ramek w systemie operacyjnym Windows oraz kolejkowanie w stosie LwIP na układzie ESP32, wprowadzają zmienność czasów odbioru.
 W efekcie, pakiety ulegają ścieśnieniu lub rozciągnięciu w dziedzinie czasu.
-Zjawisko to nazywane jest w telekomunikacji zmiennością opóźnień, czyli \textbf{Jitterem}.
+W niniejszej pracy tę zmienność opisano jako \textbf{jitter}.
 
 \subsection{Model matematyczny IAT i odchylenia standardowego}
-Podstawą obliczeń metryki Jittera w zaimplementowanym systemie jest określenie rzeczywistego wektora czasu między przybyciem kolejnych pakietów.
-Zakładając, że mikrokontroler rejestruje stempel czasowy $t_i$ w momencie pełnego zdekodowania $i$-tego pakietu, wektor rzeczywistego $IAT$ określa się jako różnicę czasu pomiędzy pakietem bieżącym a bezpośrednio go poprzedzającym: $$IAT_i = t_i - t_{i-1}$$
+Podstawą obliczeń jitteru w zaimplementowanym systemie jest wyznaczenie różnic pomiędzy kolejnymi stemplami czasowymi ESP32.
+Przed obliczeniem różnic dane są pozbawiane duplikatów i porządkowane według identyfikatora pakietu, dlatego metryka opisuje odstępy w uporządkowanym strumieniu testowym, a niekoniecznie kolejność fizycznego odbioru.
+Dla kolejnych stempli $t_i$ wektor $IAT$ określa się jako: $$IAT_i = t_i - t_{i-1}$$
 
 Następnie system wyznacza średnią arytmetyczną badanej próby czasowej: $$\mu_{IAT} = \frac{1}{N-1} \sum_{i=2}^{N} IAT_i$$
 
-W klasycznej inżynierii sieciowej (zgodnej np. z zaleceniami standardu RFC 3393), Jitter zdefiniowany jest jako wariancja lub odchylenie standardowe opóźnień.
-W module \texttt{DownlinkAnalyzer} główną miarą zmienności uczyniono \textbf{odchylenie standardowe} ($\sigma_{IAT}$), określające, jak bardzo rzeczywiste czasy dostarczenia rozpraszają się wokół wyliczonej średniej: $$Jitter = \sigma_{IAT} = \sqrt{\frac{1}{N-2} \sum_{i=2}^{N} (IAT_i - \mu_{IAT})^2}$$
+W module \texttt{DownlinkAnalyzer} główną miarą zmienności uczyniono \textbf{odchylenie standardowe} ($\sigma_{IAT}$), określające, jak bardzo wartości $IAT$ rozpraszają się wokół średniej.
+Jest ono obliczane przez Pandas metodą \texttt{std()}, która domyślnie stosuje odchylenie standardowe dla próby: $$Jitter = \sigma_{IAT} = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (IAT_i - \mu_{IAT})^2}$$
 
 Z matematycznego punktu widzenia, im niższa wartość $\sigma_{IAT}$, tym kanał transmisyjny jest bardziej deterministyczny.
 
@@ -161,8 +165,7 @@ Z matematycznego punktu widzenia, im niższa wartość $\sigma_{IAT}$, tym kana�
 Samo odchylenie standardowe wyrażone w mikrosekundach nie stanowi pełnego obrazu jakości kanału, ponieważ zależy ono ściśle od częstotliwości testowej.
 Fluktuacja rzędu 1000~$\mu s$ (1~ms) ma marginalne znaczenie przy częstotliwości sterowania 10~Hz ($IAT = 100~ms$), lecz staje się czynnikiem krytycznym, całkowicie zakłócającym sterowanie przy częstotliwości 1000~Hz ($IAT = 1~ms$).
 
-Z tego względu, kluczową innowacją w module analitycznym (Listing \ref{lst:jitter_pandas}) jest wyliczenie \textbf{Współczynnika Zmienności} (ang.
-\textit{Coefficient of Variation - CV}).
+Z tego względu moduł analityczny (Listing \ref{lst:jitter_pandas}) oblicza również \textbf{współczynnik zmienności} (\textit{ang. Coefficient of Variation - CV}).
 Normalizuje on otrzymane odchylenie standardowe względem wyliczonej średniej, prezentując wynik w postaci procentowej: $$CV = \left( \frac{\sigma_{IAT}}{\mu_{IAT}} \right) \cdot 100\%$$ Dzięki metryce CV możliwa jest obiektywna i znormalizowana ocena stabilności łącza, niezależnie od przyjętej w matrycy testowej częstotliwości uderzeniowej.
 
 \begin{listing}[htbp]
@@ -189,11 +192,12 @@ cv_val = (std_val / mean_val * 100.0) if mean_val > 0 else 0.0
 \label{sec:burst_loss}
 
 Analiza samego wskaźnika PDR (omówionego w podrozdziale \ref{sec:pdr}) jest niewystarczająca do rzetelnej oceny łącza w systemach rygorystycznych czasowo.
-Z perspektywy teorii sterowania i algorytmów takich jak regulatory PID, utrata 5\% pakietów rozproszonych równomiernie w czasie całego eksperymentu (pojedyncze zguby) jest łatwa do skompensowania dzięki sprzętowej interpolacji i stanowi niewielkie zagrożenie dla stabilności układu.
+Z perspektywy systemów sterowania utrata 5\% pakietów rozproszonych równomiernie w czasie całego eksperymentu może mieć inny skutek niż utrata tej samej liczby pakietów w jednym ciągłym zdarzeniu.
+Ocena wpływu strat zależy jednak od konkretnego regulatora i aplikacji, dlatego nie można z góry uznać pojedynczych strat za nieszkodliwe.
 Zjawiskiem krytycznym jest sytuacja, w której te same 5\% strat następuje w sposób ciągły, jeden pakiet po drugim.
 
-Sytuacja ta definiowana jest jako \textbf{Zjawisko utraty ciągłej} (\textit{ang. Burst Loss}).
-Następuje ona najczęściej w wyniku tymczasowego zerwania łącza radiowego, głębokich interferencji fal elektromagnetycznych lub przepełnienia buforów odbiorczych rutera, który zaczyna bezpowrotnie odrzucać nadchodzące ramki (tzw. \textit{Buffer Drop}).
+Sytuacja ta definiowana jest jako \textbf{utrata seryjna} (\textit{ang. Burst Loss}).
+Może ona wynikać między innymi z tymczasowego zerwania łącza radiowego, interferencji lub przepełnienia buforów urządzeń pośredniczących.
 
 \subsection{Model matematyczny i czas Blackoutu}
 
@@ -201,19 +205,19 @@ Na potrzeby analizy, strumień transmisyjny można przedstawić jako ciąg binar
 Pojedyncze zdarzenie utraty seryjnej (\textit{Burst Event}) identyfikowane jest jako podciąg składający się wyłącznie z zer.
 Długość tego zdarzenia $L_B$ równa się liczbie utraconych po sobie pakietów.
 
-W module \texttt{DownlinkAnalyzer} zaimplementowano algorytm poszukujący zdarzenia o maksymalnej długości, określonego jako $\max(L_B)$.
+W module \texttt{DownlinkAnalyzer} zaimplementowano algorytm poszukujący zdarzenia o maksymalnej długości, określonej jako $L_{B,\max}$.
 Znalezienie tej wartości pozwala na wyliczenie najważniejszej fizycznej metryki z punktu widzenia bezpieczeństwa maszyny - \textbf{Maksymalnego czasu braku sterowania} (ang.
 \textit{Max Blackout Time}), zdefiniowanego wzorem:
 $$T_{blackout} = \max(L_B) \cdot IAT_{expected}$$
-Wartość ta, wyrażana w milisekundach, precyzyjnie określa przez jak długi czas fizyczne urządzenie (np. dron lub ramię robota) poruszało się "na oślep", nie odbierając żadnych nowych komend od komputera sterującego.
-W systemach klasy HIL wyznaczenie wartości $T_{blackout}$ pozwala na optymalne ustawienie sprzętowego układu \textit{Watchdog}, który w przypadku przekroczenia bezpiecznego czasu odetnie zasilanie maszyn.
+Wartość ta, wyrażana w milisekundach, stanowi przybliżenie czasu, w którym urządzenie nie odebrało żadnej nowej komendy z komputera sterującego.
+Jej interpretacja zależy od częstotliwości nadawania i przyjętego modelu sterowania.
+Sama metryka nie wyznacza automatycznie nastawy układu \textit{watchdog}, lecz może pomóc w jej oszacowaniu.
 
 \subsection{Optymalizacja detekcji zdarzeń}
 
 Ze względu na gigantyczny wolumen przetwarzanych danych (dziesiątki tysięcy pakietów na pojedynczy test), klasyczne przeszukiwanie tablic w celu odnalezienia brakujących identyfikatorów skutkowałoby drastycznym spadkiem wydajności rurociągu analitycznego.
-Jak zilustrowano na Listingu \ref{lst:burst_loss_hash}, problem ten rozwiązano transformując wektor odebranych identyfikatorów w strukturę zbioru (ang.
-\textit{Hash Set}).
-Umożliwiło to zredukowanie złożoności obliczeniowej sprawdzania obecności pakietu w pamięci z liniowej $O(N)$ do stałej $O(1)$.
+Jak zilustrowano na Listingu \ref{lst:burst_loss_hash}, problem ten rozwiązano, transformując wektor odebranych identyfikatorów w strukturę zbioru (\textit{ang. Hash Set}).
+Średni koszt sprawdzenia obecności identyfikatora w zbiorze wynosi $O(1)$, natomiast całkowity koszt algorytmu pozostaje liniowy względem liczby oczekiwanych pakietów, ponieważ algorytm iteruje po zakresie \texttt{range(total\_sent)}.
 
 \begin{listing}[htbp]
     \caption{Wydajny algorytm detekcji zdarzeń Burst Loss z wykorzystaniem struktury zbiorów o złożoności stałej $O(1)$ (\texttt{burst\_loss.py}) \cite{espy_nexus_python_host}.}
@@ -251,24 +255,24 @@ Słownik grupujący te dane (\texttt{burst\_events}) pozwala na dokładne wskaza
 
 W ewaluacji kanałów transmisyjnych powszechnie stosowaną miarą jest przepustowość (\textit{ang. Throughput}).
 Metryka ta określa całkowitą ilość danych przesyłanych przez medium w jednostce czasu.
-Z perspektywy inżynierii systemów wbudowanych oraz warstwy aplikacji, klasyczny \textit{Throughput} bywa jednak mylący - uwzględnia on bowiem narzuty protokołów (nagłówki ramek MAC, IP, TCP/UDP), sygnały sterujące (np. pakiety \texttt{ACK}) oraz, co najważniejsze, retransmisje zgubionych pakietów.
+Z perspektywy inżynierii systemów wbudowanych oraz warstwy aplikacji klasyczny \textit{Throughput} może być niewystarczający, ponieważ może obejmować narzuty protokołów, sygnały sterujące oraz retransmisje.
 
 W systemach HIL, gdzie liczy się wyłącznie transfer faktycznych, poprawnych danych telemetrycznych lub komend sterujących, stosuje się rygorystyczną metrykę \textbf{Wydajności użytecznej} (\textit{ang. Goodput}).
-Definiuje ona liczbę unikalnych, pomyślnie zdekodowanych bajtów aplikacji (tzw. ładunku użytecznego - \textit{Payload}), dostarczonych do docelowego procesu operacyjnego w jednostce czasu.
+Definiuje ona liczbę bajtów ładunku użytecznego (\textit{ang. Payload}) przypisaną unikalnym identyfikatorom odebranym przez ESP32, odniesioną do czasu obserwacji po stronie odbiornika.
 
 \subsection{Model matematyczny i problem brzegowy (Fencepost Error)}
 
-Zgodnie z wdrożonym algorytmem (Listing \ref{lst:goodput_pandas}), aby obliczyć rzeczywisty \textit{Goodput}, system analityczny w pierwszej kolejności usuwa z wektora danych wszelkie duplikaty sprzętowe (wynikające z retransmisji warstwy MAC/TCP).
+Zgodnie z wdrożonym algorytmem (Listing \ref{lst:goodput_pandas}), aby obliczyć \textit{Goodput}, system analityczny w pierwszej kolejności usuwa powtórzenia identyfikatorów.
+Operacja ta eliminuje wielokrotne rekordy tego samego pakietu, ale nie pozwala jednoznacznie przypisać ich do retransmisji konkretnej warstwy.
 
 Kluczowym aspektem inżynierskim algorytmu jest rygorystyczne wyznaczenie okna czasowego odbiorcy (\textit{Receiving Window}).
 Całkowity czas pomiaru $\Delta T$ liczony jest jako różnica między stęplem czasowym odebrania ostatniego ($\max(T)$) i pierwszego ($\min(T)$) pakietu w pamięci mikrokontrolera ESP32.
-W związku z tym, pierwszy odebrany pakiet pełni wyłącznie rolę wyzwalacza pomiaru czasu ($T=0$), a przenoszone przez niego bajty nie mogą zostać wliczone do przepustowości wewnątrz tego okna czasowego.
-Zjawisko to w informatyce znane jest jako \textbf{błąd palików} (ang.
-\textit{Fencepost Error} / \textit{Off-by-one}).
+W związku z tym pierwszy odebrany pakiet wyznacza początek okna obserwacji ($T=0$), a w implementacji jego ładunek nie jest wliczany do liczby bajtów użytych w liczniku.
+Jest to świadoma konwencja obliczeniowa odpowiadająca poprawce \textit{off-by-one}.
 
 Wzór na przepływność użyteczną, z uwzględnieniem matematycznej poprawki, przyjmuje postać: $$Goodput = \frac{(N_{unique} - 1) \cdot S_{payload}}{\Delta T} \quad [B/s]$$ gdzie: $N_{unique}$ - całkowita liczba unikalnych i poprawnie odebranych pakietów, $S_{payload}$ - zadeklarowany, czysty rozmiar struktury badawczej (w bajtach), $\Delta T$ - rzeczywisty czas trwania akwizycji z perspektywy odbiorcy (w sekundach).
 
-Wynik ten konwertowany jest następnie na standardowe dla telekomunikacji Megabity na sekundę ($Mbps$), wykorzystując przelicznik: $1 Mbps = 1 000 000 \text{ bitów}/s$.
+Wynik ten konwertowany jest następnie na megabity na sekundę ($\mathrm{Mbps}$), przy założeniu przelicznika $1\ \mathrm{Mbps} = 1.000.000\ \mathrm{bitów/s}$.
 
 \begin{listing}[htbp]
     \caption{Wektorowe odrzucanie retransmisji i rygorystyczne obliczanie przepływności z poprawką \textit{Fencepost} (\texttt{goodput.py}) \cite{espy_nexus_python_host}.}
@@ -297,13 +301,11 @@ mbps = actual_bits_per_s / 1_000_000.0
 Oprócz bezwzględnych wartości przepustowości, moduł oblicza znormalizowany wskaźnik \textbf{Efektywności (\textit{ang. Efficiency})}.
 Jest to stosunek rzeczywiście zmierzonego \textit{Goodputu} do Teoretycznego Obciążenia Oferowanego (\textit{ang. Offered Load}), definiowanego jako iloczyn częstotliwości nadawania i rozmiaru pakietu ($f \cdot S_{payload}$).
 
-Podczas intensywnych testów uderzeniowych w architekturach z ruterami pośredniczącymi (topologia \texttt{AP\_ROUTER}) można zaobserwować anomalię polegającą na wyliczaniu wskaźnika efektywności przekraczającego wartość $100\%$.
-Zjawisko to nie stanowi błędu algorytmicznego, lecz dowodzi istnienia agregacji buforów (tzw. \textit{Buffer Bloat}) na wyższych warstwach sieciowych lub w sprzętowym systemie mikrokontrolera.
-Pakiety wysyłane z PC zatrzymują się w utkanym buforze rutera, po czym w chwili udrożnienia sieci (np. zakończeniu cyklu CSMA/CA), następuje wysłanie zgromadzonych ramek (\textit{ang. Bursting}).
-Odbiornik ESP32 dekoduje całą serię pakietów niemal w tej samej mikrosekundzie.
-Powoduje to ekstremalne zwężenie mianownika ($\Delta T$) w oknie odbiorczym, co matematycznie winduje chwilowy \textit{Goodput} poza teoretyczne możliwości nadajnika (komputera PC).
+Podczas intensywnych testów można zaobserwować wskaźnik efektywności przekraczający wartość $100\%$.
+Wynika to z definicji opartej na czasie między minimalnym a maksymalnym stemplem odbioru oraz na porównaniu z oferowanym obciążeniem.
+Taki wynik może być zgodny z obserwacją seryjnego dostarczenia pakietów po okresie kolejkowania, ale sam w sobie nie dowodzi wystąpienia zjawiska \textit{Bufferbloat} ani nie pozwala wskazać miejsca powstania bufora.
 
-W ten sposób metryka wydajności użytecznej pośrednio, acz precyzyjnie, identyfikuje stany niestabilności kolejek protokołów TCP/UDP w środowiskach czasu rzeczywistego.
+W ten sposób metryka wydajności użytecznej może sygnalizować różnicę między obciążeniem oferowanym a obserwowanym oknem odbiorczym, lecz wymaga interpretacji łącznie z pozostałymi metrykami.
 
 \section{Defekty kolejności i anomalie chronologiczne (Out-of-Order)}
 \label{sec:ooo}
@@ -312,18 +314,20 @@ W środowiskach sieciowych opartych na komutacji pakietów, pojedyncze datagramy
 Zjawisko to prowadzi do sytuacji, w której pakiety docierają do celu w innej kolejności, niż zostały wygenerowane.
 Określa się to mianem transmisji poza kolejnością (\textit{ang. OoO - Out-of-Order}).
 
-Z perspektywy automatyki i telemetrii operującej w pętli sprzętowej (HIL), naruszenie chronologii jest błędem krytycznym.
+Z perspektywy automatyki i telemetrii operującej w pętli sprzętowej (HIL) naruszenie chronologii może być istotnym problemem.
 Jeśli komputer sterujący wyśle pakiety z nowymi zadanymi współrzędnymi dla ramienia robota (np. pakiet nr 100, a następnie pakiet nr 101), a na skutek anomalii sieciowej pakiet nr 100 dotrze do mikrokontrolera jako ostatni, system nadpisze najnowszą wartość przestarzałą komendą, powodując gwałtowne i niebezpieczne cofnięcie stanu maszyny.
 
-Protokoły transportowe zorientowane na połączenie (takie jak TCP) posiadają sprzętowe mechanizmy buforowania i porządkowania ramek (okna przesuwne), ukrywając defekty kolejności przed warstwą aplikacji kosztem drastycznego wzrostu opóźnień (zjawisko \textit{Head-of-Line Blocking}).
+Protokoły transportowe zorientowane na połączenie, takie jak TCP, zapewniają uporządkowany strumień bajtów za pomocą mechanizmów protokołu i stosu programowego.
+Może to ukrywać zmianę kolejności przed warstwą aplikacji, ale w przypadku oczekiwania na brakujące dane może powodować opóźnienia typu \textit{Head-of-Line Blocking}.
 Z kolei protokoły bezpołączeniowe (UDP) przepuszczają anomalie chronologiczne bezpośrednio do programu użytkownika.
 Z tego względu implementacja detektora OoO była niezbędna do rzetelnego porównania wpływu stosu sieciowego na bezpieczeństwo sterowania.
 
 \subsection{Algorytm detekcji i odrzucanie powtórzeń (MAC Stutter)}
 
-Dane wejściowe do modułu analizy kolejności stanowią unikalne identyfikatory pakietów (\texttt{packet\_id}), posortowane rosnąco według rzeczywistego czasu ich fizycznego odbioru przez mikrokontroler (stempel \texttt{esp\_rx\_ts}).
+Dane wejściowe do modułu analizy kolejności stanowią identyfikatory pakietów uporządkowane według rzeczywistego czasu odbioru przez mikrokontroler (stempel \texttt{esp\_rx\_ts}).
+Mogą one zawierać powtórzenia, ponieważ algorytm rozpoznaje bezpośrednie powtórzenia jako osobny przypadek.
 
-Zaimplementowany algorytm (Listing \ref{lst:ooo_detection}) opiera się na idei śledzenia "frontu chronologicznego".
+Zaimplementowany algorytm (Listing \ref{lst:ooo_detection}) opiera się na idei śledzenia \textit{frontu chronologicznego}.
 System definiuje zmienną $ID_{max}$, przechowującą najwyższy zaobserwowany do tej pory identyfikator.
 Przetwarzając strumień, dla każdego kolejnego pakietu o identyfikatorze $ID_i$ weryfikowane są trzy stany:
 \begin{enumerate}
@@ -331,16 +335,17 @@ Przetwarzając strumień, dla każdego kolejnego pakietu o identyfikatorze $ID_i
           System aktualizuje $ID_{max} = ID_i$.
           Przebieg prawidłowy.
     \item $ID_i < ID_{max}$ - pakiet starszy niż najnowsza znana wartość.
-          Oznacza to ewidentne naruszenie chronologii - pakiet opóźnił się w sieci na tyle, że dotarł już po odebraniu nowszej komendy.
+          Oznacza to, że identyfikator jest mniejszy od wcześniej zaobserwowanego maksimum.
+          Może to odpowiadać dostarczeniu pakietu poza kolejnością albo opóźnionej retransmisji.
           Zdarzenie to jest rejestrowane jako błąd \textit{Out-of-Order}.
     \item $ID_i == ID_{max}$ - identyfikator równy obecnemu frontowi.
-          Sytuacja ta oznacza natychmiastową retransmisję na warstwie sprzętowej (ang.
-          \textit{MAC Layer Stutter}).
-          Choć pakiet dotarł po raz drugi, nie zaburza on stanu maszyny, wobec czego jest świadomie ignorowany przez detektor OoO, chroniąc metrykę przed fałszywie pozytywnymi wynikami.
+          Sytuacja ta oznacza bezpośrednie powtórzenie identyfikatora w analizowanym strumieniu.
+          Może być skutkiem retransmisji, ale analizator nie identyfikuje jej warstwy.
+          Powtórzenie jest ignorowane przez detektor OoO.
 \end{enumerate}
 
 \begin{listing}[htbp]
-    \caption{Algorytm śledzenia frontu chronologicznego z ignorowaniem powtórzeń z warstwy łącza danych (\texttt{out\_of\_order.py}) \cite{espy_nexus_python_host}.}
+    \caption{Algorytm śledzenia frontu chronologicznego z ignorowaniem bezpośrednich powtórzeń identyfikatora (\texttt{out\_of\_order.py}) \cite{espy_nexus_python_host}.}
     \label{lst:ooo_detection}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 max_id_seen = -1
@@ -350,7 +355,7 @@ for current_id in received_ids.dropna().astype(int):
     if current_id > max_id_seen:
         max_id_seen = current_id
         
-    # Naruszenie chronologii - "duch" lub pakiet, który ugrzązł w sieci
+    # Naruszenie chronologii: identyfikator mniejszy od dotychczasowego maksimum
     elif current_id < max_id_seen:
         ooo_ids.append(current_id)
         
@@ -359,7 +364,7 @@ for current_id in received_ids.dropna().astype(int):
         if displacement > max_displacement:
             max_displacement = displacement
 
-    # Bezpośredni duplikat (np. wynikający ze zgubionego ACK w 802.11)
+    # Bezpośrednie powtórzenie identyfikatora
     else:
         # current_id == max_id_seen
         # Ignorowane w celu uniknięcia zaburzenia metryki OoO
@@ -370,47 +375,47 @@ for current_id in received_ids.dropna().astype(int):
 \subsection{Wskaźnik maksymalnego przesunięcia (Max Displacement)}
 
 Sama informacja o wystąpieniu zaburzenia kolejności jest niewystarczająca do oceny głębokości problemu.
-Algorytm na bieżąco oblicza również wskaźnik \textbf{Maksymalnego przesunięcia w strumieniu} (\textit{ang. Max ID Displacement}).
-Jest on definiowany jako największa zanotowana różnica pomiędzy frontem chronologicznym a identyfikatorem opóźnionego pakietu: $$Displacement_{max} = \max(ID_{max} - ID_{OoO})$$
+Algorytm na bieżąco oblicza również wskaźnik \textbf{maksymalnego przesunięcia w strumieniu} (\textit{ang. Max ID Displacement}).
+Jest on definiowany jako największa zanotowana różnica pomiędzy frontem chronologicznym a identyfikatorem pakietu zaklasyfikowanego jako opóźniony: $$Displacement_{max} = \max(ID_{max} - ID_{OoO})$$
 
-Wartość ta pozwala oszacować, o ile generacji stanów cofnęłaby się sterowana maszyna w przypadku braku sprzętowej filtracji po stronie odbiorczej.
-Zjawisko występowania opóźnionych pakietów typu \textit{Ghost}, o wysokich wartościach współczynnika \textit{Displacement}, jest szczególnie niebezpieczne i wymusza stosowanie dodatkowych rozwiązań w oprogramowaniu docelowym węzła HIL.
+Wartość ta pozwala oszacować różnicę identyfikatorów między aktualnym maksimum a pakietem zaklasyfikowanym jako opóźniony.
+Nie określa bezpośrednio liczby generacji stanów, o które cofnęłaby się maszyna, ponieważ zależy to od semantyki identyfikatora i logiki aplikacji.
 
 \section{Trendy czasowe, zator buforów i dryft sprzętowy (Queuing Delay)}
 \label{sec:timing_trends}
 
-Ostatnim, lecz niezwykle krytycznym z punktu widzenia stabilności systemów sterowania aspektem, jest analiza trendów długoterminowych.
+Ostatnim analizowanym aspektem jest ocena trendów czasowych, istotna z punktu widzenia stabilności systemów sterowania.
 Krótkotrwałe opóźnienia i skoki Jittera (omówione w podrozdziale \ref{sec:jitter}) są w dużej mierze zjawiskiem naturalnym.
-Jednakże, jeśli opóźnienie między komputerem PC a układem ESP32 rośnie sukcesywnie w czasie trwania całego eksperymentu, świadczy to o fundamentalnej niewydolności łącza i występowaniu zjawiska zatoru buforów (\textit{ang. Bufferbloat}).
+Jeśli względne opóźnienie między komputerem PC a układem ESP32 rośnie w czasie trwania eksperymentu, może to wskazywać na narastanie kolejek i zjawisko zatoru buforów (\textit{ang. Bufferbloat}), ale nie stanowi samo w sobie jego jednoznacznego potwierdzenia.
 
-Pakiety generowane szybciej, niż sieć jest w stanie je fizycznie wytransmitować, odkładają się w kolejkach rutera (L3) lub na stosie systemu operacyjnego (L4).
-Stale powiększająca się kolejka powoduje nieskończony wzrost opóźnienia, co ostatecznie doprowadzi do całkowitej utraty stabilności maszyny (np. dron otrzyma komendę stabilizującą z kilkusekundowym opóźnieniem).
+Pakiety generowane szybciej, niż sieć jest w stanie je fizycznie wytransmitować, mogą odkładać się w kolejkach routera lub stosu systemowego.
+Narastająca kolejka zwiększa opóźnienie i może pogorszyć stabilność sterowania.
 
 \subsection{Względne opóźnienie jednokierunkowe (Relative OWD)}
 
-Precyzyjny pomiar czasu przelotu w jedną stronę (\textit{ang. OWD - One-Way Delay}) wymagałby idealnej synchronizacji zegara komputera z zegarem ESP32.
-Aby obejść ten problem bez konieczności wdrażania kosztownych modułów sprzętowych moduł analityczny oblicza \textbf{Względne opóźnienie kolejkowania}.
-Jak zilustrowano na Listingu \ref{lst:timing_trends}, początkowo wyznaczany jest surowy wektor różnicy czasu: $$OWD_{raw} = T_{ESP32} - T_{PC}$$ Wektor ten obarczony jest stałym, nieznanym błędem braku synchronizacji (\textit{Clock Offset}).
-Następnie dokonywana jest normalizacja osi Y: system odnajduje pakiet, który pokonał trasę najszybciej (zakładając, że nie doświadczył on żadnego kolejkowania w ruterze) i odejmuje jego czas od wszystkich pozostałych: $$Delay_{queue} = OWD_{raw} - \min(OWD_{raw})$$ Dzięki tej transformacji błąd synchronizacji ulega całkowitej redukcji, a uzyskana wartość bezpośrednio (w mikrosekundach) odzwierciedla czas, jaki poszczególne pakiety spędziły bezczynnie w buforach sieciowych.
+Precyzyjny pomiar czasu przelotu w jedną stronę (\textit{ang. OWD - One-Way Delay}) wymagałby synchronizacji zegara komputera z zegarem ESP32.
+Aby ograniczyć wpływ nieznanego przesunięcia zegarów, moduł analityczny oblicza \textbf{względne opóźnienie}.
+Jak zilustrowano na Listingu \ref{lst:timing_trends}, początkowo wyznaczany jest surowy wektor różnicy czasu: $$OWD_{raw} = T_{ESP32} - T_{PC}$$ Wektor ten zawiera między innymi stałe przesunięcie zegarów (\textit{Clock Offset}).
+Następnie wykonywana jest normalizacja: od każdej wartości odejmowane jest minimum: $$Delay_{relative} = OWD_{raw} - \min(OWD_{raw})$$ Operacja ta usuwa stały składnik przesunięcia, lecz wynik może nadal obejmować zmienność czasu transmisji, kolejkowanie i dryft zegarów.
+Nie jest więc bezpośrednim pomiarem czasu spędzonego w konkretnym buforze.
 
 \subsection{Regresja liniowa i detekcja zatorów (Queuing Delay)}
 
-Aby zmatematyzować kierunek zmian zatoru buforów, zaimplementowano algorytm regresji liniowej wykorzystujący metodę najmniejszych kwadratów (\textit{Least Squares}) z biblioteki \texttt{NumPy}.
+Aby opisać kierunek zmian względnego opóźnienia, zaimplementowano algorytm regresji liniowej wykorzystujący metodę najmniejszych kwadratów (\textit{Least Squares}) z biblioteki \texttt{NumPy}.
 Funkcja \texttt{np.polyfit(x, y, 1)} dopasowuje do wykresu opóźnień wielomian pierwszego stopnia w postaci $y = ax + b$, wyodrębniając współczynnik kierunkowy prostej $a$ (\texttt{slope}).
 \begin{itemize}
-    \item Jeśli $a \approx 0$ - Opóźnienie jest stabilne, sieć nadąża z transmisją.
-    \item Jeśli $a \gg 0$ - Występuje zjawisko \textit{Queuing Delay}.
-          Bufor puchnie, opóźnienia rosną w czasie nieskończenie.
-          Łącze uległo całkowitemu nasyceniu.
+    \item Jeśli $a \approx 0$, względne opóźnienie nie wykazuje wyraźnego trendu liniowego.
+    \item Jeśli $a > 0$, względne opóźnienie rośnie w czasie, co może wskazywać na narastanie kolejek.
 \end{itemize}
 
 \subsection{Zjawisko dryftu rezonatora kwarcowego (Clock Drift)}
 
 W systemach HIL należy również uwzględnić niedoskonałości samej platformy wbudowanej.
-Taktowanie procesora ESP32 opiera się na fizycznym rezonatorze kwarcowym, którego częstotliwość rezonansowa oscyluje pod wpływem temperatury i napięcia zasilania.
-Względem stabilnego wzorca w komputerze PC, zegar mikrokontrolera ulega zjawisku dryftu (\textit{ang. Clock Drift}).
+Zegary używane do rejestracji czasu na komputerze PC i ESP32 mogą różnić się częstotliwością, między innymi wskutek właściwości rezonatorów oraz wpływu warunków pracy.
+Różnica ta jest obserwowana jako dryft zegarów (\textit{ang. Clock Drift}).
 
-Algorytm mierzy różnicę w postrzeganiu całkowitego czasu trwania eksperymentu przez PC ($\Delta T_{PC}$) oraz ESP32 ($\Delta T_{ESP32}$), wyrażając błąd w częściach na milion (\textit{ang. PPM - Parts Per Million}): $$Drift_{PPM} = \left( \frac{\Delta T_{ESP32} - \Delta T_{PC}}{\Delta T_{PC}} \right) \cdot 10^6$$ Wartości rzędu kilkudziesięciu PPM są naturalnym zjawiskiem fizycznym dla tanich rezonatorów kwarcowych i potwierdzają najwyższą, sprzętową czułość zaprojektowanego systemu pomiarowego.
+Algorytm mierzy różnicę w postrzeganiu całkowitego czasu trwania eksperymentu przez PC ($\Delta T_{PC}$) oraz ESP32 ($\Delta T_{ESP32}$), wyrażając ją w częściach na milion (\textit{ang. PPM - Parts Per Million}): $$Drift_{PPM} = \left( \frac{\Delta T_{ESP32} - \Delta T_{PC}}{\Delta T_{PC}} \right) \cdot 10^6$$ Otrzymana wartość opisuje różnicę czasu trwania eksperymentu zmierzoną przez oba zegary.
+Jej interpretacja jako wyłącznie dryftu rezonatora wymagałaby dodatkowej kalibracji i kontroli pozostałych źródeł błędu.
 
 \begin{listing}[htbp]
     \caption{Wektorowa redukcja błędu synchronizacji oraz analiza regresji liniowej za pomocą biblioteki NumPy (\texttt{timing\_trends.py}) \cite{espy_nexus_python_host}.}

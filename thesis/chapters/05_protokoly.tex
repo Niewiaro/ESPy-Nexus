@@ -151,7 +151,7 @@ Mikrokontroler zamiast odbierać pakiety równo co 1~ms, nie odbiera nic przez 1
 Jak zilustrowano na Listingu \ref{lst:python_tcp}, problem ten wyeliminowano podczas powoływania gniazda do życia, zlecając na poziomie systemu operacyjnego jawną dezaktywację algorytmu Nagle'a (flaga \texttt{TCP\_NODELAY}).
 
 \begin{listing}[htbp]
-    \caption{Konfiguracja strumieniowego gniazda TCP z dezaktywacją algorytmu Nagle'a i zabezpieczeniem transakcyjnym (\texttt{tcp\_dp.py})}
+    \caption{Konfiguracja strumieniowego gniazda TCP z dezaktywacją algorytmu Nagle'a i zabezpieczeniem transakcyjnym (\texttt{tcp\_dp.py}) \cite{espy_nexus_python_host}.}
     \label{lst:python_tcp}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 def connect(self) -> None:
@@ -173,3 +173,63 @@ def disconnect(self) -> None:
 
 Zastosowanie metody \texttt{shutdown()} przed finalnym wywołaniem \texttt{close()} to dodatkowy rygor inżynierski.
 Gwarantuje on, że komputer odczeka na zakończenie przesyłania wszystkich zakolejkowanych ramek TCP i wymieni z mikrokontrolerem flagi zamknęcia sesji (\texttt{FIN/ACK}), zapobiegając powstawaniu wiszących sesji w pamięci rutera (\textit{Half-open connections}).
+
+\section{Protokół warstwy aplikacji (WebSockets)}
+\label{sec:protokol_websockets}
+
+Ewolucja systemów wbudowanych oraz Internetu Rzeczy (IoT) wymusiła na inżynierach poszukiwanie protokołów, które potrafią płynnie integrować urządzenia brzegowe (takie jak mikrokontrolery) z nowoczesnymi interfejsami przeglądarkowymi i rozwiązaniami chmurowymi.
+Tradycyjne gniazda TCP i UDP są często blokowane przez zapory sieciowe (\textit{ang. Firewalls}) oraz translatory adresów (NAT).
+Odpowiedzią na ten problem jest protokół \textbf{WebSockets}, zdefiniowany w standardzie RFC 6455.
+
+WebSockets to zorientowany na połączenie, dwukierunkowy protokół komunikacyjny działający w warstwie aplikacji (L7) modelu OSI, oparty na szkielecie TCP.
+Jego unikalną cechą jest to, że inicjalizacja połączenia rozpoczyna się jako klasyczne, tekstowe żądanie HTTP.
+Po pomyślnej wymianie nagłówków serwer i klient dokonują tzw. podniesienia protokołu (\textit{ang. HTTP Upgrade}), po którym kanał pozostaje otwarty, umożliwiając asynchroniczne strumieniowanie danych w obie strony ze znacznie niższym opóźnieniem niż w przypadku klasycznego odpytywania HTTP ( \textit{ang. Polling}).
+
+W systemach HIL i automatyce protokół ten jest wykorzystywany m.in. do bezpośredniego strumieniowania telemetrii z urządzenia (np. robota AGV) do chmurowego panelu dyspozytorskiego, bez konieczności stawiania serwerów pośredniczących.
+WebSockets wprowadza jednak dodatkowe narzuty strukturalne - każda wiadomość owijana jest w specjalną ramkę zawierającą m.in. bity maskujące, kody operacji (\textit{Opcodes}) oraz metadane o długości ładunku.
+
+\subsubsection{Wymogi rygoru czasowego a asynchroniczność w Pythonie}
+Implementacja klienta WebSockets w Płaszczyźnie Danych (\texttt{WsDataPlane}) napotkała na istotny problem architektoniczny języka Python.
+Większość nowoczesnych bibliotek do obsługi tego protokołu (np. \texttt{websockets} czy \texttt{aiohttp}) bazuje na asynchronicznej pętli zdarzeń (\texttt{asyncio}).
+Użycie asynchroniczności wiąże się ze zjawiskiem oddawania kontekstu (\textit{ang. Context Switching}) do systemu operacyjnego.
+W środowisku, w którym generator ruchu (\texttt{TestEngine}) wykorzystuje pętlę \textit{busy-wait} w celu osiągnięcia precyzji mikrosekundowej, pętla zdarzeń wprowadzałaby niedeterministyczne opóźnienia rzędu kilkunastu milisekund (Jitter systemowy).
+
+Aby zachować rygor czasowy narzucony przez HIL, zrezygnowano z bibliotek asynchronicznych na rzecz w pełni synchronicznego, blokującego modułu \texttt{websocket-client}.
+
+% TUTAJ WSTAW KOD - Fragment z ws_dp.py pokazujący Upgrade i wysyłkę binarną
+\begin{listing}[htbp]
+    \caption{Synchroniczna implementacja klienta WebSockets z użyciem binarnych kodów operacji (\texttt{ws\_dp.py})}
+    \label{lst:python_websocket}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+from websocket import create_connection, ABNF
+
+def connect(self) -> None:
+    ws_url = f"ws://{self.ip_address}:{self.port}/"
+    # Faza 1: Negocjacja TCP -> Żądanie HTTP -> HTTP Upgrade
+    self.ws = create_connection(ws_url, timeout=5.0)
+
+def transmit(self, precompiled_packets: list, frequency_hz: int):
+    # [...] Inicjalizacja pętli busy-wait
+
+    for packet_id, raw_bytes in precompiled_packets:
+        while time.perf_counter_ns() < next_transmission_time:
+            pass
+
+        # Pobranie stempla czasu
+        self.tx_timestamps[i] = {"packet_id": packet_id, "pc_tx_ts": time.time_ns()}
+
+        # Faza 2: Transmisja z jawnym wskazaniem binarnego formatu ramki.
+        # Biblioteka automatycznie dokonuje maskowania i enkapsulacji WS.
+        self.ws.send(raw_bytes, opcode=ABNF.OPCODE_BINARY)
+
+        next_transmission_time += interval_ns
+\end{minted}
+\end{listing}
+
+\subsubsection{Natywne ramkowanie i transmisja binarna}
+Zaletą korzystania z protokołu wyższej warstwy jest natywna hermetyzacja wiadomości.
+Klient WebSockets samodzielnie oznacza początek i koniec każdego komunikatu (tzw. \textit{Framing}).
+Umożliwiło to całkowite wyłączenie algorytmu COBS, niezbędnego podczas surowej komunikacji szeregowej.
+
+Ponadto, w metodzie nadawczej (Listing \ref{lst:python_websocket}) zastosowano flagę \texttt{opcode=ABNF.OPCODE\_BINARY}.
+Wymusza to na kliencie traktowanie ładunku jako czystego ciągu bajtów zamiast łańcucha tekstowego UTF-8, eliminując narzut procesora związany z kodowaniem i dekodowaniem znaków po stronie mikrokontrolera ESP32.

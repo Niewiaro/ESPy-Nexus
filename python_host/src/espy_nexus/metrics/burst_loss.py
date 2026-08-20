@@ -84,9 +84,9 @@ if __name__ == "__main__":
 
     mock_test_scenario = MockTestScenario()
 
-    result_jitter = calculate_burst_loss(
+    result_burst_loss = calculate_burst_loss(
         mock_test_scenario.df["packet_id"],
         mock_test_scenario.total_sent,
         mock_test_scenario.expected_iat_us,
     )
-    print_burst_loss_result(result_jitter)
+    print_burst_loss_result(result_burst_loss)

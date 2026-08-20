@@ -123,3 +123,53 @@ Krytycznym z punktu widzenia testów stresowych inżynieryjnym detalem w powyżs
 W środowiskach GPOS (Windows/Linux), przy próbie tłoczenia pakietów UDP z ekstremalnie wysoką częstotliwością (rzędu kilku tysięcy Hz), wewnętrzny bufor pamięci stosu sieciowego komputera zapełnia się szybciej, niż fizyczna karta sieciowa jest w stanie go opróżniać.
 Ze względu na bezpołączeniowy charakter UDP, system operacyjny w takiej sytuacji nie blokuje wątku, lecz po cichu odrzuca nowo nadchodzące pakiety, co prowadziłoby do drastycznego zakłamania statystyk ewaluacyjnych.
 Rozszerzenie bufora do 1~MB gwarantuje, że wąskim gardłem systemu pozostanie badany ruter lub mikrokontroler, a nie środowisko testowe nadajnika.
+
+\section{Zorientowany na połączenie protokół transportowy (TCP)}
+\label{sec:protokol_tcp}
+
+W przeciwieństwie do protokołu UDP, TCP (\textit{ang. Transmission Control Protocol}) jest zorientowany na połączenie.
+Stanowi on fundament bezpiecznej i niezawodnej komunikacji w Internecie (odpowiadając m.in. za protokoły HTTP, FTP czy SSH).
+W systemach wbudowanych IoT TCP wykorzystywany jest w scenariuszach, w których integralność i gwarancja dostarczenia paczki danych są ważniejsze niż opóźnienie - na przykład podczas autoryzacji sesji, przesyłania konfiguracji urządzenia, komunikacji z serwerem HTTP lub MQTT, transferu plików oraz bezprzewodowych aktualizacji oprogramowania (\textit{ang. OTA - Over The Air}).
+
+Z punktu widzenia testów sprzętowych HIL protokół ten wnosi ogromne narzuty kontrolne.
+Nawiązanie sesji wymaga wymiany trzech pakietów przed przesłaniem jakichkolwiek danych (ang.
+\textit{3-way handshake: SYN, SYN-ACK, ACK}).
+Co ważniejsze, każdy wysłany pakiet z danymi docelowymi musi zostać jawnie potwierdzony przez układ ESP32 sygnałem \texttt{ACK}.
+
+W przypadku zgubienia ramki w powietrzu lub zniekształcenia jej sumy kontrolnej, wbudowany w mikrokontroler stos LwIP nie potwierdzi jej odebrania.
+Komputer PC, po upływie zdefiniowanego czasu (\textit{ang. Retransmission Timeout}), automatycznie wyśle ją ponownie.
+Mechanizm ten gwarantuje, że żaden pakiet nie zostanie zgubiony (wskaźnik PDR wynosi zawsze 100\%), jednak retransmisje, zwłaszcza przy wysokich częstotliwościach próbkowania, drastycznie zaburzają oś czasu generując wysoki wskaźniki \textit{Jittera}.
+Ponadto TCP to protokół strumieniowy (\textit{ang. Stream-oriented}), co oznacza, że wzorem kablowego połączenia szeregowego, programista musi samodzielnie zadbać o ramkowanie danych (np. ponownie wykorzystując omawiany wcześniej algorytm COBS), aby układ wbudowany potrafił wyodrębnić koniec jednej wiadomości i początek drugiej.
+
+\subsection{Dezaktywacja algorytmu Nagle'a}
+Kluczowym aspektem zaimplementowania protokołu TCP do celów telemetrii wysokiej częstotliwości jest ominięcie specyficznych mechanizmów optymalizacyjnych stosów sieciowych komputera PC.
+Domyślnie, gniazda TCP podlegają działaniu \textbf{algorytmu Nagle'a}.
+Algorytm ten zapobiega przeciążeniu sieci, celowo zatrzymując w buforze rutera małe pakiety i łącząc je w jedną większą ramkę zanim ostatecznie wypchnie je do sieci.
+
+W architekturze sterowania działanie tego algorytmu jest wysoce destrukcyjne.
+Mikrokontroler zamiast odbierać pakiety równo co 1~ms, nie odbiera nic przez 15~ms, po czym otrzymuje zbitkę kilkunastu pakietów w jednym ułamku sekundy.
+Jak zilustrowano na Listingu \ref{lst:python_tcp}, problem ten wyeliminowano podczas powoływania gniazda do życia, zlecając na poziomie systemu operacyjnego jawną dezaktywację algorytmu Nagle'a (flaga \texttt{TCP\_NODELAY}).
+
+\begin{listing}[htbp]
+    \caption{Konfiguracja strumieniowego gniazda TCP z dezaktywacją algorytmu Nagle'a i zabezpieczeniem transakcyjnym (\texttt{tcp\_dp.py})}
+    \label{lst:python_tcp}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+def connect(self) -> None:
+    # Utworzenie gniazda strumieniowego (SOCK_STREAM)
+    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+    # Negocjacja 3-way handshake z układem ESP32
+    self.sock.connect((self.ip_address, self.port))
+
+def disconnect(self) -> None:
+    if self.sock:
+        # Zabezpieczenie integralności: wywołanie procedury FIN/ACK 
+        # (shutdown), zanim ostatecznie zniszczone zostanie gniazdo.
+        self.sock.shutdown(socket.SHUT_RDWR)
+        self.sock.close()
+\end{minted}
+\end{listing}
+
+Zastosowanie metody \texttt{shutdown()} przed finalnym wywołaniem \texttt{close()} to dodatkowy rygor inżynierski.
+Gwarantuje on, że komputer odczeka na zakończenie przesyłania wszystkich zakolejkowanych ramek TCP i wymieni z mikrokontrolerem flagi zamknęcia sesji (\texttt{FIN/ACK}), zapobiegając powstawaniu wiszących sesji w pamięci rutera (\textit{Half-open connections}).

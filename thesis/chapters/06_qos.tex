@@ -78,3 +78,59 @@ Queuing Delay Percent: 0.00%
 Queuing Delay Trend Slope: 0.000000 us/us
 \end{minted}
 \end{listing}
+
+\section{Skuteczność dostarczania i analiza duplikatów (PDR)}
+\label{sec:pdr}
+
+Najbardziej fundamentalną metryką oceny niezawodności łącza radiowego jest współczynnik dostarczenia pakietów, w literaturze oznaczany powszechnie jako \textbf{PDR} (\textit{ang. Packet Delivery Ratio}).
+Określa on stosunek liczby unikalnych wiadomości, które fizycznie dotarły do pamięci operacyjnej mikrokontrolera (RX), do całkowitej liczby pakietów wygenerowanych i wysłanych przez stację nadawczą komputera PC (TX).
+
+Wartość PDR wyrażana jest w procentach i zdefiniowano ją poniższym wzorem matematycznym: $$PDR = \left( \frac{N_{unique}}{N_{sent}} \right) \cdot 100\%$$ gdzie: $N_{unique}$ -- zbiór unikalnych identyfikatorów (\texttt{packet\_id}) poprawnie zdekodowanych przez układ ESP32, $N_{sent}$ -- teoretyczna liczba wysłanych pakietów wynikająca z ustalonej macierzy badawczej (parametr \texttt{expected\_count}).
+
+Z perspektywy automatyki przemysłowej i telemetrii HIL, spadek wskaźnika PDR poniżej 100\% jest zjawiskiem niepożądanym.
+W systemach sterowania w otwartej pętli utracony pakiet oznacza pominięcie ramki aktualizacji stanu (np. niewysterowanie serwomechanizmu na czas).
+Protokoły bezpołączeniowe, takie jak UDP, charakteryzują się natywną zgodą na gubienie pakietów w warunkach zagęszczenia sieci, co w połączeniu z niskim wskaźnikiem PDR pozwala udowodnić konieczność zmiany stosu technologicznego na protokoły bazujące na retransmisjach (TCP/WebSockets).
+Wiąże się to jednak z narzutem czasowym, który w systemach sterowania w czasie rzeczywistym może okazać się nieakceptowalny.
+
+\subsection{Wykrywanie duplikatów sprzętowych (MAC) i duchów (Ghosts)}
+Użycie protokołów gwarantujących dostarczenie informacji wiąże się ze specyficznym zjawiskiem powielania ramek.
+Pamięć mikrokontrolera docelowo rejestruje każdy zdekodowany stempel czasowy, wliczając w to pakiety odebrane wielokrotnie.
+Proste podzielenie całkowitej liczby odebranych pakietów przez liczbę wysłanych skutkowałoby nielogicznym wskaźnikiem PDR przekraczającym 100\%.
+Aby temu zapobiec, algorytm wykorzystuje metodę wektorową \texttt{nunique()} silnika \textit{Pandas}, izolując do licznika PDR wyłącznie unikalne wartości.
+
+Co istotniejsze, moduł analityczny \texttt{calculate\_pdr} przeprowadza głęboką inspekcję wykrytych duplikatów, kategoryzując powody ich wystąpienia.
+Zrealizowano to poprzez zastosowanie wektorowej maski przesunięcia bitowego \texttt{valid\_ids == valid\_ids.shift(1)} na chronologicznie posortowanym wektorze odebranych stempli (Listing \ref{lst:pdr_duplicates}).
+Pozwala to na podział nadmiarowości na dwie kategorie:
+
+\begin{itemize}
+    \item \textbf{Duplikaty warstwy łącza danych (MAC Duplicates):}
+          sytuacja, w której zduplikowane pakiety o tym samym identyfikatorze następują w bazie danych bezpośrednio po sobie.
+          Jest to charakterystyczny dowód na wystąpienie błędu potwierdzenia na najniższej warstwie protokołu 802.11 (Wi-Fi).
+          Mikrokontroler poprawnie odebrał pierwszą ramkę radiową, jednak odpowiedź \texttt{ACK} (potwierdzenie sprzętowe) została zgubiona w eterze.
+          Nadajnik w komputerze PC po upływie sprzętowego limitu czasu (\textit{timeout}) błyskawicznie retransmituje ten sam pakiet, który jest odbierany po raz drugi.
+    \item \textbf{Duplikaty widmowe (Ghost Duplicates):}
+          sytuacja, w której duplikaty przedzielone są w czasie innymi poprawnymi pakietami.
+          Wskazuje to na anomalię routingu lub zadziałanie mechanizmu okna retransmisyjnego wyższych warstw (np. retransmisji na poziomie algorytmów stosu TCP).
+\end{itemize}
+
+\begin{listing}[htbp]
+    \caption{Wektorowa detekcja i kategoryzacja zjawiska duplikacji pakietów radiowych za pomocą silnika Pandas (\texttt{pdr.py})}
+    \label{lst:pdr_duplicates}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+# Detekcja liczby elementów odrzuconych w procesie unikalizacji
+total_duplicates = len(valid_ids) - unique_received
+
+if total_duplicates > 0:
+    # Maska przesunięcia - sprawdza czy aktualny ID jest taki sam jak ID 
+    # odebrane ułamek sekundy wcześniej (poprzedni wiersz w tabeli Pandas).
+    immediate_mask = valid_ids == valid_ids.shift(1)
+    
+    # Zsumowanie wystąpień bezpośrednich obok siebie 
+    # (Brak sprzętowego ACK z sieci 802.11)
+    mac_duplicates = int(immediate_mask.sum())
+    
+    # Pozostałe nadmiarowe pakiety wynikające z logiki opóźnionej 
+    # (np. retransmisja stosu TCP)
+    ghost_duplicates = total_duplicates - mac_duplicates
+\end{minted}
+\end{listing}

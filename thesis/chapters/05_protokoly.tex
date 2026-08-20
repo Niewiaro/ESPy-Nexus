@@ -1,5 +1,13 @@
 \chapter{Charakterystyka badanych protokołów komunikacyjnych}
 \label{chap:protokoly}
 
-Prace w toku.
-..
+W projektowaniu systemów wbudowanych oraz rozproszonych architektur Internetu Rzeczy (IoT), wybór odpowiedniego medium i protokołu transportowego jest jedną z najbardziej krytycznych decyzji inżynierskich.
+Decyzja ta determinuje nie tylko maksymalną przepustowość urządzenia, ale przede wszystkim jego niezawodność, zachowanie w warunkach silnych zakłóceń oraz wielkość wnoszonych opóźnień operacyjnych.
+Z tego względu matryca badawcza systemu \textit{ESPy-Nexus} została skonstruowana w sposób umożliwiający rygorystyczną, porównawczą ewaluację kilku skrajnie odmiennych mechanizmów transmisji danych w identycznych warunkach brzegowych.
+
+W niniejszym rozdziale zaprezentowano teoretyczną oraz praktyczną charakterystykę badanych interfejsów komunikacyjnych.
+Analizie poddano bezpośrednią komunikację szeregową (z podziałem na wariant tekstowy oraz zoptymalizowany wariant binarny z algorytmem COBS), stanowiącą miedzianą linię bazową (\textit{ang. Baseline}) dla środowiska HIL.
+Następnie omówiono bezprzewodowe protokoły stosu TCP/IP pracujące w warstwie transportowej (bezpołączeniowy protokół UDP oraz zorientowany na połączenie protokół TCP), kończąc na wysokopoziomowym protokole warstwy aplikacji -- WebSockets.
+
+Dla każdego z wymienionych standardów omówiono zasadę działania, docelowe obszary zastosowań w automatyce i telemetrii oraz zaprezentowano uproszczone wzorce implementacyjne w języku Python.
+Pozwalają one zilustrować narzuty programistyczne oraz specyfikę obsługi poszczególnych gniazd sieciowych z perspektywy komputera sterującego.

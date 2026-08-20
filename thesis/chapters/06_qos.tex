@@ -208,7 +208,7 @@ $$T_{blackout} = \max(L_B) \cdot IAT_{expected}$$
 Wartość ta, wyrażana w milisekundach, precyzyjnie określa przez jak długi czas fizyczne urządzenie (np. dron lub ramię robota) poruszało się "na oślep", nie odbierając żadnych nowych komend od komputera sterującego.
 W systemach klasy HIL wyznaczenie wartości $T_{blackout}$ pozwala na optymalne ustawienie sprzętowego układu \textit{Watchdog}, który w przypadku przekroczenia bezpiecznego czasu odetnie zasilanie maszyn.
 
-\subsection{Optymalizacja detekcji zdarzeń (Hash Set)}
+\subsection{Optymalizacja detekcji zdarzeń}
 
 Ze względu na gigantyczny wolumen przetwarzanych danych (dziesiątki tysięcy pakietów na pojedynczy test), klasyczne przeszukiwanie tablic w celu odnalezienia brakujących identyfikatorów skutkowałoby drastycznym spadkiem wydajności rurociągu analitycznego.
 Jak zilustrowano na Listingu \ref{lst:burst_loss_hash}, problem ten rozwiązano transformując wektor odebranych identyfikatorów w strukturę zbioru (ang.
@@ -245,3 +245,62 @@ for packet_id in range(total_sent):
 
 Algorytm nie tylko zlicza brakujące pakiety, ale przede wszystkim rejestruje początkowe identyfikatory (\texttt{current\_burst\_start}) każdego zdarzenia.
 Słownik grupujący te dane (\texttt{burst\_events}) pozwala na dokładne wskazanie w osi czasu momentu, w którym doszło do utraty stabilności radiowej.
+
+\section{Wydajność użyteczna (Goodput) i anomalie efektywności}
+\label{sec:goodput}
+
+W ewaluacji kanałów transmisyjnych powszechnie stosowaną miarą jest przepustowość (\textit{ang. Throughput}).
+Metryka ta określa całkowitą ilość danych przesyłanych przez medium w jednostce czasu.
+Z perspektywy inżynierii systemów wbudowanych oraz warstwy aplikacji, klasyczny \textit{Throughput} bywa jednak mylący -- uwzględnia on bowiem narzuty protokołów (nagłówki ramek MAC, IP, TCP/UDP), sygnały sterujące (np. pakiety \texttt{ACK}) oraz, co najważniejsze, retransmisje zgubionych pakietów.
+
+W systemach HIL, gdzie liczy się wyłącznie transfer faktycznych, poprawnych danych telemetrycznych lub komend sterujących, stosuje się rygorystyczną metrykę \textbf{Wydajności użytecznej} (\textit{ang. Goodput}).
+Definiuje ona liczbę unikalnych, pomyślnie zdekodowanych bajtów aplikacji (tzw. ładunku użytecznego -- \textit{Payload}), dostarczonych do docelowego procesu operacyjnego w jednostce czasu.
+
+\subsection{Model matematyczny i problem brzegowy (Fencepost Error)}
+
+Zgodnie z wdrożonym algorytmem (Listing \ref{lst:goodput_pandas}), aby obliczyć rzeczywisty \textit{Goodput}, system analityczny w pierwszej kolejności usuwa z wektora danych wszelkie duplikaty sprzętowe (wynikające z retransmisji warstwy MAC/TCP).
+
+Kluczowym aspektem inżynierskim algorytmu jest rygorystyczne wyznaczenie okna czasowego odbiorcy (\textit{Receiving Window}).
+Całkowity czas pomiaru $\Delta T$ liczony jest jako różnica między stęplem czasowym odebrania ostatniego ($\max(T)$) i pierwszego ($\min(T)$) pakietu w pamięci mikrokontrolera ESP32.
+W związku z tym, pierwszy odebrany pakiet pełni wyłącznie rolę wyzwalacza pomiaru czasu ($T=0$), a przenoszone przez niego bajty nie mogą zostać wliczone do przepustowości wewnątrz tego okna czasowego.
+Zjawisko to w informatyce znane jest jako \textbf{błąd palików} (ang.
+\textit{Fencepost Error} / \textit{Off-by-one}).
+
+Wzór na przepływność użyteczną, z uwzględnieniem matematycznej poprawki, przyjmuje postać: $$Goodput = \frac{(N_{unique} - 1) \cdot S_{payload}}{\Delta T} \quad [B/s]$$ gdzie: $N_{unique}$ -- całkowita liczba unikalnych i poprawnie odebranych pakietów, $S_{payload}$ -- zadeklarowany, czysty rozmiar struktury badawczej (w bajtach), $\Delta T$ -- rzeczywisty czas trwania akwizycji z perspektywy odbiorcy (w sekundach).
+
+Wynik ten konwertowany jest następnie na standardowe dla telekomunikacji Megabity na sekundę ($Mbps$), wykorzystując przelicznik: $1 Mbps = 1 000 000 \text{ bitów}/s$.
+
+\begin{listing}[htbp]
+    \caption{Wektorowe odrzucanie retransmisji i rygorystyczne obliczanie przepływności z poprawką \textit{Fencepost} (\texttt{goodput.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:goodput_pandas}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+# Eliminacja duplikatów sprzętowych (retransmisji) obciążających pasmo
+df_unique = df_temp.drop_duplicates(subset="id", keep="first")
+unique_count = len(df_unique)
+
+# Bezwzględne okno czasowe w dziedzinie odbiornika (ESP32)
+duration_us = float(df_unique["ts"].max() - df_unique["ts"].min())
+duration_s = duration_us / 1_000_000.0
+
+# Właściwe obliczenie wolumenu z korektą błędu płotu (-1 pakiet inicjujący)
+total_useful_bytes = (unique_count - 1) * payload_size_bytes
+
+# Obliczenie wyników (B/s, KB/s, Mbps)
+bps = total_useful_bytes / duration_s
+actual_bits_per_s = bps * 8
+mbps = actual_bits_per_s / 1_000_000.0
+\end{minted}
+\end{listing}
+
+\subsection{Efektywność i fenomen przekroczenia 100\%}
+
+Oprócz bezwzględnych wartości przepustowości, moduł oblicza znormalizowany wskaźnik \textbf{Efektywności (\textit{ang. Efficiency})}.
+Jest to stosunek rzeczywiście zmierzonego \textit{Goodputu} do Teoretycznego Obciążenia Oferowanego (\textit{ang. Offered Load}), definiowanego jako iloczyn częstotliwości nadawania i rozmiaru pakietu ($f \cdot S_{payload}$).
+
+Podczas intensywnych testów uderzeniowych w architekturach z ruterami pośredniczącymi (topologia \texttt{AP\_ROUTER}) można zaobserwować anomalię polegającą na wyliczaniu wskaźnika efektywności przekraczającego wartość $100\%$.
+Zjawisko to nie stanowi błędu algorytmicznego, lecz dowodzi istnienia agregacji buforów (tzw. \textit{Buffer Bloat}) na wyższych warstwach sieciowych lub w sprzętowym systemie mikrokontrolera.
+Pakiety wysyłane z PC zatrzymują się w utkanym buforze rutera, po czym w chwili udrożnienia sieci (np. zakończeniu cyklu CSMA/CA), następuje wysłanie zgromadzonych ramek (\textit{ang. Bursting}).
+Odbiornik ESP32 dekoduje całą serię pakietów niemal w tej samej mikrosekundzie.
+Powoduje to ekstremalne zwężenie mianownika ($\Delta T$) w oknie odbiorczym, co matematycznie winduje chwilowy \textit{Goodput} poza teoretyczne możliwości nadajnika (komputera PC).
+
+W ten sposób metryka wydajności użytecznej pośrednio, acz precyzyjnie, identyfikuje stany niestabilności kolejek protokołów TCP/UDP w środowiskach czasu rzeczywistego.

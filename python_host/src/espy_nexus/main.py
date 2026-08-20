@@ -193,6 +193,14 @@ def build_matrix(config: RunnerSettings) -> list[TestConfig]:
 # =========================================================================
 
 
+def play_end_melody() -> None:
+    """Play a simple melody to indicate the end of the test."""
+    from espy_nexus.sound import main as play_melody
+
+    logger.info("Playing melody to indicate test end...")
+    play_melody()
+
+
 def main() -> None:
     # 1. Load configuration
     config = get_active_profile()
@@ -224,6 +232,9 @@ def main() -> None:
         output_csv_path=config.output_csv_path,
     )
     batch_processor.run_pipeline()
+
+    # 6. Play end melody
+    play_end_melody()
 
 
 if __name__ == "__main__":

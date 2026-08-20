@@ -31,7 +31,7 @@ Tak przygotowany zestaw odpowiada idealnemu interwałowi $100\ \mu s$, zerowej u
 Podział ten wyznacza strukturę dalszej części niniejszego rozdziału, w której szczegółowo omówiono znaczenie każdej z sekcji.
 
 \begin{listing}[htbp]
-    \caption{Struktura raportu QoS generowanego przez metodę \texttt{calculate\_all\_metrics()} dla pojedynczego scenariusza testowego \cite{espy_nexus_python_host}.}
+    \caption{Struktura raportu QoS generowanego przez metodę dla pojedynczego scenariusza testowego (\texttt{calculate\_all\_metrics()}) \cite{espy_nexus_python_host}.}
     \label{lst:qos_sample_output}
     \begin{minted}[fontsize=\footnotesize, linenos]{text}
 --- PDR Analysis & Duplicate Detection ---
@@ -85,7 +85,7 @@ Queuing Delay Trend Slope: 0.000000 us/us
 Najbardziej fundamentalną metryką oceny niezawodności łącza radiowego jest współczynnik dostarczenia pakietów, w literaturze oznaczany powszechnie jako \textbf{PDR} (\textit{ang. Packet Delivery Ratio}).
 Określa on stosunek liczby unikalnych wiadomości, które fizycznie dotarły do pamięci operacyjnej mikrokontrolera (RX), do całkowitej liczby pakietów wygenerowanych i wysłanych przez stację nadawczą komputera PC (TX).
 
-Wartość PDR wyrażana jest w procentach i zdefiniowano ją poniższym wzorem matematycznym: $$PDR = \left( \frac{N_{unique}}{N_{sent}} \right) \cdot 100\%$$ gdzie: $N_{unique}$ -- zbiór unikalnych identyfikatorów (\texttt{packet\_id}) poprawnie zdekodowanych przez układ ESP32, $N_{sent}$ -- teoretyczna liczba wysłanych pakietów wynikająca z ustalonej macierzy badawczej (parametr \texttt{expected\_count}).
+Wartość PDR wyrażana jest w procentach i zdefiniowano ją poniższym wzorem matematycznym: $$PDR = \left( \frac{N_{unique}}{N_{sent}} \right) \cdot 100\%$$ gdzie: $N_{unique}$ - zbiór unikalnych identyfikatorów (\texttt{packet\_id}) poprawnie zdekodowanych przez układ ESP32, $N_{sent}$ - teoretyczna liczba wysłanych pakietów wynikająca z ustalonej macierzy badawczej (parametr \texttt{expected\_count}).
 
 Z perspektywy automatyki przemysłowej i telemetrii HIL, spadek wskaźnika PDR poniżej 100\% jest zjawiskiem niepożądanym.
 W systemach sterowania w otwartej pętli utracony pakiet oznacza pominięcie ramki aktualizacji stanu (np. niewysterowanie serwomechanizmu na czas).
@@ -93,6 +93,7 @@ Protokoły bezpołączeniowe, takie jak UDP, charakteryzują się natywną zgod�
 Wiąże się to jednak z narzutem czasowym, który w systemach sterowania w czasie rzeczywistym może okazać się nieakceptowalny.
 
 \subsection{Wykrywanie duplikatów sprzętowych (MAC) i duchów (Ghosts)}
+
 Użycie protokołów gwarantujących dostarczenie informacji wiąże się ze specyficznym zjawiskiem powielania ramek.
 Pamięć mikrokontrolera docelowo rejestruje każdy zdekodowany stempel czasowy, wliczając w to pakiety odebrane wielokrotnie.
 Proste podzielenie całkowitej liczby odebranych pakietów przez liczbę wysłanych skutkowałoby nielogicznym wskaźnikiem PDR przekraczającym 100\%.
@@ -114,7 +115,7 @@ Pozwala to na podział nadmiarowości na dwie kategorie:
 \end{itemize}
 
 \begin{listing}[htbp]
-    \caption{Wektorowa detekcja i kategoryzacja zjawiska duplikacji pakietów radiowych za pomocą silnika Pandas (\texttt{pdr.py})}
+    \caption{Wektorowa detekcja i kategoryzacja zjawiska duplikacji pakietów radiowych za pomocą silnika Pandas (\texttt{pdr.py}) \cite{espy_nexus_python_host}.}
     \label{lst:pdr_duplicates}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 # Detekcja liczby elementów odrzuconych w procesie unikalizacji
@@ -132,5 +133,54 @@ if total_duplicates > 0:
     # Pozostałe nadmiarowe pakiety wynikające z logiki opóźnionej 
     # (np. retransmisja stosu TCP)
     ghost_duplicates = total_duplicates - mac_duplicates
+\end{minted}
+\end{listing}
+
+\section{Zmienność opóźnień i stabilność czasowa (Jitter)}
+\label{sec:metryka_jitter}
+
+Niezawodność sterowania w systemach wbudowanych określa się nie tylko poprzez wskaźnik skuteczności dostarczania (PDR), ale przede wszystkim poprzez płynność tego procesu.
+W idealnych, teoretycznych warunkach sieciowych pakiety danych nadawane ze stałą częstotliwością $f$ powinny docierać do mikrokontrolera w równych, perfekcyjnych odstępach czasu, znanych jako \textbf{oczekiwany czas między pakietami} (\textit{ang. IAT - Expected Inter-Arrival Time}), zdefiniowany jako $IAT_{expected} = \frac{1}{f}$.
+
+W rzeczywistości, zjawiska zachodzące na najniższych warstwach modelu OSI - takie jak unikanie kolizji w sieciach bezprzewodowych (algorytm CSMA/CA w Wi-Fi), narzuty związane z enkapsulacją ramek w systemie operacyjnym Windows, czy kolejkowanie w sprzętowym stosie LwIP na układzie ESP32 - wprowadzają trudne do przewidzenia opóźnienia.
+W efekcie, pakiety ulegają ścieśnieniu lub rozciągnięciu w dziedzinie czasu.
+Zjawisko to nazywane jest w telekomunikacji zmiennością opóźnień, czyli \textbf{Jitterem}.
+
+\subsection{Model matematyczny IAT i odchylenia standardowego}
+Podstawą obliczeń metryki Jittera w zaimplementowanym systemie jest określenie rzeczywistego wektora czasu między przybyciem kolejnych pakietów.
+Zakładając, że mikrokontroler rejestruje stempel czasowy $t_i$ w momencie pełnego zdekodowania $i$-tego pakietu, wektor rzeczywistego $IAT$ określa się jako różnicę czasu pomiędzy pakietem bieżącym a bezpośrednio go poprzedzającym: $$IAT_i = t_i - t_{i-1}$$
+
+Następnie system wyznacza średnią arytmetyczną badanej próby czasowej: $$\mu_{IAT} = \frac{1}{N-1} \sum_{i=2}^{N} IAT_i$$
+
+W klasycznej inżynierii sieciowej (zgodnej np. z zaleceniami standardu RFC 3393), Jitter zdefiniowany jest jako wariancja lub odchylenie standardowe opóźnień.
+W module \texttt{DownlinkAnalyzer} główną miarą zmienności uczyniono \textbf{odchylenie standardowe} ($\sigma_{IAT}$), określające, jak bardzo rzeczywiste czasy dostarczenia rozpraszają się wokół wyliczonej średniej: $$Jitter = \sigma_{IAT} = \sqrt{\frac{1}{N-2} \sum_{i=2}^{N} (IAT_i - \mu_{IAT})^2}$$
+
+Z matematycznego punktu widzenia, im niższa wartość $\sigma_{IAT}$, tym kanał transmisyjny jest bardziej deterministyczny.
+
+\subsection{Względna zmienność (Współczynnik Zmienności - CV)}
+Samo odchylenie standardowe wyrażone w mikrosekundach nie stanowi pełnego obrazu jakości kanału, ponieważ zależy ono ściśle od częstotliwości testowej.
+Fluktuacja rzędu 1000~$\mu s$ (1~ms) ma marginalne znaczenie przy częstotliwości sterowania 10~Hz ($IAT = 100~ms$), lecz staje się czynnikiem krytycznym, całkowicie zakłócającym sterowanie przy częstotliwości 1000~Hz ($IAT = 1~ms$).
+
+Z tego względu, kluczową innowacją w module analitycznym (Listing \ref{lst:jitter_pandas}) jest wyliczenie \textbf{Współczynnika Zmienności} (ang.
+\textit{Coefficient of Variation - CV}).
+Normalizuje on otrzymane odchylenie standardowe względem wyliczonej średniej, prezentując wynik w postaci procentowej: $$CV = \left( \frac{\sigma_{IAT}}{\mu_{IAT}} \right) \cdot 100\%$$ Dzięki metryce CV możliwa jest obiektywna i znormalizowana ocena stabilności łącza, niezależnie od przyjętej w matrycy testowej częstotliwości uderzeniowej.
+
+\begin{listing}[htbp]
+    \caption{Wektorowe wyznaczanie wektora IAT i znormalizowanego współczynnika Jittera za pomocą silnika Pandas (\texttt{jitter.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:jitter_pandas}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+# Wektorowe wyliczenie różnic między kolejnymi stemplami czasowymi (IAT)
+# Funkcja diff() zastępuje konieczność iterowania pętlą po setkach tysięcy rekordów
+iat = esp_timestamps.diff().dropna()
+
+# Wyznaczenie średniej oraz odchylenia standardowego (Klasyczny Jitter)
+mean_val = float(iat.mean())
+std_val = float(iat.std())
+
+if pd.isna(std_val):
+    std_val = 0.0
+
+# Wyliczenie procentowego Współczynnika Zmienności (Coefficient of Variation)
+cv_val = (std_val / mean_val * 100.0) if mean_val > 0 else 0.0
 \end{minted}
 \end{listing}

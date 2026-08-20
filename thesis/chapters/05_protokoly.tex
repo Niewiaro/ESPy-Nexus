@@ -70,3 +70,56 @@ def prepare_payloads(self, packet_count: int, payload_size_bytes: int):
 Dzięki nałożeniu enkodera COBS, żaden bajt we wnętrzu zdekodowanej paczki nie ma wartości zerowej.
 Pozwala to zarówno nadajnikowi (Python), jak i odbiornikowi (ESP32) na używanie \texttt{0x00} jako jednoznacznego separatora ramek binarnych.
 
+\section{Bezpołączeniowy protokół transportowy (UDP)}
+\label{sec:protokol_udp}
+
+W klasycznej inżynierii internetowej nadrzędnym celem transmisji jest bezbłędność i integralność danych.
+Jednak w systemach automatyki czasu rzeczywistego (np. sterowanie rojem dronów czy strumieniowanie wideo FPV) priorytetem staje się minimalizacja opóźnień.
+W takich scenariuszach wykorzystuje się bezpołączeniowy protokół transportowy \textbf{UDP} (\textit{ang. User Datagram Protocol}).
+
+Protokół UDP, działający w warstwie transportowej (L4) modelu OSI, reprezentuje skrajnie odmienne podejście do wymiany danych w stosunku do protokołów zorientowanych na połączenie.
+Jest on protokołem typu \textit{odpal i zapomnij} (\textit{ang. fire-and-forget}).
+Charakteryzuje się on brakiem mechanizmów negocjacji sesji (\textit{ang. Handshake}), brakiem numeracji sekwencyjnej, oraz brakiem sprzętowych potwierdzeń odbioru (\texttt{ACK}) i retransmisji.
+Jeśli pakiet ulegnie kolizji lub zostanie odrzucony przez ruter, przepada on bezpowrotnie, a nadajnik nigdy nie zostaje o tym poinformowany.
+Brak tych wszystkich mechanizmów kontrolnych drastycznie redukuje narzut (\textit{ang. Overhead}) w nagłówku pakietu.
+
+\subsection{Zachowanie granic datagramów i implementacja w Pythonie}
+
+W przeciwieństwie do strumieniowego interfejsu szeregowego (omówionego w podrozdziale \ref{sec:protokol_serial}), protokół UDP natywnie zachowuje granice wysyłanych wiadomości.
+Każde wywołanie instrukcji nadawczej w systemie operacyjnym skutkuje utworzeniem hermetycznego datagramu.
+Eliminuje to całkowicie konieczność stosowania narzutowych algorytmów ramkowania takich jak COBS.
+System odbiorczy ESP32 każdorazowo odczytuje dokładnie taką samą porcję bajtów, jaka została wygenerowana przez skrypt nadawczy.
+
+W zaimplementowanej klasie \texttt{UdpDataPlane} obsługa transmisji realizowana jest poprzez natywną bibliotekę \texttt{socket}.
+Do wysłania pakietu wykorzystywana jest bezpołączeniowa metoda \texttt{sendto()}, przyjmująca na wejściu bezpośredni adres docelowy (IP i port rutera lub samego mikrokontrolera ESP32).
+
+\begin{listing}[htbp]
+    \caption{Konfiguracja bezpołączeniowego gniazda UDP z rozszerzonym systemowym buforem nadawczym (\texttt{udp\_dp.py}) \cite{espy_nexus_python_host}.}
+    \label{lst:python_udp}
+    \begin{minted}[fontsize=\footnotesize, linenos]{python}
+def connect(self) -> None:
+    # Powołanie do życia gniazda internetowego IPv4 dla datagramów UDP
+    self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024 * 1024)
+
+def transmit(self, precompiled_packets: list, frequency_hz: int):
+    # [...] Inicjalizacja pętli busy-wait
+
+    for packet_id, raw_bytes in precompiled_packets:
+        while time.perf_counter_ns() < next_transmission_time:
+            pass
+            
+        # Zapis stempla TX
+        self.tx_timestamps[i] = {"packet_id": packet_id, "pc_tx_ts": time.time_ns()}
+        
+        # Fizyczne wypchnięcie datagramu do karty sieciowej (Fire and forget)
+        self.sock.sendto(raw_bytes, (self.ip_address, self.port))
+        
+        next_transmission_time += interval_ns
+\end{minted}
+\end{listing}
+
+Krytycznym z punktu widzenia testów stresowych inżynieryjnym detalem w powyższym listingu jest modyfikacja opcji gniazda \texttt{SO\_SNDBUF}.
+W środowiskach GPOS (Windows/Linux), przy próbie tłoczenia pakietów UDP z ekstremalnie wysoką częstotliwością (rzędu kilku tysięcy Hz), wewnętrzny bufor pamięci stosu sieciowego komputera zapełnia się szybciej, niż fizyczna karta sieciowa jest w stanie go opróżniać.
+Ze względu na bezpołączeniowy charakter UDP, system operacyjny w takiej sytuacji nie blokuje wątku, lecz po cichu odrzuca nowo nadchodzące pakiety, co prowadziłoby do drastycznego zakłamania statystyk ewaluacyjnych.
+Rozszerzenie bufora do 1~MB gwarantuje, że wąskim gardłem systemu pozostanie badany ruter lub mikrokontroler, a nie środowisko testowe nadajnika.

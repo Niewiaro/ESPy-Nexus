@@ -33,8 +33,7 @@ Wykresy badawcze wygenerowane przez to narzędzie, które stanowią podstawę an
 \section{Interpretacja przykładowego wykresu}
 \label{sec:interpretacja_wykresu}
 
-Zrozumienie zależności pomiędzy obciążeniem a niezawodnością w systemach wbudowanych wymaga jednoczesnej analizy wielu zmiennych konfiguracyjnych, w tym przepływności łącza wynikającej z ustawionej szybkości transmisji (\textit{baud rate}) komunikacji szeregowej.
-W badaniach układ korzystał z szybkości transmisji \textbf{921600 Bd} na interfejsie UART.
+Zrozumienie zależności pomiędzy obciążeniem a niezawodnością w systemach wbudowanych wymaga jednoczesnej analizy wielu zmiennych konfiguracyjnych sieci oraz zastosowanego protokołu transportowego.
 Jako punkt wyjścia dla dalszych badań, na Rysunku \ref{fig:wykres_przykladowy_udp_pdr} zaprezentowano wykres przedstawiający zestawienie skuteczności dostarczania pakietów (metryka PDR) dla protokołu transportowego UDP, obciążonego największym badanym ładunkiem użytecznym (\textit{Payload} = 1024~B).
 
 \begin{figure}[htbp]
@@ -52,8 +51,7 @@ Analizując przebieg krzywych, można zaobserwować dwa powtarzalne etapy funkcj
             Przepustowość kanału radiowego przewyższa liczbę generowanych danych.
       \item \textbf{Próg saturacji i strefa degradacji:}
             po przekroczeniu określonej krytycznej częstotliwości (obciążenia granicznego), każda z krzywych ulega załamaniu.
-            Oznacza to obszar, w którym pojawiają się straty pakietów.
-            Na podstawie samych zagregowanych wyników nie można jednoznacznie wskazać, czy ich źródłem jest interfejs, bufor, czy inny element toru transmisyjnego.
+            Oznacza to obszar, w którym pojawiają się straty pakietów. Na podstawie samych zagregowanych wyników nie można jednoznacznie wskazać, czy ich źródłem jest interfejs, bufor, czy inny element toru transmisyjnego.
 \end{enumerate}
 
 \section{Miedziana linia bazowa - granice interfejsu UART}
@@ -61,14 +59,14 @@ Analizując przebieg krzywych, można zaobserwować dwa powtarzalne etapy funkcj
 
 Ewaluację wyników kampanii pomiarowej rozpoczęto od weryfikacji architektury odniesienia (linii bazowej).
 W topologii tej (\texttt{router\_topology = NONE}) zrezygnowano ze stosu sieciowego LwIP oraz medium bezprzewodowego, łącząc komputer z układem ESP32 bezpośrednio za pomocą przewodu USB (wykorzystującego wbudowany mostek UART-USB CP2102N).
+Interfejs UART skonfigurowano do pracy z szybkością transmisji \textbf{921600~Bd}, co wyznacza teoretyczny górny limit przepustowości łącza, niezależny od zastosowanego wariantu protokołu (\texttt{SERIAL\_STR} lub \texttt{SERIAL\_BIN}).
 Teoretyczne założenia wskazywały, że brak narzutów routingu oraz ograniczenie wpływu zakłóceń elektromagnetycznych charakterystycznych dla pasma 2,4~GHz powinny sprzyjać wysokiej stabilności i przepustowości.
 Analiza zebranych metryk QoS nie potwierdziła w pełni tej hipotezy.
 
 \subsection{Próg załamania wydajności w funkcji rozmiaru ładunku}
 Dane wskazują na istnienie progu degradacji interfejsu szeregowego, którego położenie zależy od rozmiaru przesyłanego ładunku użytecznego (\textit{Payload}).
-Dla najmniejszych testowanych struktur (4~B) zoptymalizowany protokół binarny (\texttt{SERIAL\_BIN}) utrzymywał PDR równy 100\% do częstotliwości 3900~Hz, a przy 5700~Hz PDR spadł do 93,4\%.
-Jednak wraz ze wzrostem wielkości pakietu do 256~B moment utraty stabilności przesuwa się wyraźnie w dół.
-Próg stuprocentowej skuteczności zostaje przekroczony już przy 200~Hz.
+Dla najmniejszych testowanych struktur (4~B) zoptymalizowany protokół binarny (\texttt{SERIAL\_BIN}) utrzymywał PDR równy 100\% nieprzerwanie aż do częstotliwości 5600~Hz, a dopiero przy 5700~Hz odnotowano pierwszy, wciąż niewielki spadek do 93,4\%.
+Wraz ze wzrostem wielkości pakietu do 256~B moment utraty stabilności przesuwa się jednak drastycznie w stronę niższych częstotliwości: próg stuprocentowej skuteczności zostaje przekroczony już przy 200~Hz, przy czym spadek jest gwałtowny — PDR obniża się z pełnych 100\% (przy 128~Hz) do zaledwie 1,9\% zaledwie o jeden krok pomiaru dalej.
 
 \begin{figure}[htbp]
       \centering
@@ -81,7 +79,7 @@ Gdy wymagane jest przesyłanie dużych pakietów danych, na przykład 1024~B, in
 Wynik wskazuje na ograniczenia całego toru UART-USB oraz oprogramowania obsługującego transmisję, ale na podstawie tych danych nie można jednoznacznie wskazać pojedynczego bufora jako źródła problemu.
 
 \subsection{Zator buforów i długotrwała przerwa w odbiorze}
-Próba wymuszenia transmisji wysokoczęstotliwościowej w języku Python za pomocą pętli aktywnego oczekiwania (\textit{ang. busy-wait}) powyżej wyznaczonych progów saturacji skutkuje znacznym zatoriem (\textit{ang. Bufferbloat}).
+Próba wymuszenia transmisji wysokoczęstotliwościowej w języku Python za pomocą pętli aktywnego oczekiwania (\textit{ang. busy-wait}) powyżej wyznaczonych progów saturacji skutkuje znacznym zatorem (\textit{ang. Bufferbloat}).
 Zamiast zostać natychmiast dostarczony do mikrokontrolera, strumień danych może być utrzymywany w buforach systemu Windows, sterownika portu COM i urządzenia odbiorczego.
 W skrajnym przypadku protokołu tekstowego (\texttt{SERIAL\_STR} w topologii \texttt{NONE}, dla 1024~B i 2200~Hz) zmierzony czas zatoru (\texttt{timing\_max\_bloat\_us}) sięgnął 10,89~s.
 
@@ -89,7 +87,7 @@ W danych analitycznych zarejestrowano również odizolowane, wybitnie niebezpiec
 W teście protokołu \texttt{SERIAL\_BIN} obciążonego ładunkiem 1024~B przy częstotliwości zaledwie 50~Hz nastąpiła całkowita dysfunkcja przepływu.
 Skuteczność dostarczania (PDR) spadła do 1,1\%, a maksymalny czas przerwy wynikający z metryki \textit{Burst Blackout} wyniósł \textbf{7,4~s} (7400~ms).
 Na rysunku \ref{fig:burst_max_blackout_ms_serial} przedstawiono ten krytyczny przypadek.
-W rzeczywistości fizycznej maszyna pracowałaby przez ponad siedem sekund bez jakiegokolwiek nadzoru i szansy na reakcję, co dyskwalifikuje ten interfejs z poważnych zastosowań telemetrycznych przy dużych pakietach danych.
+W rzeczywistości fizycznej maszyna pracowałaby przez ponad siedem sekund bez jakiegokolwiek nadzoru i szansy na reakcję, co poddaje w wątpliwość przydatność tego interfejsu w poważnych zastosowaniach telemetrycznych przy dużych pakietach danych.
 
 \begin{figure}[htbp]
       \centering
@@ -101,7 +99,7 @@ W rzeczywistości fizycznej maszyna pracowałaby przez ponad siedem sekund bez j
 \subsection{Zjawisko nieciągłości (Out-of-Order)}
 To właśnie podczas ewaluacji miedzianej linii bazowej zaobserwowano jedno z najbardziej nieintuicyjnych zjawisk w całej pracy badawczej.
 Zaburzenia sekwencjonowania danych (\textit{Out-of-Order}) uważa się powszechnie za mankament protokołów sieciowych, w których datagramy mogą wędrować w eterze różnymi ścieżkami (wielodrogowość).
-Tymczasem, przeprowadzony na gigantycznym zbiorze testów algorytm analityczny (weryfikujący rosnące identyfikatory pakietów) nie zarejestrował \textbf{ani jednego} błędu chronologii dla protokołów bezprzewodowych (TCP, UDP, WS).
+Tymczasem, przeprowadzony na obszernym zbiorze testów algorytm analityczny (weryfikujący rosnące identyfikatory pakietów) nie zarejestrował \textbf{ani jednego} błędu chronologii dla protokołów bezprzewodowych (TCP, UDP, WS).
 
 Wszystkie wykryte incydenty zmiany kolejności pakietów wystąpiły wyłącznie na interfejsie szeregowym, generując 842 zdarzeń \textit{Out-of-Order} dla protokołu \texttt{SERIAL\_BIN} oraz 67 zdarzeń dla protokołu \texttt{SERIAL\_STR}.
 Wynik wskazuje na podatność badanego toru szeregowego na zaburzenia kolejności podczas przeciążenia, lecz nie pozwala jednoznacznie przypisać ich sterownikowi USB ani określić dokładnego mechanizmu ich powstania.
@@ -135,7 +133,7 @@ Dane analityczne ujawniają występowanie znacznych opóźnień, które są zgod
 W warunkach skrajnej saturacji sieci opóźnienia rosły w czasie trwania eksperymentu z poziomu pojedynczych mikrosekund do wartości krytycznych.
 
 Jako przypadek szczególny należy wyróżnić eksperyment przeprowadzony na protokole TCP w topologii \texttt{AP\_PC} dla niewielkiego ładunku 4~B, z częstotliwością na poziomie 3900~Hz.
-Zarejestrowane maksymalne opóźnienie względne (\texttt{timing\_max\_bloat\_us}) wyniosło tam około \textbf{2,23~s} (2236~ms).
+Zarejestrowane maksymalne opóźnienie względne (\texttt{timing\_max\_bloat\_us}) wyniosło tam około \textbf{2,23~s} (2229~ms).
 Jednocześnie, znormalizowana miara stabilności transmisji - współczynnik zmienności Jittera (CV) - eksplodowała do wartości bliskiej \textbf{3000\%}.
 Wynik wskazuje na utratę stabilności czasowej.
 
@@ -162,7 +160,7 @@ Jak opisywano w podrozdziale \ref{sec:protokol_udp}, UDP nie implementuje mechan
 Jeśli infrastruktura sieciowa nie nadąża z przesyłaniem ruchu, rutery po cichu upuszczają zbuforowane datagramy.
 
 Zjawisko to jest wysoce pożądane w systemach telemetrii czasu rzeczywistego np. FPV (\textit{ang. First Person View}).
-Mikrokontroler nie otrzymuje retransmisji realizowanych przez warstwę transportową, ale UDP nie gwarantuje ani dostarczenia najnowszej ramki, ani zachowania kolejności.
+Mikrokontroler nie oczekuje na retransmisje realizowane przez warstwę transportową, co pozwala uniknąć narastania opóźnień typowego dla TCP, jednocześnie jednak protokół UDP nie gwarantuje ani dostarczenia najnowszej ramki, ani zachowania kolejności nadawania.
 Akceptacja strat pozwala utrzymać niskie i przewidywalne opóźnienia kolejkowania, kosztem drastycznych spadków współczynnika PDR.
 
 \subsection{Wartości graniczne}
@@ -191,9 +189,9 @@ Jak zaprezentowano na wykresie z modułu analitycznego (Rys. \ref{fig:wykres_prz
 
 \subsection{Wycena strat w domenie czasu (Blackout i Bloat)}
 Cena zapłacona przez protokół TCP w postaci dużych wartości jittera i ponad 2-sekundowych blokad czasowych jest w przypadku UDP zastępowana utratą części pakietów, opisywaną za pomocą metryki \textit{Burst Blackout}.
-Zgodnie z modelem matematycznym omówionym w podrozdziale \ref{sec:burst_loss}, utrata danych nie jest miarodajna bez określenia rozmiaru przerwy w sterowaniu.
+Zgodnie z modelem matematycznym omówionym w podrozdziale \ref{sec:burst_loss}, sam wskaźnik strat pakietów (PDR) nie jest miarodajny bez określenia ich rozkładu w czasie, czyli rozmiaru przerwy w sterowaniu.
 W badanym przypadku maksymalny czas przerwy wynikający z utraty kolejnych pakietów wyniósł \textbf{56,64~ms}.
-Sama metryka nie pozwala wskazać miejsca odrzucenia pakietów.
+Zastosowana metodyka pomiaru, oparta wyłącznie na znacznikach czasu odbiornika, nie pozwala jednak wskazać konkretnego elementu infrastruktury (np. bufora rutera), w którym doszło do odrzucenia pakietów.
 
 \section{Wpływ architektury sieciowej na stabilność sterowania}
 \label{sec:wplyw_topologii}
@@ -203,18 +201,17 @@ W środowiskach eksperymentalnych najczęściej wykorzystuje się mikrokontroler
 Jak dowiodły wstępne analizy progu saturacji protokołu UDP (omówione w podrozdziale \ref{sec:analiza_udp}), topologie te charakteryzują się diametralnie różną odpornością na początkową degradację łącza.
 
 Intuicyjne podejście inżynierskie sugeruje, że architektura, która najdłużej opiera się utracie pierwszego pakietu, jest architekturą obiektywnie najlepszą.
-Zestawienie całego spektrum badawczego obnaża jednak głęboki błąd w takim rozumowaniu, ujawniając niezwykle interesujący paradoks obciążeniowy na skrajnych krańcach pasma częstotliwości.
+Zestawienie całego spektrum badawczego obnaża jednak istotne uproszczenie takiego rozumowania, ujawniając niezwykle interesujący paradoks obciążeniowy na skrajnych krańcach pasma częstotliwości.
 
 \subsection{Odporność na start degradacji, a degradacja skrajna}
-Analizując zachowanie topologii natywnej (\texttt{AP\_ESP}) dla ładunku 1024~B, stwierdzono, że utrzymuje ona PDR równy 100\% do częstotliwości 256~Hz.
-Przy 300~Hz pojawiły się pierwsze straty.
+Analizując zachowanie topologii natywnej (\texttt{AP\_ESP}) dla ładunku 1024~B, stwierdzono, że utrzymuje ona PDR równy 100\% do częstotliwości 256~Hz. Przy 300~Hz pojawiły się pierwsze straty.
 Z kolei wirtualny hotspot Windowsa (\texttt{AP\_PC}) poddaje się i gubi pierwsze ramki już przy wartości 100~Hz.
 
 Sytuacja ta może jednak odwracać się w warunkach wysokiego obciążenia.
 Jak zilustrowano na Rysunku \ref{fig:wykres_paradoks_topologii}, w analizowanym zestawieniu dla ładunku 16~B uśrednione wyniki PDR z częstotliwości 9000-10.000~Hz ujawniają zmianę pierwotnego rankingu:
 \begin{itemize}
-      \item Topologia \texttt{AP\_PC}, mimo wczesnej utraty idealnej skuteczności, utrzymuje w tym zestawieniu uśredniony wskaźnik PDR na poziomie około \textbf{92,6\%}.
-      \item Topologia \texttt{AP\_ESP}, choć dłużej utrzymuje pełną skuteczność przy małym obciążeniu, osiąga w tym zakresie średni PDR na poziomie około \textbf{27,5\%}.
+      \item Topologia \texttt{AP\_PC}, mimo wczesnej utraty idealnej skuteczności, utrzymuje w tym zestawieniu uśredniony wskaźnik PDR na poziomie około \textbf{91,6\%}.
+      \item Topologia \texttt{AP\_ESP}, choć dłużej utrzymuje pełną skuteczność przy małym obciążeniu, osiąga w tym zakresie średni PDR na poziomie około \textbf{26,6\%}.
 \end{itemize}
 
 \begin{figure}[htbp]
@@ -230,9 +227,9 @@ Mikrokontroler ESP32 w trybie \textit{SoftAP} współdzieli ograniczoną pamię�
 Przy małym i średnim obciążeniu radzi on sobie perfekcyjnie, alokując ramki w czasie rzeczywistym.
 Jednak przy bardzo wysokim obciążeniu ograniczenia zasobów lub obsługi ruchu mogą powodować wzrost liczby odrzuconych pakietów.
 
-Z kolei komputer klasy PC dysponuje gigabajtami pamięci RAM oraz potężnym procesorem, lecz jego wirtualne interfejsy sieciowe (NDIS w systemie Windows) nie są zoptymalizowane pod kątem sterowania \textit{Real-Time}.
+Z kolei komputer klasy PC dysponuje gigabajtami pamięci RAM oraz wydajnym procesorem, lecz jego wirtualne interfejsy sieciowe (NDIS w systemie Windows) nie są zoptymalizowane pod kątem sterowania \textit{Real-Time}.
 Próg 100~Hz obnaża niedoskonałości systemowego planisty, który dławi mikrosekundowe pakiety.
-Niemniej jednak, w warunkach ekstremalnych komputer nie wyczerpuje swoich rezerw pamięciowych - potężne bufory systemowe pozwalają na zakolejkowanie ogromnych ilości danych i siłowe przetłoczenie ich przez potok karty sieciowej (Wi-Fi), co skutkuje relatywnie niską utratą pakietów przy bardzo agresywnym tłoczeniu (utrzymanie PDR $> 90\%$).
+Niemniej jednak, w warunkach ekstremalnych komputer nie wyczerpuje swoich rezerw pamięciowych - rozbudowane bufory systemowe pozwalają na zakolejkowanie dużych ilości danych i wymuszenie ich transmisji przez interfejs karty sieciowej (Wi-Fi), co skutkuje relatywnie niską utratą pakietów przy bardzo agresywnym obciążeniu (utrzymanie PDR $> 90\%$).
 
 Zależność ta jest wskazówką aplikacyjną ograniczoną do badanej konfiguracji: \texttt{AP\_ESP} może być korzystne przy mniejszym obciążeniu, natomiast \texttt{AP\_PC} w analizowanym zakresie zachowywało wyższy PDR przy dużych częstotliwościach.
 
@@ -257,7 +254,7 @@ Analiza tej metryki, przeliczonej na megabity na sekundę (Mbps), pozwala na pre
 \subsection{Limit przepustowości}
 
 Eksploracja danych wykazała, że wpływ rozmiaru ładunku użytecznego (\textit{Payload}) na przepustowość jest krytyczny.
-Jak wynika z analizy logów dla protokołu UDP pracującego w topologii \texttt{AP\_ROUTER}, przepustowość użyteczna rośnie liniowo wraz z częstotliwością, aż osiąga twardy, nieprzekraczalny szczyt w okolicach \textbf{28,0~Mbps}.
+Jak wynika z analizy logów dla protokołu UDP pracującego w topologii \texttt{AP\_ROUTER}, przepustowość użyteczna rośnie wraz z częstotliwością, aż osiąga twardy szczyt w okolicach \textbf{28,0~Mbps}.
 Próba dławienia sieci jeszcze wyższymi częstotliwościami nie powoduje już wzrostu przesyłu.
 W tym obszarze ograniczenia toru transmisyjnego i przetwarzania danych powodują, że dalsze zwiększanie częstotliwości nie przekłada się na wzrost goodputu.
 
@@ -272,7 +269,7 @@ Wynik jest zgodny z obrazem przeciążenia toru transmisyjnego.
       \label{fig:wykres_goodput_kolaps}
 \end{figure}
 
-\subsection{Anomalia efektywności (Bursting)}
+\subsection{Anomalia efektywności (\textit{ang. Bursting})}
 
 Obliczenie znormalizowanego współczynnika efektywności (stosunku przepustowości zmierzonej do teoretycznego obciążenia generowanego przez PC) ujawniło matematyczną anomalię, zapowiedzianą w podrozdziale \ref{sec:goodput}.
 W badaniach dla pakietów 1024~B odnotowano momenty, w których współczynnik \texttt{goodput\_efficiency\_percent} przekraczał 100\% (sięgając nawet 115,2\% przy częstotliwości 2400~Hz).
@@ -296,7 +293,7 @@ Fakt ten generuje specyficzne anomalie matematyczne, szczególnie widoczne przy 
 
 Zgodnie z koncepcją generatora ruchu opisaną w rozdziale \ref{chap:hil}, silnik testowy wysyła stałą, zadeklarowaną liczbę pakietów w ramach jednej próby (np. 1000 paczek danych).
 Przy częstotliwości uderzeniowej rzędu 50~Hz, fizyczna transmisja takiej próby zajmuje 20 sekund.
-Jest to czas wystarczająco długi, aby układ ESP32 zdołał uśrednić wyniki, niwelując drobne zacięcia systemu Windows.
+Jest to czas wystarczająco długi, aby przejściowe opóźnienia systemu Windows stanowiły znikomy odsetek całkowitego czasu obserwacji testu, co ogranicza ich wpływ na wynik końcowy.
 
 Sytuacja ulega jednak drastycznej zmianie przy wysokich częstotliwościach.
 Jak wykazała metryka diagnostyczna \texttt{engine\_time\_tx\_actual}, ekstremalne testy uderzeniowe (np. powyżej 3000~Hz) ulegają kompresji w domenie czasu.
@@ -306,7 +303,7 @@ Skrócenie okna pomiarowego do ułamka sekundy zwiększa wrażliwość metryk op
 \subsection{Matematyczna geneza szumu (CV i Drift)}
 
 Najlepszym dowodem na to zjawisko jest anomalia odnotowana dla protokołu TCP (Topologia \texttt{AP\_PC}, ładunek 4~B przy częstotliwości 3900~Hz), którą wstępnie sygnalizowano w podrozdziale \ref{sec:analiza_tcp_ws}.
-Zarejestrowano w niej odchylenie Jittera (CV) rzędu \textbf{3000\%} oraz gigantyczny dryft zegara sprzętowego (Drift) wynoszący ponad 8~milionów PPM.
+Zarejestrowano w niej odchylenie Jittera (CV) rzędu \textbf{3000\%} oraz ekstremalny dryft zegara sprzętowego (Drift) wynoszący ponad 8~milionów PPM.
 
 Fizycznie niemożliwe jest, aby rezonator kwarcowy mikrokontrolera ulegał rozstrojeniu o 8 milionów części na milion.
 Wartość ta jest rezultatem zastosowanego modelu obliczeniowego, a nie bezpośrednim pomiarem dryftu rezonatora.
@@ -362,7 +359,7 @@ W celu usystematyzowania wiedzy wypracowanej podczas kampanii badawczej, najważ
                   \textbf{TCP}
                                     & \textbf{Niezawodność absolutna:}
                   w badanej kampanii PDR równy $100\%$ dzięki mechanizmom potwierdzania i retransmisji TCP.
-                                    & \textbf{Gigantyczny Bufferbloat:}
+                                    & \textbf{Krytyczny Bufferbloat:}
                   eksplozja Jittera i wielosekundowe opóźnienia sterowania spowodowane mechanizmem retransmisji i blokowaniem wątku (Backpressure).
                                     & Krytyczna wymiana danych (aktualizacje Over-The-Air, przesył kluczy kryptograficznych).                                                                                                                                                                     \\ \hline
                   \textbf{WebSockets}

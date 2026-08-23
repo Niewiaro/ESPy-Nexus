@@ -106,3 +106,50 @@ Wszystkie wykryte incydenty zmiany kolejności pakietów wystąpiły wyłączeni
 Wynik ten ma głębokie uzasadnienie informatyczne - podczas wysyłania gigabajtów danych przez port wirtualny (w systemie z rodziny GPOS), stos sterownika USB dzieli potok na fragmenty (\textit{ang. chunks}).
 W sytuacjach krytycznego zatoru (\textit{Bloat}) i resetowania pamięci podręcznej portu mogą zostać wypchnięte do bufora sprzętowego UART w naruszonej kolejności.
 Natomiast sprzętowy stos protokołów Wi-Fi/LwIP w architekturze wewnętrznej ESP32 okazuje się nieporównywalnie rygorystyczniejszy w zarządzaniu ramkami, co kategorycznie zamyka spór o wyższość kabla nad połączeniem bezprzewodowym w tym obszarze.
+
+\section{Niezawodność gwarantowana, a zjawisko bufferbloat - TCP i WebSockets}
+\label{sec:analiza_tcp_ws}
+
+Wymagania stawiane systemom komunikacyjnym w wielu gałęziach przemysłu (np. podczas aktualizacji oprogramowania maszyn, czy przesyłania konfiguracji kryptograficznych) nie dopuszczają utraty choćby pojedynczego bajtu informacji.
+Do takich zadań wykorzystuje się protokoły gwarantujące dostarczenie danych, w niniejszych badaniach reprezentowane przez warstwę transportową TCP oraz oparty na niej protokół warstwy aplikacji WebSockets (WS).
+
+Analiza zagregowanych metryk QoS w pełni potwierdza teoretyczne założenia tych standardów.
+W przeważającej większości scenariuszy badawczych (niezależnie od topologii oraz rozmiaru ładunku użytecznego), wskaźnik skuteczności dostarczania (PDR) dla obydwu protokołów wyniósł równe 100\%.
+Żaden wysłany z komputera pakiet danych nie uległ trwałemu zagubieniu.
+Sukces ten ma jednak swoje głębokie konsekwencje w domenie czasu.
+
+\subsection{Mechanizm Backpressure}
+Interpretacja wyników w systemach czasu rzeczywistego (RTOS) nie może opierać się wyłącznie na współczynniku PDR.
+Perfekcyjna niezawodność protokołów TCP i WS nie wynika z fizycznej niezawodności medium radiowego (Wi-Fi), które z natury jest podatne na zakłócenia i kolizje fal.
+Wynika ona ze sprzętowych mechanizmów weryfikacji sum kontrolnych i sprzężonych z nimi potężnych okien retransmisyjnych.
+Gdy pakiet ulegnie zniekształceniu, układ ESP32 nie odsyła sygnału \texttt{ACK}, co zmusza nadajnik w komputerze PC do ponownej wysyłki tej samej ramki.
+
+Dodatkowo, protokoły zorientowane na połączenie implementują mechanizmy kontroli przepływu.
+W warunkach wysokiego obciążenia, gdy stos mikrokontrolera LwIP nie nadąża z przetwarzaniem nadchodzących datagramów, system operacyjny zmniejsza okno odbiorcze.
+Generuje to zjawisko wstrzymywania ruchu (\textit{ang. Backpressure}), które propaguje się wstecznie do nadajnika.
+W efekcie skrypt testowy w języku Python nie odrzuca pakietów, lecz zostaje zmuszony do zakolejkowania ich w buforach systemowych komputera, czekając na udrożnienie sieci.
+
+\subsection{Zator buforów i eksplozja Jittera}
+Skutkiem ubocznym opisanych mechanizmów gwarancji jest drastyczne pogorszenie determinizmu czasowego.
+Dane analityczne ujawniają powstawanie zjawiska gigantycznego zatoru buforów ( \textit{ang. Bufferbloat}).
+W warunkach skrajnej saturacji sieci opóźnienia rosły w czasie trwania eksperymentu z poziomu pojedynczych mikrosekund do wartości krytycznych.
+
+Jako przypadek szczególny należy wyróżnić eksperyment przeprowadzony na protokole TCP w topologii \texttt{AP\_PC} dla niewielkiego ładunku 4~B, z częstotliwością na poziomie 3900~Hz.
+Zarejestrowane maksymalne opóźnienie kolejkowania (\texttt{timing\_max\_bloat\_us}) wyniosło tam ponad \textbf{2.23 sekundy} (2236~ms).
+Jednocześnie, znormalizowana miara stabilności transmisji - współczynnik zmienności Jittera (CV) - eksplodowała do wartości bliskiej \textbf{3000\%}.
+Oznacza to, że zamiast płynnego i przewidywalnego potoku danych, mikrokontroler po 2-sekundowej bezczynności przyjął uderzeniową falę setek zaległych, zakolejkowanych pakietów w jednym ułamku sekundy.
+
+\begin{figure}[htbp]
+      \centering
+      \includegraphics[width=\textwidth]{images/analysis/timing_max_bloat_us_tcp.png}
+      \caption{Wzrost opóźnienia kolejkowania (Bufferbloat) dla protokołu TCP w funkcji częstotliwości uderzeniowej, obrazujący utratę determinizmu łącza \cite{espy_nexus_nuxt_dashboard}.}
+      \label{fig:wykres_tcp_bloat}
+\end{figure}
+
+\subsection{Użyteczność wyników, a ograniczenia systemowe}
+Dowiezienie kompletu pakietów w 100\% z ponad 2-sekundowym opóźnieniem równoznaczne jest z awarią obiektu.
+Dron lub ramię robota przemysłowego, opierające swoją trajektorię na tak opóźnionych komendach, uległoby katastrofie.
+W ten sposób eksperyment udowadnia wyższość metryk czasowych (Jitter, Goodput, Bloat) nad klasycznym mierzeniem PDR w ewaluacji systemów RTOS.
+
+Warto w tym miejscu wyraźnie zaznaczyć, że wystąpienie tak ekstremalnych i zaszumionych metryk czasowych (jak CV = 3000\%) przy testowaniu bardzo małych ładunków i wysokich częstotliwości uderzeniowych wzbudziło istotne wątpliwości natury matematycznej.
+Kwestia wiarygodności obliczania wskaźników długoterminowych dla testów trwających zaledwie ułamki sekundy zostanie poddana dogłębnej rewizji w podrozdziale \ref{sec:ograniczenia_metodologiczne}, obnażając fizyczne ograniczenia środowiska GPOS.

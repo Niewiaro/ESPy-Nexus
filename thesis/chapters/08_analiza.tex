@@ -245,3 +245,43 @@ Na tym tle \texttt{AP\_PC} pozostaje na relatywnie stałym poziomie, co potwierd
       \caption{Porównanie odchylenia standardowego jittera (CV) dla topologii \texttt{AP\_ESP}, \texttt{AP\_PC} oraz \texttt{AP\_Router} w funkcji częstotliwości \cite{espy_nexus_nuxt_dashboard}.}
       \label{fig:wykres_paradoks_topologii_jitter}
 \end{figure}
+
+\section{Ograniczenia przepustowości (Goodput) i wpływ rozmiaru ładunku}
+\label{sec:ograniczenia_goodput}
+
+Ostatnim wymiarem analizy QoS w zaprojektowanym środowisku HIL jest ocena czystej wydajności wolumetrycznej łącza.
+O ile wskaźnik PDR informuje o odsetku zagubionych danych, o tyle metryka \textit{Goodput} (Wydajność użyteczna) określa bezwzględną przepustowość prawidłowo odebranych bajtów aplikacji w jednostce czasu.
+Analiza tej metryki, przeliczonej na megabity na sekundę (Mbps), pozwala na precyzyjne wyznaczenie fizycznych i sprzętowych limitów zastosowanego mikrokontrolera.
+
+\subsection{Limit przepustowości}
+
+Eksploracja danych wykazała, że wpływ rozmiaru ładunku użytecznego (\textit{Payload}) na przepustowość jest krytyczny.
+Jak wynika z analizy logów dla protokołu UDP pracującego w topologii \texttt{AP\_ROUTER}, przepustowość użyteczna rośnie liniowo wraz z częstotliwością, aż osiąga twardy, nieprzekraczalny szczyt w okolicach \textbf{28,0~Mbps}.
+Próba dławienia sieci jeszcze wyższymi częstotliwościami nie powoduje już wzrostu przesyłu.
+W tym momencie sprzętowy stos Wi-Fi, układy DMA oraz rdzeń Xtensa mikrokontrolera ESP32 przestają nadążać z odbiorem i parsowaniem gigantycznych datagramów.
+
+Osiągnięcie granicy 28~Mbps zbiega się w czasie z kolapsem niezawodności - wskaźnik PDR dla tych częstotliwości spada do poziomu ok.
+65\%.
+Mamy tu do czynienia z klasycznym obrazem przeciążenia kanału radiowego i buforów.
+Sieć przetłacza fizyczne maksimum danych, a cały nadmiar wprowadzany przez nadajnik w komputerze PC jest bezpowrotnie niszczony na warstwie fizycznej odbiornika.
+
+\begin{figure}[htbp]
+      \centering
+      \includegraphics[width=\textwidth]{images/analysis/goodput_mbps_udp_1024b.png}
+      \caption{Krzywa przepustowości użytecznej (Goodput) dla UDP i pakietów 1024~B \cite{espy_nexus_nuxt_dashboard}.}
+      \label{fig:wykres_goodput_kolaps}
+\end{figure}
+
+\subsection{Anomalia efektywności (Bursting)}
+
+Obliczenie znormalizowanego współczynnika efektywności (stosunku przepustowości zmierzonej do teoretycznego obciążenia generowanego przez PC) ujawniło matematyczną anomalię, zapowiedzianą w podrozdziale \ref{sec:goodput}.
+W badaniach dla pakietów 1024~B odnotowano momenty, w których współczynnik \texttt{goodput\_efficiency\_percent} przekraczał 100\% (sięgając nawet 115,2\% przy częstotliwości 2400~Hz).
+
+Stanowi to bezwzględny, mierzalny dowód na występowanie zjawiska \textit{Burstingu} na wyższych warstwach sieci.
+Pakiety nadawane z komputera utykają w zatorze na ruterze pośredniczącym, a następnie wysyła zakolejkowaną serię w oknie czasowym krótszym, niż zakładał to pierwotny generator ruchu w skrypcie nadawczym (pierwszy pakiet dociera później niż przewidziano).
+Odbiornik interpretuje to jako chwilowy \textit{Goodput} przekraczający teoretyczne możliwości nadajnika.
+
+Na drugim biegunie znajduje się protokół TCP.
+Jego maksymalna odnotowana przepustowość użyteczna dla tych samych paczek 1024~B wyniosła zaledwie ok.
+\textbf{0,5~Mbps} (496~kbps).
+Jest to ostateczny dowód potwierdzający wnioski z podrozdziału \ref{sec:analiza_tcp_ws} - TCP ratuje swój 100-procentowy wskaźnik PDR kosztem drastycznego zatrzymania potoku danych (mechanizm \textit{Backpressure}), całkowicie deklasując się w zastosowaniach strumieniowych wysokiej częstotliwości (np. przy przesyłaniu obrazu wideo).

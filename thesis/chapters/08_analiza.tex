@@ -10,3 +10,23 @@ W niniejszym rozdziale przeprowadzono dogłębną interpretację uzyskanych wyni
 Należy stanowczo podkreślić, że celem analizy nie jest wyłonienie pojedynczego, \textit{najlepszego} protokołu komunikacyjnego.
 Jak zostanie udowodnione w kolejnych podrozdziałach, każdy ze standardów wykazuje krytyczne słabości w skrajnych warunkach obciążeniowych.
 Główną tezą badawczą tego rozdziału jest udowodnienie, że dobór technologii transportowej oraz architektury sieci w systemach wbudowanych IoT musi być bezwzględnie podyktowany specyfiką rygorów czasowych i sprzętowych projektowanej maszyny.
+
+\section{Możliwości analityczne środowiska wizualizacyjnego}
+\label{sec:wizualizacja_nuxt}
+
+Surowa reprezentacja tabelaryczna (w formacie JSON lub CSV) zawierająca setki zagregowanych punktów pomiarowych jest nieoptymalna do wykrywania trendów i zjawisk nieliniowych, takich jak momenty załamania wydajności (\textit{Bottlenecks}).
+Z tego względu ostateczna interpretacja wyników prowadzona jest w środowisku wizualizacyjnym - autorskiej aplikacji webowej typu \textit{Single Page Application} (SPA) wykonanej w technologii Nuxt.js, wykorzystującej silnik renderujący Chart.js (omówionej szczegółowo w rozdziale \ref{chap:nuxt}).
+
+Zaprojektowany interfejs pozwala badaczowi na interaktywną eksplorację matrycy testowej.
+Każdy wyrenderowany punkt (przebieg) na wykresie stanowi pojedynczy eksperyment z matrycy, zagregowany po trzech wymiarach: Topologii sieciowej, stosowanym Protokole oraz Rozmiarze ładunku użytecznego (\textit{Payload}).
+Wykresy badawcze wygenerowane przez to narzędzie, które stanowią podstawę analizy w kolejnych podrozdziałach, opierają się na zunifikowanej architekturze osi:
+\begin{itemize}
+    \item \textbf{Oś X:}
+          zawsze reprezentuje częstotliwość generowaną przez komputer PC, wyrażoną w hercach [Hz].
+          Oś ta stanowi miarę narastającego obciążenia pętli HIL.
+          Ze względu na fakt, że różnice w wydajności przy niskich obciążeniach (1-100 Hz) są równie istotne, co zachowanie układu przy ekstremalnym dławieniu (1000-10.000 Hz), panel umożliwia przełączenie skali osi X na logarytmiczną.
+          Pozwala to na uniknięcie zjawiska "sklejania się" punktów pomiarowych na lewym skraju wykresu.
+    \item \textbf{Oś Y:}
+          reprezentuje wartość wybranej, pojedynczej metryki QoS (np. skuteczność PDR [\%], Jitter [ms] lub czas opóźnienia sterowania [ms]), której ewolucja w funkcji rosnącego obciążenia poddawana jest analizie.
+\end{itemize}
+

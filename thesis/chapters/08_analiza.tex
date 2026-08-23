@@ -327,3 +327,107 @@ Powyższa analiza pozwala na sformułowanie kluczowego wariantu interpretacyjneg
 Kosmiczne wartości Jittera (CV) oraz Dryftu na skrajnej prawej osi wykresów (dla wysokich obciążeń) nie powinny być odczytywane jako precyzyjne odzwierciedlenie fizyki kwarcu mikrokontrolera ESP32.
 Należy je traktować jako wysoce zaszumione wskaźniki (artefakty), które w sposób bezwzględny sygnują moment całkowitej utraty determinizmu operacyjnego w środowisku HIL.
 W punkcie, w którym okno pomiarowe kurczy się do ułamków sekund, bufory komputera przejmują całkowitą kontrolę nad przepływem czasu, ostatecznie potwierdzając tezę o nieprzydatności stosów GPOS do precyzyjnego dławienia sieci w reżimie czasu rzeczywistego.
+
+\section{Synteza porównania protokołów i rekomendacje aplikacyjne}
+\label{sec:synteza_porownania}
+
+Przeprowadzona w niniejszym rozdziale wielowymiarowa analiza środowiska HIL udowodniła postawioną we wstępie tezę: w inżynierii systemów wbudowanych nie istnieje uniwersalny protokół komunikacyjny.
+Każde z badanych rozwiązań stanowi kompromis pomiędzy niezawodnością dostarczania (PDR), stabilnością czasową (Jitter, Bufferbloat) a czystą przepustowością wolumetryczną (Goodput).
+
+Decyzja architektoniczna musi wynikać bezpośrednio z charakterystyki budowanego urządzenia (np. z bezwładności kinematycznej robota, konieczności natychmiastowej reakcji na awarię lub wymogów kryptograficznych przesyłanego pliku).
+W celu usystematyzowania wiedzy wypracowanej podczas kampanii badawczej, najważniejsze wnioski oraz zidentyfikowane zjawiska krytyczne dla poszczególnych protokołów zestawiono w Tabeli \ref{tab:synteza_protokolow}.
+
+\begin{table}[htbp]
+      \centering
+      \caption{Zestawienie właściwości sprzętowych protokołów komunikacyjnych na podstawie analizy środowiska ESPy-Nexus}
+      \label{tab:synteza_protokolow}
+      \resizebox{\textwidth}{!}{%
+            \begin{tabular}{|l|p{4.5cm}|p{4.5cm}|p{4.5cm}|}
+                  \hline
+                  \textbf{Protokół} & \textbf{Dominująca charakterystyka QoS}                                                                                                       & \textbf{Zidentyfikowane zjawiska krytyczne} & \textbf{Rekomendowane zastosowanie w inżynierii (IoT / RTOS)} \\ \hline
+                  \textbf{SERIAL (UART)}
+                                    & Najniższe fizyczne opóźnienie bez narzutu rutingu sieciowego.
+                                    & \textbf{Załamanie przy dużym ładunku:}
+                  twardy próg wydajności uzależniony od wielkości paczki.
+                  \newline \textbf{Defekty kolejności:}
+                  zjawisko Out-of-Order wywołane fragmentacją w sterownikach USB GPOS.
+                                    & Inicjalizacja sprzętowa, konsola debugująca (REPL), przesył bardzo krótkich, stabilnych komend sterujących.                                                                                                                                                 \\ \hline
+                  \textbf{UDP}
+                                    & \textbf{Tolerancja strat:}
+                  gwarancja dostarczenia najświeższych danych kosztem upuszczania pakietów w warunkach zatoru (PDR $< 100\%$).
+                                    & \textbf{Progi saturacji:}
+                  załamanie PDR zależne od topologii sieciowej (najwcześniej dla wirtualnego AP\_PC, najpóźniej dla AP\_ESP).
+                  \newline \textbf{Stabilny czas opóźnień:}
+                  Blackout przewidywalny w milisekundach.
+                                    & Zamknięta pętla sterowania czasem rzeczywistym, stabilizacja lotu dronów, strumieniowanie wideo (FPV), odczyt telemetrii z szybkich sensorów.                                                                                                               \\ \hline
+                  \textbf{TCP}
+                                    & \textbf{Niezawodność absolutna:}
+                  bezbłędne dostarczanie każdego pakietu (PDR = $100\%$) dzięki sprzętowym ACK.
+                                    & \textbf{Gigantyczny Bufferbloat:}
+                  eksplozja Jittera i wielosekundowe opóźnienia sterowania spowodowane mechanizmem retransmisji i blokowaniem wątku (Backpressure).
+                                    & Krytyczna wymiana danych (aktualizacje Over-The-Air, przesył kluczy kryptograficznych).                                                                                                                                                                     \\ \hline
+                  \textbf{WebSockets}
+                                    & Gwarancje TCP obudowane łatwością integracji z chmurą i aplikacjami WWW.
+                                    & Identyczne zjawiska kolapsu czasowego jak w TCP, zredukowane o narzut związany z 3-way handshake i enkapsulacją HTTP.
+                                    & Dashboardy operatorskie, zdalny nadzór, telemetryczne panele dyspozytorskie nie wymagające natychmiastowej reakcji.                                                                                                                                         \\ \hline
+            \end{tabular}%
+      }
+\end{table}
+
+\vspace{0.5cm}
+
+Zebrane w tabeli wnioski ostatecznie zamykają dyskusję badawczą.
+Potwierdzają one użyteczność zaprojektowanej Płaszczyzny Analitycznej jako rzetelnego, deterministycznego narzędzia wspomagającego pracę inżynierów i architektów IoT.
+Przeprowadzone pomiary udowadniają, że dopiero głębokie, symultaniczne zestawienie wielu metryk (szczególnie PDR w korelacji z opóźnieniami Jittera) pozwala na bezpieczne wdrożenie systemów bezprzewodowych w odpowiedzialnych układach automatyki.
+
+\section{Synteza porównania protokołów i rekomendacje aplikacyjne}
+\label{sec:synteza_porownania}
+
+Przeprowadzona w niniejszym rozdziale wielowymiarowa analiza środowiska HIL udowodniła postawioną we wstępie tezę: w inżynierii systemów wbudowanych nie istnieje uniwersalny protokół komunikacyjny.
+Każde z badanych rozwiązań stanowi kompromis pomiędzy niezawodnością dostarczania (PDR), stabilnością czasową (Jitter, Bufferbloat) a czystą przepustowością wolumetryczną (Goodput).
+
+Decyzja architektoniczna musi wynikać bezpośrednio z charakterystyki budowanego urządzenia (np. z bezwładności kinematycznej robota, konieczności natychmiastowej reakcji na awarię lub wymogów kryptograficznych przesyłanego pliku).
+W celu usystematyzowania wiedzy wypracowanej podczas kampanii badawczej, najważniejsze wnioski oraz zidentyfikowane zjawiska krytyczne dla poszczególnych protokołów zestawiono w Tabeli \ref{tab:synteza_protokolow}.
+
+\begin{table}[htbp]
+      \centering
+      \caption{Zestawienie właściwości sprzętowych protokołów komunikacyjnych na podstawie analizy środowiska ESPy-Nexus}
+      \label{tab:synteza_protokolow}
+      \resizebox{\textwidth}{!}{%
+            \begin{tabular}{|l|p{4.5cm}|p{4.5cm}|p{4.5cm}|}
+                  \hline
+                  \textbf{Protokół} & \textbf{Dominująca charakterystyka QoS}                                                                                                       & \textbf{Zidentyfikowane zjawiska krytyczne} & \textbf{Rekomendowane zastosowanie w inżynierii (IoT / RTOS)} \\ \hline
+                  \textbf{SERIAL (UART)}
+                                    & Najniższe fizyczne opóźnienie bez narzutu rutingu sieciowego.
+                                    & \textbf{Załamanie przy dużym ładunku:}
+                  twardy próg wydajności uzależniony od wielkości paczki.
+                  \newline \textbf{Defekty kolejności:}
+                  zjawisko Out-of-Order wywołane fragmentacją w sterownikach USB GPOS.
+                                    & Inicjalizacja sprzętowa, konsola debugująca (REPL), przesył bardzo krótkich, stabilnych komend sterujących.                                                                                                                                                 \\ \hline
+                  \textbf{UDP}
+                                    & \textbf{Tolerancja strat:}
+                  gwarancja dostarczenia najświeższych danych kosztem upuszczania pakietów w warunkach zatoru (PDR $< 100\%$).
+                                    & \textbf{Progi saturacji:}
+                  załamanie PDR zależne od topologii sieciowej (najwcześniej dla wirtualnego AP\_PC, najpóźniej dla AP\_ESP).
+                  \newline \textbf{Stabilny czas opóźnień:}
+                  Blackout przewidywalny w milisekundach.
+                                    & Zamknięta pętla sterowania czasem rzeczywistym, stabilizacja lotu dronów, strumieniowanie wideo (FPV), odczyt telemetrii z szybkich sensorów.                                                                                                               \\ \hline
+                  \textbf{TCP}
+                                    & \textbf{Niezawodność absolutna:}
+                  bezbłędne dostarczanie każdego pakietu (PDR = $100\%$) dzięki sprzętowym ACK.
+                                    & \textbf{Gigantyczny Bufferbloat:}
+                  eksplozja Jittera i wielosekundowe opóźnienia sterowania spowodowane mechanizmem retransmisji i blokowaniem wątku (Backpressure).
+                                    & Krytyczna wymiana danych (aktualizacje Over-The-Air, przesył kluczy kryptograficznych).                                                                                                                                                                     \\ \hline
+                  \textbf{WebSockets}
+                                    & Gwarancje TCP obudowane łatwością integracji z chmurą i aplikacjami WWW.
+                                    & Identyczne zjawiska kolapsu czasowego jak w TCP, zredukowane o narzut związany z 3-way handshake i enkapsulacją HTTP.
+                                    & Dashboardy operatorskie, zdalny nadzór, telemetryczne panele dyspozytorskie nie wymagające natychmiastowej reakcji.                                                                                                                                         \\ \hline
+            \end{tabular}%
+      }
+\end{table}
+
+\vspace{0.5cm}
+
+Zebrane w tabeli wnioski ostatecznie zamykają dyskusję badawczą.
+Potwierdzają one użyteczność zaprojektowanej Płaszczyzny Analitycznej jako rzetelnego, deterministycznego narzędzia wspomagającego pracę inżynierów i architektów IoT.
+Przeprowadzone pomiary udowadniają, że dopiero głębokie, symultaniczne zestawienie wielu metryk (szczególnie PDR w korelacji z opóźnieniami Jittera) pozwala na bezpieczne wdrożenie systemów bezprzewodowych w odpowiedzialnych układach automatyki.

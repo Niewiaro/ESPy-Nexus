@@ -33,7 +33,8 @@ Wykresy badawcze wygenerowane przez to narzędzie, które stanowią podstawę an
 \section{Interpretacja przykładowego wykresu}
 \label{sec:interpretacja_wykresu}
 
-Zrozumienie zależności panujących pomiędzy obciążeniem, a niezawodnością w systemach wbudowanych wymaga jednoczesnej analizy wielu zmiennych konfiguracyjnych.
+Zrozumienie zależności panujących pomiędzy obciążeniem, a niezawodnością w systemach wbudowanych wymaga jednoczesnej analizy wielu zmiennych konfiguracyjnych, w tym przepływności łącza wynikającej z ustawionej szybkości transmisji (baud rate) komunikacji szeregowej.
+W badaniach układ korzystał z szybkości transmisji \textbf{921600 Bd} na interfejsie UART.
 Jako punkt wyjścia dla dalszych badań, na Rysunku \ref{fig:wykres_przykladowy_udp_pdr} zaprezentowano wykres przedstawiający zestawienie skuteczności dostarczania pakietów (metryka PDR) dla protokołu transportowego UDP, obciążonego największym badanym ładunkiem użytecznym (\textit{Payload} = 1024~B).
 
 \begin{figure}[htbp]

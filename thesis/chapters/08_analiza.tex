@@ -157,29 +157,40 @@ Kwestia wiarygodności obliczania wskaźników długoterminowych dla testów trw
 \section{Próg saturacji sieci i tolerancja strat - charakterystyka UDP}
 \label{sec:analiza_udp}
 
-Podczas gdy protokoły zorientowane na połączenie (TCP, WS) starają się uratować każdy zagubiony pakiet za cenę katastrofalnego wzrostu opóźnień, bezpołączeniowy protokół UDP (\textit{ang. User Datagram Protocol}) prezentuje skrajnie odmienną filozofię. Jak opisywano w podrozdziale \ref{sec:protokol_udp}, UDP nie implementuje mechanizmów potwierdzania (ACK), ani sprzętowych retransmisji. Jeśli infrastruktura sieciowa nie nadąża z przesyłaniem ruchu, rutery po cichu upuszczają zbuforowane datagramy. 
+Podczas gdy protokoły zorientowane na połączenie (TCP, WS) starają się uratować każdy zagubiony pakiet za cenę katastrofalnego wzrostu opóźnień, bezpołączeniowy protokół UDP (\textit{ang. User Datagram Protocol}) prezentuje skrajnie odmienną filozofię.
+Jak opisywano w podrozdziale \ref{sec:protokol_udp}, UDP nie implementuje mechanizmów potwierdzania (ACK), ani sprzętowych retransmisji.
+Jeśli infrastruktura sieciowa nie nadąża z przesyłaniem ruchu, rutery po cichu upuszczają zbuforowane datagramy.
 
-Zjawisko to jest wysoce pożądane w systemach telemetrii czasu rzeczywistego np. FPV (\textit{ang. First Person View}). Mikrokontroler nie musi tracić czasu obliczeniowego na odbieranie i parsowanie historycznych, nieistotnych już poleceń, które utknęły w buforze retransmisyjnym. Zamiast tego operuje zawsze na najnowszej, aktualnej ramce. Akceptacja strat pozwala utrzymać niskie i przewidywalne opóźnienia kolejkowania, kosztem drastycznych spadków współczynnika PDR.
+Zjawisko to jest wysoce pożądane w systemach telemetrii czasu rzeczywistego np. FPV (\textit{ang. First Person View}).
+Mikrokontroler nie musi tracić czasu obliczeniowego na odbieranie i parsowanie historycznych, nieistotnych już poleceń, które utknęły w buforze retransmisyjnym.
+Zamiast tego operuje zawsze na najnowszej, aktualnej ramce.
+Akceptacja strat pozwala utrzymać niskie i przewidywalne opóźnienia kolejkowania, kosztem drastycznych spadków współczynnika PDR.
 
 \subsection{Wartości graniczne}
-Dane z kampanii HIL pozwoliły na wyznaczenie tzw. progu saturacji sieci dla protokołu UDP. Jest to punkt, po przekroczeniu którego kanał transmisyjny ulega przesycieniu, a skuteczność dostarczania (PDR) po raz pierwszy spada poniżej 100\%. 
+Dane z kampanii HIL pozwoliły na wyznaczenie tzw. progu saturacji sieci dla protokołu UDP.
+Jest to punkt, po przekroczeniu którego kanał transmisyjny ulega przesycieniu, a skuteczność dostarczania (PDR) po raz pierwszy spada poniżej 100\%.
 
 Jak zaprezentowano na wykresie z modułu analitycznego (Rys. \ref{fig:wykres_przykladowy_udp_pdr}), moment załamania wydajności różnił się diametralnie w zależności od zastosowanej topologii sieciowej:
 \begin{itemize}
-      \item \textbf{Topologia \texttt{AP\_PC}:} 
-      najwcześniejsze załamanie stabilności. Połączenie, w którym komputer PC z systemem Windows pełnił rolę wirtualnego punktu dostępowego (\textit{HotSpot}), utraciło 100-procentową skuteczność już przy częstotliwości \textbf{100~Hz}.
-      \item \textbf{Topologia \texttt{AP\_ROUTER}:} 
-      sieć wykorzystująca domowy ruter jako pośrednika (dodatkowy przeskok / \textit{hop}). Ruter domowy dzięki wyższej wydajności procesora sieciowego zdołał utrzymać bezbłędny przesył do granicy \textbf{128~Hz}.
-      \item \textbf{Topologia \texttt{AP\_ESP}:} 
-      architektura natywna, w której sam mikrokontroler sprzętowo rozsiewał sieć Wi-Fi (\textit{SoftAP}). Rozwiązanie to pozwoliło na utrzymanie integralności danych przez najdłuższy czas, dławiąc się dopiero przy obciążeniu rzędu \textbf{256~Hz}.
+      \item \textbf{Topologia \texttt{AP\_PC}:}
+            najwcześniejsze załamanie stabilności.
+            Połączenie, w którym komputer PC z systemem Windows pełnił rolę wirtualnego punktu dostępowego (\textit{HotSpot}), utraciło 100-procentową skuteczność już przy częstotliwości \textbf{100~Hz}.
+      \item \textbf{Topologia \texttt{AP\_ROUTER}:}
+            sieć wykorzystująca domowy ruter jako pośrednika (dodatkowy przeskok / \textit{hop}).
+            Ruter domowy dzięki wyższej wydajności procesora sieciowego zdołał utrzymać bezbłędny przesył do granicy \textbf{128~Hz}.
+      \item \textbf{Topologia \texttt{AP\_ESP}:}
+            architektura natywna, w której sam mikrokontroler sprzętowo rozsiewał sieć Wi-Fi (\textit{SoftAP}).
+            Rozwiązanie to pozwoliło na utrzymanie integralności danych przez najdłuższy czas, dławiąc się dopiero przy obciążeniu rzędu \textbf{256~Hz}.
 \end{itemize}
 
 \begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{images/analysis/jitter_cv_percent_udp_vs_tcp.png}
-    \caption{Porównanie stabilności w dziedzinie czasu dla topologii \texttt{AP\_ROUTER} - UDP oraz TCP \cite{espy_nexus_nuxt_dashboard}.}
-    \label{fig:wykres_udp_vs_tcp_jitter}
+      \centering
+      \includegraphics[width=\textwidth]{images/analysis/jitter_cv_percent_udp_vs_tcp.png}
+      \caption{Porównanie stabilności w dziedzinie czasu dla topologii \texttt{AP\_ROUTER} - UDP oraz TCP \cite{espy_nexus_nuxt_dashboard}.}
+      \label{fig:wykres_udp_vs_tcp_jitter}
 \end{figure}
 
 \subsection{Wycena strat w domenie czasu (Blackout i Bloat)}
-Cena zapłacona przez protokół TCP w postaci ogromnych wskaźników Jittera i ponad 2-sekundowych blokad czasowych, w standardzie UDP została zastąpiona precyzyjnie wyliczonym zjawiskiem ciągłej utraty (\textit{ang. Burst Blackout}). Zgodnie z modelem matematycznym omówionym w podrozdziale \ref{sec:burst_loss}, utrata danych nie jest miarodajna bez określenia rozmiaru przerwy w sterowaniu. Odrzucanie sprzętowe pakietów w ruterze domowym generuje mikrosekundowe opóźnienia sterowania, skutkując maksymalnym mierzonym zamrożeniem maszyny wynoszącym równe \textbf{56,64~ms}.
+Cena zapłacona przez protokół TCP w postaci ogromnych wskaźników Jittera i ponad 2-sekundowych blokad czasowych, w standardzie UDP została zastąpiona precyzyjnie wyliczonym zjawiskiem ciągłej utraty (\textit{ang. Burst Blackout}).
+Zgodnie z modelem matematycznym omówionym w podrozdziale \ref{sec:burst_loss}, utrata danych nie jest miarodajna bez określenia rozmiaru przerwy w sterowaniu.
+Odrzucanie sprzętowe pakietów w ruterze domowym generuje mikrosekundowe opóźnienia sterowania, skutkując maksymalnym mierzonym zamrożeniem maszyny wynoszącym równe \textbf{56,64~ms}.

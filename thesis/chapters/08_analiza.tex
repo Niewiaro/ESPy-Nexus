@@ -195,7 +195,7 @@ Cena zapłacona przez protokół TCP w postaci ogromnych wskaźników Jittera i 
 Zgodnie z modelem matematycznym omówionym w podrozdziale \ref{sec:burst_loss}, utrata danych nie jest miarodajna bez określenia rozmiaru przerwy w sterowaniu.
 Odrzucanie sprzętowe pakietów w ruterze domowym generuje mikrosekundowe opóźnienia sterowania, skutkując maksymalnym mierzonym zamrożeniem maszyny wynoszącym równe \textbf{56,64~ms}.
 
-\section{Wpływ architektury sieciowej na stabilność sterowania i paradoks obciążeniowy}
+\section{Wpływ architektury sieciowej na stabilność sterowania}
 \label{sec:wplyw_topologii}
 
 Decyzja o wyborze fizycznej architektury sieciowej (topologii) często podyktowana jest wygodą programisty lub ograniczeniami terenowymi.
@@ -205,7 +205,7 @@ Jak dowiodły wstępne analizy progu saturacji protokołu UDP (omówione w podro
 Intuicyjne podejście inżynierskie sugeruje, że architektura, która najdłużej opiera się utracie pierwszego pakietu, jest architekturą obiektywnie najlepszą.
 Zestawienie całego spektrum badawczego obnaża jednak głęboki błąd w takim rozumowaniu, ujawniając niezwykle interesujący paradoks obciążeniowy na skrajnych krańcach pasma częstotliwości.
 
-\subsubsection{Odporność na start degradacji vs. degradacja skrajna}
+\subsection{Odporność na start degradacji, a degradacja skrajna}
 Analizując zachowanie topologii natywnej (\texttt{AP\_ESP}), udowodniono, że utrzymuje ona nieskazitelną skuteczność (PDR = 100\%) aż do częstotliwości 256~Hz.
 Z kolei wirtualny hotspot Windowsa (\texttt{AP\_PC}) poddaje się i gubi pierwsze ramki już przy wartości 100~Hz.
 

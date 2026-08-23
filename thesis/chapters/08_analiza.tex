@@ -194,3 +194,54 @@ Jak zaprezentowano na wykresie z modułu analitycznego (Rys. \ref{fig:wykres_prz
 Cena zapłacona przez protokół TCP w postaci ogromnych wskaźników Jittera i ponad 2-sekundowych blokad czasowych, w standardzie UDP została zastąpiona precyzyjnie wyliczonym zjawiskiem ciągłej utraty (\textit{ang. Burst Blackout}).
 Zgodnie z modelem matematycznym omówionym w podrozdziale \ref{sec:burst_loss}, utrata danych nie jest miarodajna bez określenia rozmiaru przerwy w sterowaniu.
 Odrzucanie sprzętowe pakietów w ruterze domowym generuje mikrosekundowe opóźnienia sterowania, skutkując maksymalnym mierzonym zamrożeniem maszyny wynoszącym równe \textbf{56,64~ms}.
+
+\section{Wpływ architektury sieciowej na stabilność sterowania i paradoks obciążeniowy}
+\label{sec:wplyw_topologii}
+
+Decyzja o wyborze fizycznej architektury sieciowej (topologii) często podyktowana jest wygodą programisty lub ograniczeniami terenowymi.
+W środowiskach eksperymentalnych najczęściej wykorzystuje się mikrokontroler w trybie punktu dostępowego (\texttt{AP\_ESP}), wirtualny hotspot udostępniany przez kartę sieciową komputera sterującego (\texttt{AP\_PC}) lub dedykowany ruter pośredniczący (\texttt{AP\_ROUTER}).
+Jak dowiodły wstępne analizy progu saturacji protokołu UDP (omówione w podrozdziale \ref{sec:analiza_udp}), topologie te charakteryzują się diametralnie różną odpornością na początkową degradację łącza.
+
+Intuicyjne podejście inżynierskie sugeruje, że architektura, która najdłużej opiera się utracie pierwszego pakietu, jest architekturą obiektywnie najlepszą.
+Zestawienie całego spektrum badawczego obnaża jednak głęboki błąd w takim rozumowaniu, ujawniając niezwykle interesujący paradoks obciążeniowy na skrajnych krańcach pasma częstotliwości.
+
+\subsubsection{Odporność na start degradacji vs. degradacja skrajna}
+Analizując zachowanie topologii natywnej (\texttt{AP\_ESP}), udowodniono, że utrzymuje ona nieskazitelną skuteczność (PDR = 100\%) aż do częstotliwości 256~Hz.
+Z kolei wirtualny hotspot Windowsa (\texttt{AP\_PC}) poddaje się i gubi pierwsze ramki już przy wartości 100~Hz.
+
+Sytuacja ta ulega jednak drastycznemu, nieoczekiwanemu odwróceniu w warunkach ekstremalnego nasycenia eteru (\textit{ang. Network Flooding}).
+Jak zilustrowano na Rysunku \ref{fig:wykres_paradoks_topologii}, uśrednione wyniki skuteczności PDR dla skrajnego pasma obciążeniowego (od 9000~Hz do 10~000~Hz) ujawniają załamanie pierwotnego rankingu:
+\begin{itemize}
+      \item Topologia \texttt{AP\_PC}, mimo bardzo wczesnej utraty idealnej skuteczności, wykazuje fenomenalną zdolność do łagodnej degradacji, utrzymując w skrajnych testach uśredniony wskaźnik PDR na poziomie aż \textbf{90,3\%}.
+      \item Topologia \texttt{AP\_ESP}, choć najdłużej stawiała opór początkowej saturacji, przy uderzeniu rzędu 10~kHz załamuje się w sposób katastroficzny, notując dramatyczny spadek PDR do zaledwie \textbf{26,1\%}.
+\end{itemize}
+
+\begin{figure}[htbp]
+      \centering
+      \includegraphics[width=\textwidth]{images/analysis/pdr_ratio_percent_udp_16b.png}
+      \caption{Porównanie skuteczności dostarczania pakietów (PDR) dla topologii \texttt{AP\_ESP}, \texttt{AP\_PC} oraz \texttt{AP\_Router} w funkcji częstotliwości \cite{espy_nexus_nuxt_dashboard}.}
+      \label{fig:wykres_paradoks_topologii}
+\end{figure}
+
+\subsection{Uzasadnienie sprzętowe anomalii}
+Zaobserwowane krzyżowanie się wydajności wynika wprost z asymetrii zasobów sprzętowych.
+Mikrokontroler ESP32 w trybie \textit{SoftAP} współdzieli ograniczoną pamięć SRAM.
+Przy małym i średnim obciążeniu radzi on sobie perfekcyjnie, alokując ramki w czasie rzeczywistym.
+Jednakże przy uderzeniu 10~000 pakietów na sekundę, limitowany obszar pamięci ulega natychmiastowemu przepełnieniu, co zmusza układ do masowego odrzucania nadchodzących danych fal radiowych już na warstwie fizycznej.
+
+Z kolei komputer klasy PC dysponuje gigabajtami pamięci RAM oraz potężnym procesorem, lecz jego wirtualne interfejsy sieciowe (NDIS w systemie Windows) nie są zoptymalizowane pod kątem sterowania \textit{Real-Time}.
+Próg 100~Hz obnaża niedoskonałości systemowego planisty, który dławi mikrosekundowe pakiety.
+Niemniej jednak, w warunkach ekstremalnych komputer nie wyczerpuje swoich rezerw pamięciowych - potężne bufory systemowe pozwalają na zakolejkowanie ogromnych ilości danych i siłowe przetłoczenie ich przez potok karty sieciowej (Wi-Fi), co skutkuje relatywnie niską utratą pakietów przy bardzo agresywnym tłoczeniu (utrzymanie PDR $> 90\%$).
+
+Zależność ta jest bezcenną wskazówką aplikacyjną - \texttt{AP\_ESP} jest idealne dla precyzyjnych i powolnych systemów RTOS (do 200~Hz), natomiast \texttt{AP\_PC} sprawdza się lepiej przy masywnym przesyłaniu telemetrii, gdzie liczy się ostateczny wolumen danych, a nie punktowa precyzja pierwszej zguby.
+
+Warto również podkreślić zachowanie opóźnień czasowych - konfiguracja \texttt{AP\_PC} utrzymuje znacznie stabilniejszy jitter przy wyższych częstotliwościach.
+Dla zakresu do około 4000~Hz najniższe wartości jittera obserwuje się w topologii routerowej, jednak po przekroczeniu tej granicy zarówno \texttt{AP\_Router}, jak i \texttt{AP\_ESP} wykazują silne, nieregularne wahania.
+Na tym tle \texttt{AP\_PC} pozostaje na relatywnie stałym poziomie, co potwierdza jego większą przewidywalność w warunkach dużego obciążenia transmisyjnego (Rys. \ref{fig:wykres_paradoks_topologii_jitter}).
+
+\begin{figure}[htbp]
+      \centering
+      \includegraphics[width=\textwidth]{images/analysis/jitter_cv_percent_udp_16b.png}
+      \caption{Porównanie odchylenia standardowego jittera (CV) dla topologii \texttt{AP\_ESP}, \texttt{AP\_PC} oraz \texttt{AP\_Router} w funkcji częstotliwości \cite{espy_nexus_nuxt_dashboard}.}
+      \label{fig:wykres_paradoks_topologii_jitter}
+\end{figure}

@@ -1,4 +1,12 @@
 \chapter{Analiza wyników badań i studium przypadków}
+\label{chap:analiza_wynikow}
 
-Prace w toku.
-..
+Zaprojektowanie i wdrożenie autorskiej platformy badawczej \textit{ESPy-Nexus} pozwoliło na przeprowadzenie zautomatyzowanej, wielogodzinnej kampanii pomiarowej, mającej na celu ewaluację wydajności sieciowej układu ESP32.
+Środowisko typu \textit{Hardware-in-the-Loop} wygenerowało tysiące scenariuszy testowych, krzyżując ze sobą cztery odmienne topologie sieciowe (\texttt{NONE}, \texttt{AP\_ESP}, \texttt{AP\_PC}, \texttt{AP\_ROUTER}), pięć mechanizmów transportu danych (\texttt{SERIAL\_STR}, \texttt{SERIAL\_BIN}, \texttt{UDP}, \texttt{TCP}, \texttt{WebSockets}), rozmiary ładunku użytecznego w przedziale od 4~B do 1024~B oraz częstotliwości z zakresu od 1~Hz aż do 10.000~Hz.
+
+Zgromadzony w ten sposób wolumen surowych logów sprzętowych został przetworzony przez rurociąg analityczny (omówiony w rozdziale \ref{chap:hil}), zasilając bazę danych zunifikowanymi, matematycznymi metrykami jakości usług (QoS).
+
+W niniejszym rozdziale przeprowadzono dogłębną interpretację uzyskanych wyników.
+Należy stanowczo podkreślić, że celem analizy nie jest wyłonienie pojedynczego, \textit{najlepszego} protokołu komunikacyjnego.
+Jak zostanie udowodnione w kolejnych podrozdziałach, każdy ze standardów wykazuje krytyczne słabości w skrajnych warunkach obciążeniowych.
+Główną tezą badawczą tego rozdziału jest udowodnienie, że dobór technologii transportowej oraz architektury sieci w systemach wbudowanych IoT musi być bezwzględnie podyktowany specyfiką rygorów czasowych i sprzętowych projektowanej maszyny.

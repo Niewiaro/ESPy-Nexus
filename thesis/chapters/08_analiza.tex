@@ -285,3 +285,45 @@ Na drugim biegunie znajduje się protokół TCP.
 Jego maksymalna odnotowana przepustowość użyteczna dla tych samych paczek 1024~B wyniosła zaledwie ok.
 \textbf{0,5~Mbps} (496~kbps).
 Jest to ostateczny dowód potwierdzający wnioski z podrozdziału \ref{sec:analiza_tcp_ws} - TCP ratuje swój 100-procentowy wskaźnik PDR kosztem drastycznego zatrzymania potoku danych (mechanizm \textit{Backpressure}), całkowicie deklasując się w zastosowaniach strumieniowych wysokiej częstotliwości (np. przy przesyłaniu obrazu wideo).
+
+\section{Ograniczenia metodologiczne  wpływ długości testu na precyzję metryk czasowych}
+\label{sec:ograniczenia_metodologiczne}
+
+Każde rzetelne badanie empiryczne wymaga zdefiniowania błędu pomiarowego oraz obiektywnej oceny wiarygodności zastosowanego narzędzia.
+Zaprojektowana Płaszczyzna Sterowania (\textit{Control Plane}), choć maksymalizuje precyzję dzięki wykorzystaniu zegarów sprzętowych (\texttt{time.perf\_counter\_ns()}) i pętli aktywnego oczekiwania, nadal operuje w środowisku wielozadaniowego systemu operacyjnego z rodziny GPOS (Windows).
+Fakt ten generuje specyficzne anomalie matematyczne, szczególnie widoczne przy skrajnych wartościach macierzy badawczej.
+
+\subsection{Zjawisko krótkiego okna pomiarowego}
+
+Zgodnie z koncepcją generatora ruchu opisaną w rozdziale \ref{chap:hil}, silnik testowy wysyła stałą, zadeklarowaną liczbę pakietów w ramach jednej próby (np. 1000 paczek danych).
+Przy częstotliwości uderzeniowej rzędu 50~Hz, fizyczna transmisja takiej próby zajmuje 20 sekund.
+Jest to czas wystarczająco długi, aby układ ESP32 zdołał uśrednić wyniki, niwelując drobne zacięcia systemu Windows.
+
+Sytuacja ulega jednak drastycznej zmianie przy wysokich częstotliwościach.
+Jak wykazała metryka diagnostyczna \texttt{engine\_time\_tx\_actual}, ekstremalne testy uderzeniowe (np. powyżej 3000~Hz) ulegają kompresji w domenie czasu.
+Wypchnięcie 1000 pakietów do sterownika sieciowego przy częstotliwości 3900~Hz zajmuje komputerowi zaledwie \textbf{0,256 sekundy}.
+Skrócenie okna pomiarowego do ułamka sekundy ma katastrofalny wpływ na wzory matematyczne liczące parametry długoterminowe.
+
+\subsection{Matematyczna geneza szumu (CV i Drift)}
+
+Najlepszym dowodem na to zjawisko jest anomalia odnotowana dla protokołu TCP (Topologia \texttt{AP\_PC}, ładunek 4~B przy częstotliwości 3900~Hz), którą wstępnie sygnalizowano w podrozdziale \ref{sec:analiza_tcp_ws}.
+Zarejestrowano w niej odchylenie Jittera (CV) rzędu \textbf{3000\%} oraz gigantyczny dryft zegara sprzętowego (Drift) wynoszący ponad 8~milionów PPM.
+
+Fizycznie niemożliwym jest, aby rezonator kwarcowy mikrokontrolera ulegał rozstrojeniu o 8 milionów części na milion.
+Wartość ta jest jednak całkowicie poprawna z perspektywy zaimplementowanego w języku Python algorytmu.
+Zgodnie z wyrowadzonym wcześniej modelem: $$Drift_{PPM} = \left( \frac{\Delta T_{ESP32} - \Delta T_{PC}}{\Delta T_{PC}} \right) \cdot 10^6$$ Ponieważ mianownik ułamka ($\Delta T_{PC}$) przyjmuje wartość bliską zeru (0,256~s), nawet najdrobniejsze, sprzętowe wstrzymanie wątku przez system operacyjny Windows rośnie do wielokrotnego błędu względnego.
+Podobnemu przesterowaniu ulega wskaźnik zmienności (CV), który dzieli odchylenie standardowe opóźnień przez uśredniony.
+
+\begin{figure}[htbp]
+      \centering
+      \includegraphics[width=\textwidth]{images/analysis/timing_drift_ppm_tcp_4b.png}
+      \caption{Wzrost dryftu zegara sprzętowego (Drift) w funkcji długości okna pomiarowego dla protokołu TCP \cite{espy_nexus_nuxt_dashboard}.}
+      \label{fig:wykres_szum_metodologiczny}
+\end{figure}
+
+\subsection{Wnioski interpretacyjne}
+
+Powyższa analiza pozwala na sformułowanie kluczowego wariantu interpretacyjnego dla całego rozdziału.
+Kosmiczne wartości Jittera (CV) oraz Dryftu na skrajnej prawej osi wykresów (dla wysokich obciążeń) nie powinny być odczytywane jako precyzyjne odzwierciedlenie fizyki kwarcu mikrokontrolera ESP32.
+Należy je traktować jako wysoce zaszumione wskaźniki (artefakty), które w sposób bezwzględny sygnują moment całkowitej utraty determinizmu operacyjnego w środowisku HIL.
+W punkcie, w którym okno pomiarowe kurczy się do ułamków sekund, bufory komputera przejmują całkowitą kontrolę nad przepływem czasu, ostatecznie potwierdzając tezę o nieprzydatności stosów GPOS do precyzyjnego dławienia sieci w reżimie czasu rzeczywistego.

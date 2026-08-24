@@ -166,7 +166,7 @@ Skutkuje to natychmiastowym odrzuceniem żądania przez system operacyjny i~bł�
 Przekazywanie pojedynczej referencji portu pomiędzy skrajnymi elementami architektury utrudniałoby zachowanie podziału na wyizolowane klasy bazowe i~zasady otwarte-zamknięte.
 Problem ten rozwiązano architektonicznie, wdrażając moduł \texttt{SerialConnectionManager}, stanowiący implementację kreacyjnego wzorca projektowego \textbf{Multiton} (rozszerzenie klasycznego wzorca Singleton, często nazywane wzorcem Rejestru).
 
-Jak zaprezentowano na Listingu \ref{lst:multiton_manager}, język Python umożliwia nadpisanie wewnętrznej metody magicznej \texttt{\_\_new\_\_()} odpowiedzialnej za fizyczną alokację nowej instancji klasy w~pamięci komputera.
+Jak zaprezentowano na Listingu \ref{lst:multiton_manager}, język Python umożliwia nadpisanie wewnętrznej metody specjalnej \texttt{\_\_new\_\_()} odpowiedzialnej za fizyczną alokację nowej instancji klasy w~pamięci komputera.
 Menadżer połączeń weryfikuje żądany klucz sprzętowy np. \texttt{COM3}.
 Jeśli w~wewnętrznym słowniku klasy (\texttt{\_instances}) instancja do obsługi tego portu jeszcze nie istnieje, zostaje utworzona.
 Jeśli jednak port został już wcześniej zarejestrowany przez Płaszczyznę Sterowania, metoda \texttt{\_\_new\_\_} zwraca dokładnie ten sam, współdzielony adres w~pamięci, gwarantując, że cały system operuje fizycznie na tylko jednym gnieździe \texttt{serial.Serial}.

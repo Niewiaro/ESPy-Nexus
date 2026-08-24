@@ -168,7 +168,7 @@ Wynik ten może wskazywać na narastanie opóźnienia.
 \section{Skuteczność dostarczania i~analiza duplikatów (PDR)}
 \label{sec:pdr}
 
-Najbardziej fundamentalną metryką oceny niezawodności łącza radiowego jest współczynnik dostarczenia pakietów, w~literaturze oznaczany powszechnie jako \textbf{PDR} (\textit{ang. Packet Delivery Ratio}).
+Najbardziej fundamentalną metryką oceny niezawodności łącza radiowego jest współczynnik dostarczenia pakietów (\textit{ang. PDR - Packet Delivery Ratio}).
 Określa on stosunek liczby unikalnych identyfikatorów pakietów odebranych przez mikrokontroler (RX) do liczby pakietów wysłanych przez komputer PC (TX), przekazanej do analizatora jako parametr \texttt{total\_sent}.
 
 Wartość PDR wyrażana jest w~procentach i~zdefiniowano ją poniższym wzorem matematycznym: $$PDR = \left( \frac{N_{unique}}{N_{sent}} \right) \cdot 100\%$$ gdzie $N_{unique}$ oznacza liczbę unikalnych identyfikatorów (\texttt{packet\_id}) poprawnie odebranych przez układ ESP32, a~$N_{sent}$ oznacza liczbę wysłanych pakietów przekazaną jako parametr \texttt{total\_sent}.

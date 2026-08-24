@@ -10,7 +10,8 @@ W~systemach HIL QoS stanowi zbiór wskaźników, które pozwalają ocenić nieza
 Metryki te umożliwiają analizę zachowania stosu TCP/IP (LwIP) oraz zadań systemu FreeRTOS w~warunkach skrajnego obciążenia i~nasycenia buforów (\textit{ang. Stress Testing}).
 
 W~niniejszym rozdziale zaprezentowano zestaw autorskich algorytmów analitycznych, wykorzystanych do wyliczenia wskaźników QoS.
-Zdefiniowano matematyczne podstawy wyliczania skuteczności dostarczania (PDR), fluktuacji opóźnień (Jitter), zjawiska utraty seryjnej (\textit{Burst Loss}), użytecznej wydajności (\textit{Goodput}), anomalii kolejności pakietów, a~także zjawiska zatoru buforów (\textit{Queuing Delay}), stanowiących fundament oceny środowiska pomiarowego.
+Zdefiniowano matematyczne podstawy wyliczania skuteczności dostarczania (PDR), fluktuacji opóźnień (Jitter), zjawiska utraty seryjnej (\textit{Burst Loss}), użytecznej wydajności (\textit{Goodput}), anomalii kolejności pakietów, a~także zjawiska zatoru buforów (\textit{Queuing Delay}).
+Powyższe parametry stanowią podstawę oceny jakości transmisji danych w~systemach sterowania w~czasie rzeczywistym. Opisane zostały w~literaturze jako kluczowe wskaźniki niezawodności i~stabilności czasowej w~sieciach komputerowych~\cite{kurose_global}.
 
 \section{Mechanizm transformacji danych (DownlinkAnalyzer)}
 \label{sec:qos_downlink_analyzer}
@@ -159,7 +160,7 @@ Pokazuje to, że poszczególne anomalie wpływają na różne grupy metryk: utra
     \end{tabular}
 \end{table}
 
-Najbardziej bezpośrednio działanie detektora strat obrazuje scenariusz \texttt{BURST\_LOSS}: trzy kolejne braki pakietów obniżają PDR do $40\%$ i~wyznaczają maksymalny blackout o~długości $3 \cdot 100~\mu s~= 0{,}30$ ms.
+Najbardziej bezpośrednio działanie detektora strat obrazuje scenariusz \texttt{BURST\_LOSS}: trzy kolejne braki pakietów obniżają PDR do $40\%$ i~wyznaczają maksymalny blackout o~długości $3 \cdot 100~\mu s~= {,}30$ ms.
 Scenariusz \texttt{JITTER} zachowuje PDR równy $100\%$, lecz zwiększa jitter do $58{,}31~\mu s$, co pokazuje, że niezawodność dostarczenia nie opisuje stabilności czasowej.
 Z~kolei scenariusz \texttt{QUEUING\_AND\_DRIFT} nie zawiera strat ani duplikatów, ale wykazuje dodatni współczynnik trendu równy ${,}42~\mu s/\mu s$ oraz maksymalne względne opóźnienie $170~\mu s$.
 Wynik ten może wskazywać na narastanie opóźnienia.

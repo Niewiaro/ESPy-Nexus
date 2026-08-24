@@ -1,79 +1,79 @@
-\chapter{Koncepcja Hardware-in-the-Loop (HIL) i autorski system badawczy}
+\chapter{Koncepcja Hardware-in-the-Loop (HIL) i~autorski system badawczy}
 \label{chap:hil}
 
-Weryfikacja niezawodności i wydajności systemów wbudowanych operujących w czasie rzeczywistym wymaga zastosowania odpowiednio zaprojektowanych środowisk testowych.
-Tradycyjne metody oceny oprogramowania, opierające się wyłącznie na analizie statycznej kodu lub symulacjach programowych, nie pozwalają w pełni uwzględnić interakcji zachodzących pomiędzy rzeczywistym procesorem mikrokontrolera, jego fizycznymi peryferiami, stosem komunikacyjnym oraz asynchronicznymi zdarzeniami sieciowymi.
-Z tego względu do ewaluacji stworzonego oprogramowania sieciowego wybrano metodologię \textit{Hardware-in-the-Loop} (HIL).
+Weryfikacja niezawodności i~wydajności systemów wbudowanych operujących w~czasie rzeczywistym wymaga zastosowania odpowiednio zaprojektowanych środowisk testowych.
+Tradycyjne metody oceny oprogramowania, opierające się wyłącznie na analizie statycznej kodu lub symulacjach programowych, nie pozwalają w~pełni uwzględnić interakcji zachodzących pomiędzy rzeczywistym procesorem mikrokontrolera, jego fizycznymi peryferiami, stosem komunikacyjnym oraz asynchronicznymi zdarzeniami sieciowymi.
+Z~tego względu do ewaluacji stworzonego oprogramowania sieciowego wybrano metodologię \textit{Hardware-in-the-Loop} (HIL).
 
-Realizacja stanowiska badawczego wymagała zaprojektowania w pełni zautomatyzowanego środowiska testowego, w którym komputer PC pełni funkcję jednostki nadrzędnej, natomiast mikrokontroler ESP32 stanowi urządzenie badane (\textit{ang. DUT - Device Under Test}).
-Oprogramowanie sterujące, zaimplementowane w języku Python, pełni funkcję orkiestratora eksperymentów, generatora ruchu sieciowego oraz menedżera urządzenia, a także realizuje proces akwizycji i analizy wyników.
+Realizacja stanowiska badawczego wymagała zaprojektowania w~pełni zautomatyzowanego środowiska testowego, w~którym komputer PC pełni funkcję jednostki nadrzędnej, natomiast mikrokontroler ESP32 stanowi urządzenie badane (\textit{ang. DUT - Device Under Test}).
+Oprogramowanie sterujące, zaimplementowane w~języku Python, pełni funkcję orkiestratora eksperymentów, generatora ruchu sieciowego oraz menedżera urządzenia, a~także realizuje proces akwizycji i~analizy wyników.
 Pozwala ono na automatyczne wykonywanie zdefiniowanej macierzy testowej oraz przetwarzanie zebranych danych na użyteczne metryki jakości transmisji.
 
-W niniejszym rozdziale przedstawiono teoretyczne założenia techniki HIL w kontekście systemów wbudowanych, a następnie zaprezentowano architekturę autorskiego stanowiska badawczego.
-Omówiono również zastosowane mechanizmy automatyzacji eksperymentów, sposób generowania macierzy testowej oraz ograniczenia związane z generowaniem kontrolowanego ruchu sieciowego z wykorzystaniem komputera wyposażonego w system operacyjny ogólnego przeznaczenia (GPOS).
+W~niniejszym rozdziale przedstawiono teoretyczne założenia techniki HIL w~kontekście systemów wbudowanych, a~następnie zaprezentowano architekturę autorskiego stanowiska badawczego.
+Omówiono również zastosowane mechanizmy automatyzacji eksperymentów, sposób generowania macierzy testowej oraz ograniczenia związane z~generowaniem kontrolowanego ruchu sieciowego z~wykorzystaniem komputera wyposażonego w~system operacyjny ogólnego przeznaczenia (GPOS).
 
 \section{Micro-HIL jako metoda ewaluacji sprzętu}
 
-Technika \textit{Hardware-in-the-Loop} (HIL), określana jako testowanie \textit{sprzętu w pętli}, jest metodą testowania i walidacji systemów, w której rzeczywiste urządzenie badane współpracuje z komputerowo realizowanym modelem lub środowiskiem testowym.
-W klasycznym stanowisku HIL system nadrzędny odwzorowuje w czasie rzeczywistym zachowanie środowiska, z którym urządzenie współpracuje w warunkach docelowych, umożliwiając badanie rzeczywistego sprzętu i oprogramowania w kontrolowanych oraz powtarzalnych warunkach.
+Technika \textit{Hardware-in-the-Loop} (HIL), określana jako testowanie \textit{sprzętu w~pętli}, jest metodą testowania i~walidacji systemów, w~której rzeczywiste urządzenie badane współpracuje z~komputerowo realizowanym modelem lub środowiskiem testowym.
+W~klasycznym stanowisku HIL system nadrzędny odwzorowuje w~czasie rzeczywistym zachowanie środowiska, z~którym urządzenie współpracuje w~warunkach docelowych, umożliwiając badanie rzeczywistego sprzętu i~oprogramowania w~kontrolowanych oraz powtarzalnych warunkach.
 
-Z perspektywy testowanego mikrokontrolera środowisko HIL dostarcza rzeczywistych bodźców wejściowych za pośrednictwem wykorzystywanych w systemie interfejsów komunikacyjnych.
-Dzięki temu testowany układ wykonuje rzeczywisty kod aplikacyjny na docelowym sprzęcie, z wykorzystaniem jego procesora, pamięci, fizycznych peryferiów oraz rzeczywistego stosu komunikacyjnego.
+Z~perspektywy testowanego mikrokontrolera środowisko HIL dostarcza rzeczywistych bodźców wejściowych za pośrednictwem wykorzystywanych w~systemie interfejsów komunikacyjnych.
+Dzięki temu testowany układ wykonuje rzeczywisty kod aplikacyjny na docelowym sprzęcie, z~wykorzystaniem jego procesora, pamięci, fizycznych peryferiów oraz rzeczywistego stosu komunikacyjnego.
 
-Zastosowana w pracy architektura stanowi uproszczoną odmianę środowiska Hardware-in-the-Loop, którą można określić mianem Micro-HIL (MHIL).
-W klasycznym środowisku HIL rzeczywisty sterownik jest integrowany z systemem czasu rzeczywistego wykonującym model symulowanego środowiska (\textit{ang. plant}), a wymiana danych odbywa się za pośrednictwem rzeczywistych interfejsów wejścia-wyjścia \cite{mathworks_hil}.
-W projektowanym systemie nie jest konieczne odwzorowanie złożonego modelu fizycznego badanego środowiska.
-Komputer PC pełni przede wszystkim funkcję orkiestratora eksperymentu, generatora kontrolowanego ruchu sieciowego oraz systemu akwizycji i analizy wyników, natomiast rzeczywisty mikrokontroler ESP32 stanowi urządzenie badane (DUT).
+Zastosowana w~pracy architektura stanowi uproszczoną odmianę środowiska Hardware-in-the-Loop, którą można określić mianem Micro-HIL (MHIL).
+W~klasycznym środowisku HIL rzeczywisty sterownik jest integrowany z~systemem czasu rzeczywistego wykonującym model symulowanego środowiska (\textit{ang. plant}), a~wymiana danych odbywa się za pośrednictwem rzeczywistych interfejsów wejścia-wyjścia \cite{mathworks_hil}.
+W~projektowanym systemie nie jest konieczne odwzorowanie złożonego modelu fizycznego badanego środowiska.
+Komputer PC pełni przede wszystkim funkcję orkiestratora eksperymentu, generatora kontrolowanego ruchu sieciowego oraz systemu akwizycji i~analizy wyników, natomiast rzeczywisty mikrokontroler ESP32 stanowi urządzenie badane (DUT).
 
 Takie ograniczenie zakresu symulowanego środowiska pozwala uprościć architekturę stanowiska, zachowując jednocześnie istotną cechę podejścia HIL, jaką jest wykonywanie testowanego oprogramowania na rzeczywistym sprzęcie.
-Koncepcja uproszczonych systemów tego typu znajduje odzwierciedlenie w literaturze dotyczącej Micro Hardware-in-the-Loop, w której przedstawiono możliwość redukcji klasycznego stanowiska HIL do mniejszego i bardziej ekonomicznego systemu testowego \cite{palladino2009micro}.
+Koncepcja uproszczonych systemów tego typu znajduje odzwierciedlenie w~literaturze dotyczącej Micro Hardware-in-the-Loop, w~której przedstawiono możliwość redukcji klasycznego stanowiska HIL do mniejszego i~bardziej ekonomicznego systemu testowego \cite{palladino2009micro}.
 
-\subsection{Zalety testowania zjawisk sieciowych w pętli sprzętowej}
+\subsection{Zalety testowania zjawisk sieciowych w~pętli sprzętowej}
 
-W kontekście badań wydajności transmisyjnej, obejmujących między innymi pomiar \textit{jitteru}, przepustowości oraz strat pakietów (\textit{PDR}), zastosowanie rzeczywistego urządzenia docelowego pozwala uwzględnić czynniki, których nie można bezpośrednio zaobserwować w przypadku czystej symulacji programowej.
+W~kontekście badań wydajności transmisyjnej, obejmujących między innymi pomiar \textit{jitteru}, przepustowości oraz strat pakietów (\textit{PDR}), zastosowanie rzeczywistego urządzenia docelowego pozwala uwzględnić czynniki, których nie można bezpośrednio zaobserwować w~przypadku czystej symulacji programowej.
 
 \begin{itemize}
 
     \item \textbf{Walidacja rzeczywistych stosów komunikacyjnych:}
-          w przeciwieństwie do symulacji programowej, w której zachowanie urządzenia oraz jego stosu komunikacyjnego jest reprezentowane przez model, zastosowanie HIL umożliwia wykonanie rzeczywistego oprogramowania na docelowym mikrokontrolerze.
-          Dzięki temu pomiar obejmuje również ograniczenia wynikające z rzeczywistego procesora, pamięci, peryferiów oraz implementacji stosu komunikacyjnego.
+          w~przeciwieństwie do symulacji programowej, w~której zachowanie urządzenia oraz jego stosu komunikacyjnego jest reprezentowane przez model, zastosowanie HIL umożliwia wykonanie rzeczywistego oprogramowania na docelowym mikrokontrolerze.
+          Dzięki temu pomiar obejmuje również ograniczenia wynikające z~rzeczywistego procesora, pamięci, peryferiów oraz implementacji stosu komunikacyjnego.
 
     \item \textbf{Identyfikacja ograniczeń sprzętowych:}
-          w testach obejmujących krótkotrwałe zwiększenie intensywności ruchu (\textit{ang. Burst tests}) badaniu podlega nie tylko zachowanie protokołów komunikacyjnych, lecz również wpływ ograniczeń sprzętowych badanego urządzenia.
+          w~testach obejmujących krótkotrwałe zwiększenie intensywności ruchu (\textit{ang. Burst tests}) badaniu podlega nie tylko zachowanie protokołów komunikacyjnych, lecz również wpływ ograniczeń sprzętowych badanego urządzenia.
           Dotyczy to między innymi wydajności obsługi interfejsów komunikacyjnych, dostępu do pamięci oraz zasobów procesora.
-          W przypadku wykorzystania dodatkowych komponentów sprzętowych analiza może również obejmować ich wpływ na zdolność mikrokontrolera do obsługi zwiększonego obciążenia.
+          W~przypadku wykorzystania dodatkowych komponentów sprzętowych analiza może również obejmować ich wpływ na zdolność mikrokontrolera do obsługi zwiększonego obciążenia.
 
-    \item \textbf{Automatyzacja i powtarzalność:}
-          komputer sterujący kontroluje parametry macierzy testowej, w tym częstotliwość generowania ruchu, wykorzystywany protokół oraz rozmiar ładunku użytecznego.
+    \item \textbf{Automatyzacja i~powtarzalność:}
+          komputer sterujący kontroluje parametry macierzy testowej, w~tym częstotliwość generowania ruchu, wykorzystywany protokół oraz rozmiar ładunku użytecznego.
           Automatyzacja procesu pozwala ograniczyć wpływ operatora na przebieg eksperymentu oraz zwiększyć powtarzalność warunków badawczych.
 
 \end{itemize}
 
-\subsection{Wyzwania i ograniczenia systemów HIL}
+\subsection{Wyzwania i~ograniczenia systemów HIL}
 
-Istotnym wyzwaniem w przypadku zastosowanego stanowiska jest fakt, że komputer PC pełniący funkcję jednostki nadrzędnej pracuje pod kontrolą systemu operacyjnego ogólnego przeznaczenia (GPOS), takiego jak Windows lub Linux.
-W przeciwieństwie do systemów czasu rzeczywistego systemy te nie gwarantują deterministycznego czasu wykonania operacji.
+Istotnym wyzwaniem w~przypadku zastosowanego stanowiska jest fakt, że komputer PC pełniący funkcję jednostki nadrzędnej pracuje pod kontrolą systemu operacyjnego ogólnego przeznaczenia (GPOS), takiego jak Windows lub Linux.
+W~przeciwieństwie do systemów czasu rzeczywistego systemy te nie gwarantują deterministycznego czasu wykonania operacji.
 Na moment rozpoczęcia wykonywania poszczególnych operacji wpływają między innymi mechanizmy szeregowania zadań przez system operacyjny, obciążenie procesora oraz działanie innych procesów.
 
-Ograniczenie to ma szczególne znaczenie podczas generowania ruchu sieciowego z określonymi odstępami czasowymi.
-Wykorzystanie standardowych mechanizmów usypiania wątku, takich jak \texttt{time.sleep()} w języku Python, nie gwarantuje dokładnego momentu jego wznowienia, ponieważ rzeczywisty czas oczekiwania zależy od mechanizmów planowania zadań systemu operacyjnego.
-Z tego względu w krytycznych fragmentach płaszczyzn danych (Data Plane) zastosowano aktywne oczekiwanie (\textit{ang. busy-wait}), którego zadaniem jest ograniczenie zmienności momentu rozpoczęcia kolejnych operacji.
+Ograniczenie to ma szczególne znaczenie podczas generowania ruchu sieciowego z~określonymi odstępami czasowymi.
+Wykorzystanie standardowych mechanizmów usypiania wątku, takich jak \texttt{time.sleep()} w~języku Python, nie gwarantuje dokładnego momentu jego wznowienia, ponieważ rzeczywisty czas oczekiwania zależy od mechanizmów planowania zadań systemu operacyjnego.
+Z~tego względu w~krytycznych fragmentach płaszczyzn danych (Data Plane) zastosowano aktywne oczekiwanie (\textit{ang. busy-wait}), którego zadaniem jest ograniczenie zmienności momentu rozpoczęcia kolejnych operacji.
 
 Zastosowanie aktywnego oczekiwania nie zapewnia jednak deterministycznego czasu wykonania charakterystycznego dla systemów czasu rzeczywistego.
 Ostateczna precyzja generowania ruchu zależy również od obciążenia systemu operacyjnego, działania stosu sieciowego, wykorzystywanego interfejsu komunikacyjnego oraz pozostałych elementów ścieżki transmisji.
-Z tego względu komputer PC należy traktować przede wszystkim jako jednostkę sterującą i generującą bodźce testowe, a nie jako deterministyczne źródło sygnałów czasu rzeczywistego.
+Z~tego względu komputer PC należy traktować przede wszystkim jako jednostkę sterującą i~generującą bodźce testowe, a~nie jako deterministyczne źródło sygnałów czasu rzeczywistego.
 
-\section{Paradygmaty obiektowe i wstrzykiwanie zależności w środowisku Python}
+\section{Paradygmaty obiektowe i~wstrzykiwanie zależności w~środowisku Python}
 \label{sec:python_architektura_oop}
 
-Język Python dzięki swojej elastyczności i popularności jest często używany do szybkiej analizy danych.
-W takich zastosowaniach często powstają nieustrukturyzowane, proceduralne skrypty.
-W przypadku autorskiego systemu HIL \textit{ESPy-Nexus}, który docelowo realizuje tysiące scenariuszy testowych, zarządza połączeniami sieciowymi, steruje portami szeregowymi i procesuje relacyjne bazy danych (SQLite), takie podejście nieuchronnie doprowadziłoby do powstania trudnego w utrzymaniu, nieskalowalnego kodu.
+Język Python dzięki swojej elastyczności i~popularności jest często używany do szybkiej analizy danych.
+W~takich zastosowaniach często powstają nieustrukturyzowane, proceduralne skrypty.
+W~przypadku autorskiego systemu HIL \textit{ESPy-Nexus}, który docelowo realizuje tysiące scenariuszy testowych, zarządza połączeniami sieciowymi, steruje portami szeregowymi i~procesuje relacyjne bazy danych (SQLite), takie podejście nieuchronnie doprowadziłoby do powstania trudnego w~utrzymaniu, nieskalowalnego kodu.
 
 Aby temu zapobiec, architekturę systemu nadzorczego podzielono na odseparowane pakiety:
 \begin{itemize}
-    \item \texttt{core} - konfiguracja i logowanie,
-    \item \texttt{runner} - silnik wykonawczy i analityczny,
+    \item \texttt{core} - konfiguracja i~logowanie,
+    \item \texttt{runner} - silnik wykonawczy i~analityczny,
     \item \texttt{control\_plane} - warstwa sterowania,
     \item \texttt{data\_plane} - warstwa transmisji danych.
 \end{itemize}
@@ -85,22 +85,22 @@ Podstawą uniwersalności platformy jest narzucenie ścisłych kontraktów dla p
 Wykorzystując wbudowaną bibliotekę \texttt{abc} (\textit{ang. Abstract Base Classes}), zdefiniowano abstrakcyjne interfejsy, takie jak \texttt{BaseControlPlane} oraz \texttt{BaseDataPlane}.
 Zmuszają one każdą nową implementację do bezwzględnego zaimplementowania określonych metod (np. \texttt{connect()}, \texttt{disconnect()}, \texttt{transmit()}) niezależnie czy będzie to port szeregowy, czy gniazdo UDP.
 
-Takie podejście wspiera zasadę otwarte-zamknięte (\textit{Open/Closed Principle}) oraz zasadę podstawienia Liskov (\textit{Liskov Substitution Principle}) opisaną w \cite{solid}.
+Takie podejście wspiera zasadę otwarte-zamknięte (\textit{Open/Closed Principle}) oraz zasadę podstawienia Liskov (\textit{Liskov Substitution Principle}) opisaną w~\cite{solid}.
 Silnik wykonawczy wie jedynie, że operuje na obiekcie typu \texttt{BaseDataPlane}, co całkowicie uniezależnia wewnętrzną logikę testów od fizycznej implementacji poszczególnych protokołów transportowych.
 
-\subsection{Wzorzec Fabryki i Wstrzykiwanie Zależności}
+\subsection{Wzorzec Fabryki i~Wstrzykiwanie Zależności}
 
 Tworzenie obiektów zarządzających warstwą fizyczną sprzętu jest procesem skomplikowanym.
-Decyzja o tym, czy system użyje protokołu binarnego, tekstowego, czy wirtualnego (Mock) zależy od profilu konfiguracyjnego (\texttt{RunnerSettings}).
-Logikę decyzyjną odizolowano w pliku uruchomieniowym \texttt{main.py}, stosując wzorzec \textbf{Fabryki} (\textit{Factory Pattern}).
-Funkcje takie jak \texttt{build\_data\_planes()} odczytują konfigurację i zwracają utworzone obiekty konkretnych klas (np. \texttt{TcpDataPlane}).
+Decyzja o~tym, czy system użyje protokołu binarnego, tekstowego, czy wirtualnego (Mock) zależy od profilu konfiguracyjnego (\texttt{RunnerSettings}).
+Logikę decyzyjną odizolowano w~pliku uruchomieniowym \texttt{main.py}, stosując wzorzec \textbf{Fabryki} (\textit{Factory Pattern}).
+Funkcje takie jak \texttt{build\_data\_planes()} odczytują konfigurację i~zwracają utworzone obiekty konkretnych klas (np. \texttt{TcpDataPlane}).
 
 Gotowe, skonfigurowane obiekty połączeniowe nie są jednak globalnie dostępne dla reszty aplikacji.
 Aby utrzymać najwyższy stopień luźnego powiązania (\textit{ang. Loose Coupling}), zastosowano paradygmat \textbf{Wstrzykiwania Zależności} (\textit{ang. DI - Dependency Injection}).
-Jak zaprezentowano na Listingu \ref{lst:python_di_main}, gotowe instancje warstwy sterującej i transmisyjnej przekazywane są jako argumenty do konstruktora głównej maszyny stanów (\texttt{TestEngine}).
+Jak zaprezentowano na Listingu \ref{lst:python_di_main}, gotowe instancje warstwy sterującej i~transmisyjnej przekazywane są jako argumenty do konstruktora głównej maszyny stanów (\texttt{TestEngine}).
 
 \begin{listing}[htbp]
-    \caption{Wykorzystanie wzorca Fabryki i Wstrzykiwania Zależności do izolacji logiki wykonawczej od warstwy sprzętowej (\texttt{main.py}) \cite{espy_nexus_python_host}.}
+    \caption{Wykorzystanie wzorca Fabryki i~Wstrzykiwania Zależności do izolacji logiki wykonawczej od warstwy sprzętowej (\texttt{main.py}) \cite{espy_nexus_python_host}.}
     \label{lst:python_di_main}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 def main() -> None:
@@ -137,34 +137,34 @@ def main() -> None:
 \end{minted}
 \end{listing}
 
-Rozdzielenie etapu \textit{składania} komponentów od ich faktycznego użycia to ogromna zaleta z perspektywy inżynierii testów.
-Pozwala to przełączyć system w profil deweloperski, wstrzykując obiekty typu \texttt{MockControlPlane} i \texttt{MockDataPlane}.
-Silnik \texttt{TestEngine} wykona wówczas pełny proces eksperymentalny (od symulowanej wysyłki, po zapis do bazy SQLite i uruchomienie procesu analitycznego ETL), bez informacji, że po drugiej stronie nie znajduje się fizyczny mikrokontroler ESP32.
-Znacząco usprawnia to rozwój oprogramowania (\textit{ang. Software Development Lifecycle}) bez konieczności angażowania środowiska sprzętowego do weryfikacji warstwy logicznej w Pythonie.
+Rozdzielenie etapu \textit{składania} komponentów od ich faktycznego użycia to ogromna zaleta z~perspektywy inżynierii testów.
+Pozwala to przełączyć system w~profil deweloperski, wstrzykując obiekty typu \texttt{MockControlPlane} i~\texttt{MockDataPlane}.
+Silnik \texttt{TestEngine} wykona wówczas pełny proces eksperymentalny (od symulowanej wysyłki, po zapis do bazy SQLite i~uruchomienie procesu analitycznego ETL), bez informacji, że po drugiej stronie nie znajduje się fizyczny mikrokontroler ESP32.
+Znacząco usprawnia to rozwój oprogramowania (\textit{ang. Software Development Lifecycle}) bez konieczności angażowania środowiska sprzętowego do weryfikacji warstwy logicznej w~Pythonie.
 
-\section{Płaszczyzna Sterowania (Control Plane) i zarządzanie zasobami (Multiton)}
+\section{Płaszczyzna Sterowania (Control Plane) i~zarządzanie zasobami (Multiton)}
 \label{sec:control_plane_multiton}
 
 Asymetryczna architektura testowa wymaga niezawodnego kanału komunikacyjnego służącego do koordynacji przebiegu eksperymentów.
-Funkcję tę w systemie \textit{ESPy-Nexus} pełni wyizolowana Płaszczyzna Sterowania (\textit{ang. Control Plane}), zaimplementowana natywnie w klasie \texttt{SerialControlPlane}.
-Jej głównym zadaniem jest wymiana komend kontrolnych z układem ESP32 (takich jak \texttt{START\_TCP} czy \texttt{STOP}) oraz weryfikacja poprawności synchronizacji poprzez oczekiwanie na odpowiedzi potwierdzające (tzw. \textit{handshake}, np. \texttt{ACK\_START\_TCP}).
+Funkcję tę w~systemie \textit{ESPy-Nexus} pełni wyizolowana Płaszczyzna Sterowania (\textit{ang. Control Plane}), zaimplementowana natywnie w~klasie \texttt{SerialControlPlane}.
+Jej głównym zadaniem jest wymiana komend kontrolnych z~układem ESP32 (takich jak \texttt{START\_TCP} czy \texttt{STOP}) oraz weryfikacja poprawności synchronizacji poprzez oczekiwanie na odpowiedzi potwierdzające (tzw. \textit{handshake}, np. \texttt{ACK\_START\_TCP}).
 Dodatkowo, po zrealizowaniu procedury pomiarowej, płaszczyzna ta odpowiada za ekstrakcję zgromadzonych wyników sprzętowych poprzez wywołanie metody \texttt{fetch\_data()}, która wysyła komendę \texttt{GET\_DATA}.
 
-Rozdzielenie Płaszczyzny Sterowania od Płaszczyzny Danych (\textit{Data Plane}) stanowi modelowe podejście koncepcyjne, jednak w środowisku fizycznym rodzi poważny problem związany z wyłącznością dostępu do zasobów.
+Rozdzielenie Płaszczyzny Sterowania od Płaszczyzny Danych (\textit{Data Plane}) stanowi modelowe podejście koncepcyjne, jednak w~środowisku fizycznym rodzi poważny problem związany z~wyłącznością dostępu do zasobów.
 
-Systemy operacyjne ogólnego przeznaczenia (GPOS), takie jak Windows czy Linux, natywnie blokują interfejsy szeregowe (porty COM / TTY) w trybie wyłączności dla pierwszego procesu, który dokona ich otwarcia.
-W przypadku realizacji scenariuszy testowych z wykorzystaniem protokołów sieciowych (np. \texttt{Protocol.TCP} lub \texttt{Protocol.UDP}) rozdział ten nie sprawia problemów - Control Plane operuje na porcie szeregowym USB, podczas gdy Data Plane wykorzystuje fizyczną kartę sieciową (karty Wi-Fi/Ethernet) komputera.
-Problem pojawia się jednak, gdy w matrycy testowej wywołany zostanie protokół bezpośredniej komunikacji przewodowej (np. \texttt{Protocol.SERIAL\_BIN}).
-Wówczas zarówno Płaszczyzna Sterowania, jak i Płaszczyzna Danych próbują zainicjować odrębne obiekty dostępu (\texttt{serial.Serial}) pod tym samym fizycznym adresem (np. \texttt{COM3}).
-Skutkuje to natychmiastowym odrzuceniem żądania przez system operacyjny i błędem braku dostępu, prowadząc do zatrzymania procesu badawczego.
+Systemy operacyjne ogólnego przeznaczenia (GPOS), takie jak Windows czy Linux, natywnie blokują interfejsy szeregowe (porty COM / TTY) w~trybie wyłączności dla pierwszego procesu, który dokona ich otwarcia.
+W~przypadku realizacji scenariuszy testowych z~wykorzystaniem protokołów sieciowych (np. \texttt{Protocol.TCP} lub \texttt{Protocol.UDP}) rozdział ten nie sprawia problemów - Control Plane operuje na porcie szeregowym USB, podczas gdy Data Plane wykorzystuje fizyczną kartę sieciową (karty Wi-Fi/Ethernet) komputera.
+Problem pojawia się jednak, gdy w~matrycy testowej wywołany zostanie protokół bezpośredniej komunikacji przewodowej (np. \texttt{Protocol.SERIAL\_BIN}).
+Wówczas zarówno Płaszczyzna Sterowania, jak i~Płaszczyzna Danych próbują zainicjować odrębne obiekty dostępu (\texttt{serial.Serial}) pod tym samym fizycznym adresem (np. \texttt{COM3}).
+Skutkuje to natychmiastowym odrzuceniem żądania przez system operacyjny i~błędem braku dostępu, prowadząc do zatrzymania procesu badawczego.
 
-Przekazywanie pojedynczej referencji portu pomiędzy skrajnymi elementami architektury utrudniałoby zachowanie podziału na wyizolowane klasy bazowe i zasady otwarte-zamknięte.
+Przekazywanie pojedynczej referencji portu pomiędzy skrajnymi elementami architektury utrudniałoby zachowanie podziału na wyizolowane klasy bazowe i~zasady otwarte-zamknięte.
 Problem ten rozwiązano architektonicznie, wdrażając moduł \texttt{SerialConnectionManager}, stanowiący implementację kreacyjnego wzorca projektowego \textbf{Multiton} (rozszerzenie klasycznego wzorca Singleton, często nazywane wzorcem Rejestru).
 
-Jak zaprezentowano na Listingu \ref{lst:multiton_manager}, język Python umożliwia nadpisanie wewnętrznej metody magicznej \texttt{\_\_new\_\_()} odpowiedzialnej za fizyczną alokację nowej instancji klasy w pamięci komputera.
+Jak zaprezentowano na Listingu \ref{lst:multiton_manager}, język Python umożliwia nadpisanie wewnętrznej metody magicznej \texttt{\_\_new\_\_()} odpowiedzialnej za fizyczną alokację nowej instancji klasy w~pamięci komputera.
 Menadżer połączeń weryfikuje żądany klucz sprzętowy np. \texttt{COM3}.
-Jeśli w wewnętrznym słowniku klasy (\texttt{\_instances}) instancja do obsługi tego portu jeszcze nie istnieje, zostaje utworzona.
-Jeśli jednak port został już wcześniej zarejestrowany przez Płaszczyznę Sterowania, metoda \texttt{\_\_new\_\_} zwraca dokładnie ten sam, współdzielony adres w pamięci, gwarantując, że cały system operuje fizycznie na tylko jednym gnieździe \texttt{serial.Serial}.
+Jeśli w~wewnętrznym słowniku klasy (\texttt{\_instances}) instancja do obsługi tego portu jeszcze nie istnieje, zostaje utworzona.
+Jeśli jednak port został już wcześniej zarejestrowany przez Płaszczyznę Sterowania, metoda \texttt{\_\_new\_\_} zwraca dokładnie ten sam, współdzielony adres w~pamięci, gwarantując, że cały system operuje fizycznie na tylko jednym gnieździe \texttt{serial.Serial}.
 
 \begin{listing}[htbp]
     \caption{Wykorzystanie wzorca Multiton do zapobiegania kolizjom zasobów sprzętowych przy współdzieleniu fizycznego portu COM (\texttt{connection\_manager.py}) \cite{espy_nexus_python_host}}
@@ -197,40 +197,40 @@ class SerialConnectionManager:
 \end{listing}
 
 Aby zagwarantować bezpieczne współdzielenie portu, wewnątrz menadżera zaimplementowano również mechanizm zliczania referencji (zmienna \texttt{\_ref\_count}).
-Funkcja \texttt{connect()} inkrementuje licznik, a \texttt{disconnect()} go dekrementuje.
-Fizyczne przerwanie transmisji (funkcja \texttt{close()} systemowej biblioteki) następuje dopiero w momencie, w którym licznik klientów wyniesie zero, co oznacza, że ani moduł \textit{Control}, ani moduł \textit{Data} nie zgłasza już zapotrzebowania na dany zasób komunikacyjny.
+Funkcja \texttt{connect()} inkrementuje licznik, a~\texttt{disconnect()} go dekrementuje.
+Fizyczne przerwanie transmisji (funkcja \texttt{close()} systemowej biblioteki) następuje dopiero w~momencie, w~którym licznik klientów wyniesie zero, co oznacza, że ani moduł \textit{Control}, ani moduł \textit{Data} nie zgłasza już zapotrzebowania na dany zasób komunikacyjny.
 
-\section{Generator matrycy testowej i parametryzacja ruchu sieciowego}
+\section{Generator matrycy testowej i~parametryzacja ruchu sieciowego}
 \label{sec:matryca_testowa}
 
-Rzetelna ewaluacja wydajności układu ESP32 i jego stosu sieciowego w warunkach stresowych (\textit{ang. Stress Testing}) wymaga przeprowadzenia nie kilku, lecz tysięcy niezależnych pomiarów dla każdej z możliwych konfiguracji.
-Zależność opóźnień (jitteru) oraz strat pakietów (PDR) ma charakter wysoce nieliniowy i zmienia się dynamicznie w funkcji wybranego protokołu transportowego, rozmiaru przesyłanego ładunku oraz częstotliwości generowania ruchu.
-Ręczne rekonfigurowanie i uruchamianie każdego testu z osobna byłoby procesem żmudnym i podatnym na błędy ludzkie.
-W celu pełnej automatyzacji środowiska HIL opracowano autorski generator matrycy testowej (\texttt{matrix.py}), zdolny do bezobsługowego zaplanowania wielogodzinnych kampanii pomiarowych.
+Rzetelna ewaluacja wydajności układu ESP32 i~jego stosu sieciowego w~warunkach stresowych (\textit{ang. Stress Testing}) wymaga przeprowadzenia nie kilku, lecz tysięcy niezależnych pomiarów dla każdej z~możliwych konfiguracji.
+Zależność opóźnień (jitteru) oraz strat pakietów (PDR) ma charakter wysoce nieliniowy i~zmienia się dynamicznie w~funkcji wybranego protokołu transportowego, rozmiaru przesyłanego ładunku oraz częstotliwości generowania ruchu.
+Ręczne rekonfigurowanie i~uruchamianie każdego testu z~osobna byłoby procesem żmudnym i~podatnym na błędy ludzkie.
+W~celu pełnej automatyzacji środowiska HIL opracowano autorski generator matrycy testowej (\texttt{matrix.py}), zdolny do bezobsługowego zaplanowania wielogodzinnych kampanii pomiarowych.
 
 \subsection{Algorytmy przemiatania częstotliwości}
 
 Aby odnaleźć limity wydajnościowe sprzętu (\textit{ang. Hardware Bottlenecks}), system musi stopniowo zwiększać obciążenie sieciowe, od wartości bezpiecznych (np. 1 Hz) aż po fizyczne granice układu (np. 10 000 Hz).
-Skrypt w języku Python pozwala na wybranie kilku matematycznych strategii profilowania częstotliwości uderzeniowej:
+Skrypt w~języku Python pozwala na wybranie kilku matematycznych strategii profilowania częstotliwości uderzeniowej:
 \begin{itemize}
     \item \textbf{Przyrost liniowy (\texttt{LINEAR}):}
-          zwiększanie częstotliwości o stałą wartość (np. o 100 Hz na każdy krok).
+          zwiększanie częstotliwości o~stałą wartość (np. o~100 Hz na każdy krok).
           Użyteczne do precyzyjnego badania konkretnych przedziałów, jednak wysoce nieefektywne czasowo przy badaniu szerokiego spektrum operacyjnego.
     \item \textbf{Przyrost wykładniczy (\texttt{EXPONENTIAL}):}
           skokowe zwiększanie częstotliwości poprzez mnożenie przez ustaloną podstawę (np. potęgi dwójki: 2, 4, 8, 16, ...).
           Pozwala błyskawicznie wykryć moment załamania wydajności mikrokontrolera.
     \item \textbf{Przyrost logarytmiczny (\texttt{LOG}):}
           zwiększanie częstotliwości według skali logarytmicznej (np. 1, 2, 3, ..., 9, 10, 20, 30, ..., 90, 100, 200, ...).
-          Strategia ta pozwala na szybkie przemiatanie szerokiego spektrum częstotliwości przy jednoczesnym zachowaniu gęstej siatki pomiarowej w niskich częstotliwościach.
+          Strategia ta pozwala na szybkie przemiatanie szerokiego spektrum częstotliwości przy jednoczesnym zachowaniu gęstej siatki pomiarowej w~niskich częstotliwościach.
     \item \textbf{Strategia mieszana (\texttt{SMART}):}
           autorski algorytm łączący zalety powyższych generatorów.
-          Jak zaprezentowano na Listingu \ref{lst:matrix_smart}, funkcja wypełnia zbiór (\texttt{set}) wartościami z przebiegu wykładniczego, logarytmicznego oraz liniowego.
-          Właściwość zbioru w języku Python automatycznie eliminuje powielone wartości (duplikaty).
-          W efekcie tworzona jest gęsta siatka pomiarowa w niskich częstotliwościach (gdzie układy wykazują dużą czułość na małe zmiany) i szeroka siatka badawcza przy wysokich obciążeniach krańcowych.
+          Jak zaprezentowano na Listingu \ref{lst:matrix_smart}, funkcja wypełnia zbiór (\texttt{set}) wartościami z~przebiegu wykładniczego, logarytmicznego oraz liniowego.
+          Właściwość zbioru w~języku Python automatycznie eliminuje powielone wartości (duplikaty).
+          W~efekcie tworzona jest gęsta siatka pomiarowa w~niskich częstotliwościach (gdzie układy wykazują dużą czułość na małe zmiany) i~szeroka siatka badawcza przy wysokich obciążeniach krańcowych.
 \end{itemize}
 
 \begin{listing}[htbp]
-    \caption{Hybrydowy algorytm przemiatania częstotliwości automatycznie eliminujący duplikaty pomiarowe z wykorzystaniem zbiorów (\texttt{matrix.py}) \cite{espy_nexus_python_host}.}
+    \caption{Hybrydowy algorytm przemiatania częstotliwości automatycznie eliminujący duplikaty pomiarowe z~wykorzystaniem zbiorów (\texttt{matrix.py}) \cite{espy_nexus_python_host}.}
     \label{lst:matrix_smart}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 def generate_smart_rates(
@@ -256,13 +256,13 @@ Po ustaleniu wektora częstotliwości, niezbędne jest wygenerowanie wszystkich 
 Zamiast implementowania głęboko zagnieżdżonych pętli (\texttt{for}-\texttt{loop}), które znacząco obniżają czytelność kodu, proces ten oparto na wbudowanej bibliotece standardowej \texttt{itertools}.
 Wywołanie metody \texttt{itertools.product()} generuje pełny iloczyn kartezjański podanych parametrów: zbioru protokołów transportowych, zbioru częstotliwości generowania ruchu oraz zbioru rozmiarów ładunku użytecznego (\textit{ang. payload size}).
 
-Każda z wyliczonych permutacji zamykana jest wewnątrz struktury \texttt{TestConfig} (Listing \ref{lst:matrix_cartesian}).
-Strukturę tę zadeklarowano z wykorzystaniem mechanizmu \texttt{dataclasses} jako obiekt całkowicie niemutowalny (\texttt{@dataclass(frozen=True)}).
-Takie rozwiązanie gwarantuje, że zaplanowane parametry testu nie ulegną przypadkowej modyfikacji w trakcie wykonywania kampanii, na przykład wskutek modyfikacji instancji przekazanej przez referencję.
-Tak skomponowana lista (matryca) trafia następnie do jądra wykonawczego \texttt{TestEngine}, który sekwencyjnie uruchamia i nadzoruje każdy z zaplanowanych eksperymentów.
+Każda z~wyliczonych permutacji zamykana jest wewnątrz struktury \texttt{TestConfig} (Listing \ref{lst:matrix_cartesian}).
+Strukturę tę zadeklarowano z~wykorzystaniem mechanizmu \texttt{dataclasses} jako obiekt całkowicie niemutowalny (\texttt{@dataclass(frozen=True)}).
+Takie rozwiązanie gwarantuje, że zaplanowane parametry testu nie ulegną przypadkowej modyfikacji w~trakcie wykonywania kampanii, na przykład wskutek modyfikacji instancji przekazanej przez referencję.
+Tak skomponowana lista (matryca) trafia następnie do jądra wykonawczego \texttt{TestEngine}, który sekwencyjnie uruchamia i~nadzoruje każdy z~zaplanowanych eksperymentów.
 
 \begin{listing}[htbp]
-    \caption{Wykorzystanie iloczynu kartezjańskiego do generowania bezobsługowej kampanii testowej złożonej z niemutowalnych konfiguracji (\texttt{matrix.py}) \cite{espy_nexus_python_host}.}
+    \caption{Wykorzystanie iloczynu kartezjańskiego do generowania bezobsługowej kampanii testowej złożonej z~niemutowalnych konfiguracji (\texttt{matrix.py}) \cite{espy_nexus_python_host}.}
     \label{lst:matrix_cartesian}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 def generate_test_matrix(
@@ -297,32 +297,32 @@ def generate_test_matrix(
 \end{minted}
 \end{listing}
 
-\section{Akwizycja i ekstrakcja danych pamięciowych}
+\section{Akwizycja i~ekstrakcja danych pamięciowych}
 \label{sec:akwizycja_danych_exfiltration}
 
-Kluczowym zadaniem systemu nadzorczego HIL w ujęciu pojedynczego scenariusza (\texttt{\_run\_single\_test}) jest nie tylko wygenerowanie i wysłanie strumienia spredefiniowanych ramek, ale przede wszystkim bezpieczne odebranie logów zarejestrowanych przez mikrokontroler.
-Ze względu na asymetryczny model architektury, w którym urządzenie końcowe gromadzi dane w zewnętrznej pamięci PSRAM, niezbędne było zaprojektowanie wysoce wydajnego mechanizmu ekstrakcji.
+Kluczowym zadaniem systemu nadzorczego HIL w~ujęciu pojedynczego scenariusza (\texttt{\_run\_single\_test}) jest nie tylko wygenerowanie i~wysłanie strumienia spredefiniowanych ramek, ale przede wszystkim bezpieczne odebranie logów zarejestrowanych przez mikrokontroler.
+Ze względu na asymetryczny model architektury, w~którym urządzenie końcowe gromadzi dane w~zewnętrznej pamięci PSRAM, niezbędne było zaprojektowanie wysoce wydajnego mechanizmu ekstrakcji.
 
-\subsection{Ekstrakcja binarna i mapowanie struktur C++}
+\subsection{Ekstrakcja binarna i~mapowanie struktur C++}
 
-Tradycyjne przesyłanie logów z mikrokontrolerów odbywa się najczęściej z wykorzystaniem formatów tekstowych (np. CSV przesyłane przez port szeregowy).
-Przy założeniu matrycy badawczej generującej do 50 000 rekordów na jeden test, konwersja wartości 64-bitowych (\textit{timestamp}) do postaci znaków ASCII (tekstu) bezpośrednio na układzie ESP32, a następnie powrotne ich parsowanie w języku Python trwałoby nieakceptowalnie długo i uniemożliwiłoby przeprowadzenie szerokich kampanii pomiarowych.
+Tradycyjne przesyłanie logów z~mikrokontrolerów odbywa się najczęściej z~wykorzystaniem formatów tekstowych (np. CSV przesyłane przez port szeregowy).
+Przy założeniu matrycy badawczej generującej do 50 000 rekordów na jeden test, konwersja wartości 64-bitowych (\textit{timestamp}) do postaci znaków ASCII (tekstu) bezpośrednio na układzie ESP32, a~następnie powrotne ich parsowanie w~języku Python trwałoby nieakceptowalnie długo i~uniemożliwiłoby przeprowadzenie szerokich kampanii pomiarowych.
 
-Aby zminimalizować czas trwania narzutu komunikacyjnego pomiędzy kolejnymi testami, w warstwie sterującej (\texttt{SerialControlPlane}) zaimplementowano mechanizm masowego, binarnego zrzutu pamięci (\textit{ang. Memory Dump}).
-Jak omówiono w rozdziale \ref{ch:platforma_sprzetowa}, mikrokontroler wysyła dokładnie 12 bajtów na każdy rekord.
-Skrypt w języku Python oblicza teoretyczny rozmiar zrzutu (np. $50000 \times 12 \text{ B} = 600 \text{ KB}$) i odczytuje całą tę wielkość za pomocą pojedynczej, natywnej operacji \texttt{serial\_obj.read(expected\_bytes)}.
+Aby zminimalizować czas trwania narzutu komunikacyjnego pomiędzy kolejnymi testami, w~warstwie sterującej (\texttt{SerialControlPlane}) zaimplementowano mechanizm masowego, binarnego zrzutu pamięci (\textit{ang. Memory Dump}).
+Jak omówiono w~rozdziale \ref{ch:platforma_sprzetowa}, mikrokontroler wysyła dokładnie 12 bajtów na każdy rekord.
+Skrypt w~języku Python oblicza teoretyczny rozmiar zrzutu (np. $50000 \times 12 \text{ B} = 600 \text{ KB}$) i~odczytuje całą tę wielkość za pomocą pojedynczej, natywnej operacji \texttt{serial\_obj.read(expected\_bytes)}.
 
 Zdekodowanie otrzymanego strumienia bajtów na obiekty języka Python zrealizowano przy pomocy wbudowanej biblioteki \texttt{struct}.
 Jak zaprezentowano na Listingu \ref{lst:python_struct_unpack}, do błyskawicznego rozpakowania tablicy wykorzystano metodę \texttt{iter\_unpack()} ze specyfikatorem formatu \texttt{<Iq}.
 Deklaracja ta informuje interpreter Pythona, aby interpretował surowe bajty kolejno jako:
 \begin{itemize}
-    \item \texttt{<} - wartości w formacie \textit{little-endian} (zgodnie z formatem używanym przez implementację ESP32),
-    \item \texttt{I} - bezznakowa, 32-bitowa liczba całkowita (\texttt{uint32\_t} w C++, odpowiadająca \texttt{packet\_id}),
-    \item \texttt{q} - znakowa, 64-bitowa liczba całkowita (\texttt{int64\_t} w C++, odpowiadająca stemplowi czasowemu w mikrosekundach).
+    \item \texttt{<} - wartości w~formacie \textit{little-endian} (zgodnie z~formatem używanym przez implementację ESP32),
+    \item \texttt{I} - bezznakowa, 32-bitowa liczba całkowita (\texttt{uint32\_t} w~C++, odpowiadająca \texttt{packet\_id}),
+    \item \texttt{q} - znakowa, 64-bitowa liczba całkowita (\texttt{int64\_t} w~C++, odpowiadająca stemplowi czasowemu w~mikrosekundach).
 \end{itemize}
 
 \begin{listing}[htbp]
-    \caption{Błyskawiczne dekodowanie pamięci binarnej C++ na wysokopoziomowe obiekty słownikowe w języku Python (\texttt{serial\_cp.py}) \cite{espy_nexus_python_host}.}
+    \caption{Błyskawiczne dekodowanie pamięci binarnej C++ na wysokopoziomowe obiekty słownikowe w~języku Python (\texttt{serial\_cp.py}) \cite{espy_nexus_python_host}.}
     \label{lst:python_struct_unpack}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 # C++: uint32_t (4B) + int64_t (8B) = 12 bajtów na rekord pomiarowy
@@ -346,25 +346,25 @@ except struct.error as e:
 \end{minted}
 \end{listing}
 
-Dzięki temu podejściu, transformacja setek tysięcy bajtów surowej komunikacji sprzętowej na wewnętrzne, łatwo iterowalne struktury danych języka Python (listy słowników) odbywa się w ułamku sekundy, bez angażowania obciążających pamięć parserów tekstowych.
+Dzięki temu podejściu, transformacja setek tysięcy bajtów surowej komunikacji sprzętowej na wewnętrzne, łatwo iterowalne struktury danych języka Python (listy słowników) odbywa się w~ułamku sekundy, bez angażowania obciążających pamięć parserów tekstowych.
 
-\subsection{Krzyżowanie danych TX i RX}
+\subsection{Krzyżowanie danych TX i~RX}
 
-W celu obliczenia statystyk jakości usług sieciowych (takich jak PDR), system analityczny musi posiadać wiedzę nie tylko o tym, co urządzenie sprzętowe odebrało (RX - \textit{Receive}), ale przede wszystkim o tym, co komputer PC faktycznie nadał (TX - \textit{Transmit}).
-W trakcie każdego eksperymentu \textit{Płaszczyzna Danych} (\textit{Data Plane}) na komputerze generuje listę nadanych pakietów wraz ze stemplami czasowymi wyjścia po stronie PC.
+W~celu obliczenia statystyk jakości usług sieciowych (takich jak PDR), system analityczny musi posiadać wiedzę nie tylko o~tym, co urządzenie sprzętowe odebrało (RX - \textit{Receive}), ale przede wszystkim o~tym, co komputer PC faktycznie nadał (TX - \textit{Transmit}).
+W~trakcie każdego eksperymentu \textit{Płaszczyzna Danych} (\textit{Data Plane}) na komputerze generuje listę nadanych pakietów wraz ze stemplami czasowymi wyjścia po stronie PC.
 
-Po udanym zrzucie binarnym (\textit{fetch}), w jądrze \texttt{TestEngine} następuje integracja obu zbiorów (TX i RX).
-Ponieważ zbiory te przy wyższych częstotliwościach najczęściej różnią się objętością (wynikającą ze zjawiska fizycznej utraty pakietów w kanale komunikacyjnym), do operacji krzyżowania wdrożono potężny silnik biblioteki \textbf{Pandas}.
+Po udanym zrzucie binarnym (\textit{fetch}), w~jądrze \texttt{TestEngine} następuje integracja obu zbiorów (TX i~RX).
+Ponieważ zbiory te przy wyższych częstotliwościach najczęściej różnią się objętością (wynikającą ze zjawiska fizycznej utraty pakietów w~kanale komunikacyjnym), do operacji krzyżowania wdrożono potężny silnik biblioteki \textbf{Pandas}.
 Wykorzystanie funkcji \texttt{pd.merge(..., how="outer")} wykonuje tzw. złączenie pełne.
-Gwarantuje to zachowanie w macierzy wynikowej informacji o pakietach, które opuściły PC, lecz nigdy nie dotarły do mikrokontrolera (uzyskując pustą wartość odebranego czasu - \texttt{NaN} / \textit{Not a Number}).
+Gwarantuje to zachowanie w~macierzy wynikowej informacji o~pakietach, które opuściły PC, lecz nigdy nie dotarły do mikrokontrolera (uzyskując pustą wartość odebranego czasu - \texttt{NaN} / \textit{Not a~Number}).
 
 Kompletna, połączona macierz zdarzeń wprowadzana jest następnie do relacyjnej bazy danych \textbf{SQLite} (\texttt{hil\_raw\_data.sqlite}).
-Zapis metadanych testu (w tabeli \texttt{test\_runs}) oraz setek tysięcy logów surowych (w tabeli \texttt{raw\_packets}) odbywa się w ramach jednego bloku transakcji (Listing \ref{lst:python_acid_commit}).
+Zapis metadanych testu (w~tabeli \texttt{test\_runs}) oraz setek tysięcy logów surowych (w~tabeli \texttt{raw\_packets}) odbywa się w~ramach jednego bloku transakcji (Listing \ref{lst:python_acid_commit}).
 Gwarantuje to spełnienie wymogów ACID (Atomowość, Spójność, Izolacja, Trwałość).
-W przypadku nagłej przerwy w zasilaniu lub zablokowania portu komunikacyjnego, transakcja zostaje cofnięta (\textit{ang. Rollback}), co skutecznie zapobiega bezpowrotnemu zanieczyszczeniu zbiorów badawczych niekompletnymi wynikami.
+W~przypadku nagłej przerwy w~zasilaniu lub zablokowania portu komunikacyjnego, transakcja zostaje cofnięta (\textit{ang. Rollback}), co skutecznie zapobiega bezpowrotnemu zanieczyszczeniu zbiorów badawczych niekompletnymi wynikami.
 
 \begin{listing}[htbp]
-    \caption{Wykorzystanie silnika złączeń zewnętrznych (Outer Join) w Pandas i trwały zapis do bazy danych relacyjnych (\texttt{engine.py}) \cite{espy_nexus_python_host}.}
+    \caption{Wykorzystanie silnika złączeń zewnętrznych (Outer Join) w~Pandas i~trwały zapis do bazy danych relacyjnych (\texttt{engine.py}) \cite{espy_nexus_python_host}.}
     \label{lst:python_acid_commit}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 # Wstępne sformatowanie danych do wektorowych obiektów DataFrame
@@ -385,22 +385,22 @@ conn.commit()
 \end{minted}
 \end{listing}
 
-\section{Ekstrakcja wiedzy i transformacja danych ETL}
+\section{Ekstrakcja wiedzy i~transformacja danych ETL}
 \label{sec:batchanalyzer_etl}
 
-Proces zautomatyzowanej akwizycji danych HIL w wielogodzinnych kampaniach pomiarowych (omówiony w podrozdziale \ref{sec:akwizycja_danych_exfiltration}) produkuje gigantyczne wolumeny surowych logów.
-Pojedyncza relacyjna baza danych zawierająca miliony rekordów z czasami nadania (TX) i odbioru (RX) każdego pakietu staje się zbyt duża, aby można ją było bezpośrednio załadować i swobodnie analizować w pamięci przeglądarki internetowej.
-Docelowa aplikacja analityczna (\textit{ESPy-Nexus Dashboard} omówiona w rozdziale \ref{chap:nuxt}) potrzebuje zagregowanych, gotowych do wyświetlenia wskaźników jakości sieci (QoS), a nie surowych stempli czasowych z mikrokontrolera.
+Proces zautomatyzowanej akwizycji danych HIL w~wielogodzinnych kampaniach pomiarowych (omówiony w~podrozdziale \ref{sec:akwizycja_danych_exfiltration}) produkuje gigantyczne wolumeny surowych logów.
+Pojedyncza relacyjna baza danych zawierająca miliony rekordów z~czasami nadania (TX) i~odbioru (RX) każdego pakietu staje się zbyt duża, aby można ją było bezpośrednio załadować i~swobodnie analizować w~pamięci przeglądarki internetowej.
+Docelowa aplikacja analityczna (\textit{ESPy-Nexus Dashboard} omówiona w~rozdziale \ref{chap:nuxt}) potrzebuje zagregowanych, gotowych do wyświetlenia wskaźników jakości sieci (QoS), a~nie surowych stempli czasowych z~mikrokontrolera.
 
-Aby połączyć środowisko akwizycji sprzętowej z nowoczesnym interfejsem webowym, architekturę systemu wyposażono w dedykowany moduł przetwarzania wsadowego - \texttt{BatchAnalyzer}.
-Został on zaprojektowany zgodnie z paradygmatem przetwarzania danych \textbf{ETL} (\textit{ang. Extract, Transform, Load}).
+Aby połączyć środowisko akwizycji sprzętowej z~nowoczesnym interfejsem webowym, architekturę systemu wyposażono w~dedykowany moduł przetwarzania wsadowego - \texttt{BatchAnalyzer}.
+Został on zaprojektowany zgodnie z~paradygmatem przetwarzania danych \textbf{ETL} (\textit{ang. Extract, Transform, Load}).
 
-\subsection{Faza Wydobycia (Extract) i Transformacji (Transform)}
+\subsection{Faza Wydobycia (Extract) i~Transformacji (Transform)}
 Jak zaprezentowano na Listingu \ref{lst:etl_pipeline}, po zakończeniu właściwych eksperymentów sprzętowych, system inicjuje pierwszą fazę rurociągu danych (ETL).
-Metoda \texttt{\_extract\_successful\_tests} łączy się z bazą danych DAQ (\textit{ang. Data Acquisition}) i filtruje wyłącznie te testy, które zakończyły się sukcesem sprzętowym (status \texttt{"OK"}), odrzucając eksperymenty przerwane przez błędy środowiskowe.
+Metoda \texttt{\_extract\_successful\_tests} łączy się z~bazą danych DAQ (\textit{ang. Data Acquisition}) i~filtruje wyłącznie te testy, które zakończyły się sukcesem sprzętowym (status \texttt{"OK"}), odrzucając eksperymenty przerwane przez błędy środowiskowe.
 
-Następnie, w fazie transformacji (\textit{Transform}), zoptymalizowane struktury z biblioteki Pandas przekazywane są do modułu \texttt{DownlinkAnalyzer}.
-Moduł ten (którego szczegółowa implementacja matematyczna oraz wykorzystane wzory QoS zostaną omówione w rozdziale \ref{chap:qos}) weryfikuje m.in. stany opóźnień między pakietami, wariancje Jittera, spadki niezawodności PDR oraz zjawiska utraty seryjnej (\textit{Burst Loss}).
+Następnie, w~fazie transformacji (\textit{Transform}), zoptymalizowane struktury z~biblioteki Pandas przekazywane są do modułu \texttt{DownlinkAnalyzer}.
+Moduł ten (którego szczegółowa implementacja matematyczna oraz wykorzystane wzory QoS zostaną omówione w~rozdziale \ref{chap:qos}) weryfikuje m.in. stany opóźnień między pakietami, wariancje Jittera, spadki niezawodności PDR oraz zjawiska utraty seryjnej (\textit{Burst Loss}).
 Wynikiem jego działania są głęboko zagnieżdżone, obiektowe struktury metryk, które analizator spłaszcza do postaci jednowymiarowego słownika gotowego do konwersji tabelarycznej.
 
 \begin{listing}[htbp]
@@ -424,19 +424,19 @@ def run_pipeline(self) -> None:
 \end{minted}
 \end{listing}
 
-\subsection{Faza Ładowania i Single Source of Truth (Load)}
+\subsection{Faza Ładowania i~Single Source of Truth (Load)}
 Ostatnim etapem potoku ETL jest eksport spłaszczonych danych do użytecznych formatów.
 Aby zapewnić najwyższą kompatybilność, przetworzone miliony logów sprzętowych zostają skondensowane do zaledwie kilku tysięcy zagregowanych rekordów (odpowiadających konkretnym konfiguracjom matrycy).
 
 Mechanizm \texttt{\_load\_results()} obsługuje dystrybucję wiedzy na trzech płaszczyznach:
 \begin{enumerate}
     \item \textbf{SQLite (\texttt{hil\_analytics.sqlite}):}
-          struktura relacyjna ułatwiająca późniejsze kwerendowanie i łączenie wyników w badaniach historycznych, bez konieczności ponownego obliczania wskaźników.
+          struktura relacyjna ułatwiająca późniejsze kwerendowanie i~łączenie wyników w~badaniach historycznych, bez konieczności ponownego obliczania wskaźników.
     \item \textbf{Plik CSV (\texttt{hil\_analytics.csv}):}
-          powszechnie akceptowany format pliku płaskiego, niezbędny w przypadku poddawania wyników ewaluacji w zewnętrznych arkuszach kalkulacyjnych lub systemach wizualizacji (np. Microsoft Excel, Tableau).
+          powszechnie akceptowany format pliku płaskiego, niezbędny w~przypadku poddawania wyników ewaluacji w~zewnętrznych arkuszach kalkulacyjnych lub systemach wizualizacji (np. Microsoft Excel, Tableau).
     \item \textbf{Statyczny plik JSON (\texttt{hil\_analytics.json}):}
           najważniejszy element integrujący warstwę analityczną ze środowiskiem webowym (frontend).
-          Jak zilustrowano na Listingu \ref{lst:etl_json_load}, przed wyeksportowaniem macierzy do formatu JSON, analizator celowo usuwa (metoda \texttt{drop}) wyjątkowo skomplikowane i obszerne ciągi tekstowe reprezentujące tablice zgubionych pakietów (\texttt{ooo\_events}, \texttt{burst\_events}).
+          Jak zilustrowano na Listingu \ref{lst:etl_json_load}, przed wyeksportowaniem macierzy do formatu JSON, analizator celowo usuwa (metoda \texttt{drop}) wyjątkowo skomplikowane i~obszerne ciągi tekstowe reprezentujące tablice zgubionych pakietów (\texttt{ooo\_events}, \texttt{burst\_events}).
 \end{enumerate}
 
 \begin{listing}[htbp]
@@ -462,4 +462,4 @@ if self.json_csv_path is not None:
 \end{listing}
 
 Operacja redukcji kolumn jest świadomą decyzją inżynierską, która gwarantuje zachowanie rozmiaru pliku \texttt{JSON} na poziomie umożliwiającym sprawną dystrybucję przez serwery brzegowe (\textit{ang. Edge Computing / CDN}).
-Wygenerowany plik stanowi w ten sposób źródło danych dla aplikacji \textit{Nuxt.js}, domykając pełen cykl zautomatyzowanego potoku przetwarzania - od transmisji realizowanej przez ESP32 po interaktywne wykresy na ekranie badacza.
+Wygenerowany plik stanowi w~ten sposób źródło danych dla aplikacji \textit{Nuxt.js}, domykając pełen cykl zautomatyzowanego potoku przetwarzania - od transmisji realizowanej przez ESP32 po interaktywne wykresy na ekranie badacza.

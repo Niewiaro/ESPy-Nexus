@@ -1,42 +1,42 @@
 \chapter{Charakterystyka badanych protokołów komunikacyjnych}
 \label{chap:protokoly}
 
-W projektowaniu systemów wbudowanych oraz rozproszonych architektur Internetu Rzeczy (IoT), wybór odpowiedniego medium i protokołu transportowego jest jedną z najbardziej krytycznych decyzji inżynierskich.
-Decyzja ta determinuje nie tylko maksymalną przepustowość urządzenia, ale przede wszystkim jego niezawodność, zachowanie w warunkach silnych zakłóceń oraz wielkość wnoszonych opóźnień operacyjnych.
-Z tego względu matryca badawcza systemu \textit{ESPy-Nexus} została skonstruowana w sposób umożliwiający rygorystyczną, porównawczą ewaluację kilku skrajnie odmiennych mechanizmów transmisji danych w identycznych warunkach brzegowych.
+W~projektowaniu systemów wbudowanych oraz rozproszonych architektur Internetu Rzeczy (IoT), wybór odpowiedniego medium i~protokołu transportowego jest jedną z~najbardziej krytycznych decyzji inżynierskich.
+Decyzja ta determinuje nie tylko maksymalną przepustowość urządzenia, ale przede wszystkim jego niezawodność, zachowanie w~warunkach silnych zakłóceń oraz wielkość wnoszonych opóźnień operacyjnych.
+Z~tego względu matryca badawcza systemu \textit{ESPy-Nexus} została skonstruowana w~sposób umożliwiający rygorystyczną, porównawczą ewaluację kilku skrajnie odmiennych mechanizmów transmisji danych w~identycznych warunkach brzegowych.
 
 \section{Bezpośrednia komunikacja szeregowa (UART/USB)}
 \label{sec:protokol_serial}
 
 Zanim poddano ocenie wydajność bezprzewodowych protokołów sieciowych, konieczne było wyznaczenie absolutnego punktu odniesienia (\textit{ang. Baseline}).
-W tym celu w matrycy badawczej zaimplementowano testy wykorzystujące bezpośrednie połączenie kablowe (port szeregowy COM komunikujący się poprzez mostek USB-UART).
-W scenariuszu tym dane nie trafiają do wbudowanego w mikrokontroler stosu LwIP, lecz są bezpośrednio odbierane przez sprzętowy rejestr peryferiów UART mikrokontrolera ESP32.
+W~tym celu w~matrycy badawczej zaimplementowano testy wykorzystujące bezpośrednie połączenie kablowe (port szeregowy COM komunikujący się poprzez mostek USB-UART).
+W~scenariuszu tym dane nie trafiają do wbudowanego w~mikrokontroler stosu LwIP, lecz są bezpośrednio odbierane przez sprzętowy rejestr peryferiów UART mikrokontrolera ESP32.
 Pozwala to na zbadanie wydajności pętli testowej, wykluczając całkowicie wpływ zakłóceń propagacji fal elektromagnetycznych czy opóźnień routerów.
 
 \subsection{Wariant tekstowy}
 
-Najprostszym i najczęściej spotykanym w prototypowaniu sposobem wymiany danych jest przesyłanie ich w formacie czytelnym dla człowieka (ASCII).
-W implementacji \texttt{SerialStrDataPlane} ładunek formułowany jest jako ciąg znaków zakończony znakiem nowej linii (np. \texttt{``D,123,XXXX\char`\\n''}).
-W systemach HIL format ten jest jednak wysoce niepożądany z dwóch powodów:
+Najprostszym i~najczęściej spotykanym w~prototypowaniu sposobem wymiany danych jest przesyłanie ich w~formacie czytelnym dla człowieka (ASCII).
+W~implementacji \texttt{SerialStrDataPlane} ładunek formułowany jest jako ciąg znaków zakończony znakiem nowej linii (np. \texttt{``D,123,XXXX\char`\\n''}).
+W~systemach HIL format ten jest jednak wysoce niepożądany z~dwóch powodów:
 \begin{enumerate}
     \item \textbf{Narzut pamięciowy:}
-          zapisanie liczby \texttt{1000000} w formacie tekstowym zajmuje 7 bajtów, podczas gdy w postaci binarnej liczba ta mieści się zaledwie w 4 bajtach (\texttt{uint32\_t}).
+          zapisanie liczby \texttt{1000000} w~formacie tekstowym zajmuje 7 bajtów, podczas gdy w~postaci binarnej liczba ta mieści się zaledwie w~4 bajtach (\texttt{uint32\_t}).
     \item \textbf{Narzut obliczeniowy:}
-          mikrokontroler odbierający strumień tekstowy musi na bieżąco przeszukiwać bufor w poszukiwaniu znaku nowej linii, a następnie uruchamiać obciążające procesor funkcje parsujące (np. \texttt{atoi()}).
+          mikrokontroler odbierający strumień tekstowy musi na bieżąco przeszukiwać bufor w~poszukiwaniu znaku nowej linii, a~następnie uruchamiać obciążające procesor funkcje parsujące (np. \texttt{atoi()}).
 \end{enumerate}
 
 \subsection{Wariant binarny}
 
-W celu zmaksymalizowania przepustowości łącza przewodowego zaimplementowano klasę \texttt{SerialBinDataPlane}, która operuje wyłącznie na surowych bajtach, strukturyzując dane przy użyciu biblioteki \texttt{struct}.
-Pozwala to na błyskawiczne rzutowanie (\textit{casting}) odbieranych pakietów z powrotem na struktury C++ wewnątrz mikrokontrolera.
+W~celu zmaksymalizowania przepustowości łącza przewodowego zaimplementowano klasę \texttt{SerialBinDataPlane}, która operuje wyłącznie na surowych bajtach, strukturyzując dane przy użyciu biblioteki \texttt{struct}.
+Pozwala to na błyskawiczne rzutowanie (\textit{casting}) odbieranych pakietów z~powrotem na struktury C++ wewnątrz mikrokontrolera.
 
-Transmisja w 100\% binarna rodzi jednak problem oznaczania końca ramki w strumieniu danych.
+Transmisja w~100\% binarna rodzi jednak problem oznaczania końca ramki w~strumieniu danych.
 Użycie standardowego bajtu \texttt{0x00} jako separatora jest niemożliwe, ponieważ wartość zerowa może pojawić się naturalnie jako część przesyłanego ładunku (np. gdy identyfikator pakietu wynosi \texttt{0}).
-Problem ten rozwiązano, sprzęgając moduł nadawczy z lekkim algorytmem \textbf{COBS} (\textit{ang. Consistent Overhead Byte Stuffing}).
-Wyizolowaną implementację tego mechanizmu w języku Python zaprezentowano na Listingu~\ref{lst:python_cobs}.
+Problem ten rozwiązano, sprzęgając moduł nadawczy z~lekkim algorytmem \textbf{COBS} (\textit{ang. Consistent Overhead Byte Stuffing}).
+Wyizolowaną implementację tego mechanizmu w~języku Python zaprezentowano na Listingu~\ref{lst:python_cobs}.
 
 \begin{listing}[htbp]
-    \caption{Implementacja algorytmu COBS, eliminującego wystąpienia bajtu \texttt{0x00} z ładunku użytecznego celem bezpiecznego ramkowania (\texttt{serial\_bin\_dp.py}) \cite{espy_nexus_python_host}}
+    \caption{Implementacja algorytmu COBS, eliminującego wystąpienia bajtu \texttt{0x00} z~ładunku użytecznego celem bezpiecznego ramkowania (\texttt{serial\_bin\_dp.py}) \cite{espy_nexus_python_host}}
     \label{lst:python_cobs}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 def _cobs_encode(self, data: bytes) -> bytes:
@@ -68,33 +68,33 @@ def prepare_payloads(self, packet_count: int, payload_size_bytes: int):
 \end{listing}
 
 Dzięki nałożeniu enkodera COBS żaden bajt we wnętrzu zdekodowanej paczki nie ma wartości zerowej.
-Pozwala to zarówno nadajnikowi (Python), jak i odbiornikowi (ESP32) na używanie \texttt{0x00} jako jednoznacznego separatora ramek binarnych.
+Pozwala to zarówno nadajnikowi (Python), jak i~odbiornikowi (ESP32) na używanie \texttt{0x00} jako jednoznacznego separatora ramek binarnych.
 
 \section{Bezpołączeniowy protokół transportowy (UDP)}
 \label{sec:protokol_udp}
 
-W klasycznej inżynierii internetowej nadrzędnym celem transmisji jest bezbłędność i integralność danych.
-Jednak w systemach automatyki czasu rzeczywistego (np. sterowanie rojem dronów czy strumieniowanie wideo FPV) priorytetem staje się minimalizacja opóźnień.
-W takich scenariuszach wykorzystuje się bezpołączeniowy protokół transportowy \textbf{UDP} (\textit{ang. User Datagram Protocol}).
+W~klasycznej inżynierii internetowej nadrzędnym celem transmisji jest bezbłędność i~integralność danych.
+Jednak w~systemach automatyki czasu rzeczywistego (np. sterowanie rojem dronów czy strumieniowanie wideo FPV) priorytetem staje się minimalizacja opóźnień.
+W~takich scenariuszach wykorzystuje się bezpołączeniowy protokół transportowy \textbf{UDP} (\textit{ang. User Datagram Protocol}).
 
-Protokół UDP, działający w warstwie transportowej (L4) modelu OSI, reprezentuje skrajnie odmienne podejście do wymiany danych w stosunku do protokołów zorientowanych na połączenie.
-Jest to protokół typu \textit{odpal i zapomnij} (\textit{ang. fire-and-forget}).
-Charakteryzuje się brakiem mechanizmów negocjacji sesji (\textit{ang. Handshake}), brakiem numeracji sekwencyjnej oraz brakiem sprzętowych potwierdzeń odbioru (\texttt{ACK}) i retransmisji.
-Jeśli pakiet ulegnie kolizji lub zostanie odrzucony przez ruter, przepada on bezpowrotnie, a nadajnik nigdy nie zostaje o tym poinformowany.
-Brak tych mechanizmów kontrolnych drastycznie redukuje narzut (\textit{ang. Overhead}) w nagłówku pakietu.
+Protokół UDP, działający w~warstwie transportowej (L4) modelu OSI, reprezentuje skrajnie odmienne podejście do wymiany danych w~stosunku do protokołów zorientowanych na połączenie.
+Jest to protokół typu \textit{odpal i~zapomnij} (\textit{ang. fire-and-forget}).
+Charakteryzuje się brakiem mechanizmów negocjacji sesji (\textit{ang. Handshake}), brakiem numeracji sekwencyjnej oraz brakiem sprzętowych potwierdzeń odbioru (\texttt{ACK}) i~retransmisji.
+Jeśli pakiet ulegnie kolizji lub zostanie odrzucony przez ruter, przepada on bezpowrotnie, a~nadajnik nigdy nie zostaje o~tym poinformowany.
+Brak tych mechanizmów kontrolnych drastycznie redukuje narzut (\textit{ang. Overhead}) w~nagłówku pakietu.
 
-\subsection{Zachowanie granic datagramów i implementacja w Pythonie}
+\subsection{Zachowanie granic datagramów i~implementacja w~Pythonie}
 
-W przeciwieństwie do strumieniowego interfejsu szeregowego (omówionego w podrozdziale~\ref{sec:protokol_serial}), protokół UDP natywnie zachowuje granice wysyłanych wiadomości.
-Każde wywołanie instrukcji nadawczej w systemie operacyjnym skutkuje utworzeniem hermetycznego datagramu.
+W~przeciwieństwie do strumieniowego interfejsu szeregowego (omówionego w~podrozdziale~\ref{sec:protokol_serial}), protokół UDP natywnie zachowuje granice wysyłanych wiadomości.
+Każde wywołanie instrukcji nadawczej w~systemie operacyjnym skutkuje utworzeniem hermetycznego datagramu.
 Eliminuje to całkowicie konieczność stosowania narzutowych algorytmów ramkowania, takich jak COBS.
 System odbiorczy ESP32 każdorazowo odczytuje dokładnie taką samą porcję bajtów, jaką wygenerował skrypt nadawczy.
 
-W zaimplementowanej klasie \texttt{UdpDataPlane} obsługa transmisji realizowana jest poprzez natywną bibliotekę \texttt{socket}.
-Do wysłania pakietu wykorzystywana jest bezpołączeniowa metoda \texttt{sendto()}, przyjmująca na wejściu bezpośredni adres docelowy (IP i port rutera lub samego mikrokontrolera ESP32).
+W~zaimplementowanej klasie \texttt{UdpDataPlane} obsługa transmisji realizowana jest poprzez natywną bibliotekę \texttt{socket}.
+Do wysłania pakietu wykorzystywana jest bezpołączeniowa metoda \texttt{sendto()}, przyjmująca na wejściu bezpośredni adres docelowy (IP i~port rutera lub samego mikrokontrolera ESP32).
 
 \begin{listing}[htbp]
-    \caption{Konfiguracja bezpołączeniowego gniazda UDP z rozszerzonym systemowym buforem nadawczym (\texttt{udp\_dp.py}) \cite{espy_nexus_python_host}.}
+    \caption{Konfiguracja bezpołączeniowego gniazda UDP z~rozszerzonym systemowym buforem nadawczym (\texttt{udp\_dp.py}) \cite{espy_nexus_python_host}.}
     \label{lst:python_udp}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 def connect(self) -> None:
@@ -119,38 +119,38 @@ def transmit(self, precompiled_packets: list, frequency_hz: int):
 \end{minted}
 \end{listing}
 
-Krytycznym z punktu widzenia testów stresowych inżynieryjnym detalem w powyższym listingu jest modyfikacja opcji gniazda \texttt{SO\_SNDBUF}.
-W środowiskach GPOS (Windows/Linux) przy próbie tłoczenia pakietów UDP z ekstremalnie wysoką częstotliwością (rzędu kilku tysięcy Hz) wewnętrzny bufor pamięci stosu sieciowego komputera zapełnia się szybciej, niż fizyczna karta sieciowa jest w stanie go opróżniać.
-Ze względu na bezpołączeniowy charakter UDP system operacyjny w takiej sytuacji nie blokuje wątku, lecz po cichu odrzuca nowo nadchodzące pakiety, co prowadziłoby do drastycznego zniekształcenia statystyk ewaluacyjnych.
-Rozszerzenie bufora do 1~MB gwarantuje, że wąskim gardłem systemu pozostanie badany ruter lub mikrokontroler, a nie środowisko testowe nadajnika.
+Krytycznym z~punktu widzenia testów stresowych inżynieryjnym detalem w~powyższym listingu jest modyfikacja opcji gniazda \texttt{SO\_SNDBUF}.
+W~środowiskach GPOS (Windows/Linux) przy próbie tłoczenia pakietów UDP z~ekstremalnie wysoką częstotliwością (rzędu kilku tysięcy Hz) wewnętrzny bufor pamięci stosu sieciowego komputera zapełnia się szybciej, niż fizyczna karta sieciowa jest w~stanie go opróżniać.
+Ze względu na bezpołączeniowy charakter UDP system operacyjny w~takiej sytuacji nie blokuje wątku, lecz po cichu odrzuca nowo nadchodzące pakiety, co prowadziłoby do drastycznego zniekształcenia statystyk ewaluacyjnych.
+Rozszerzenie bufora do 1~MB gwarantuje, że wąskim gardłem systemu pozostanie badany ruter lub mikrokontroler, a~nie środowisko testowe nadajnika.
 
 \section{Zorientowany na połączenie protokół transportowy (TCP)}
 \label{sec:protokol_tcp}
 
-W przeciwieństwie do protokołu UDP, TCP (\textit{ang. Transmission Control Protocol}) jest zorientowany na połączenie.
-Stanowi on fundament bezpiecznej i niezawodnej komunikacji w Internecie (odpowiadając m.in. za protokoły HTTP, FTP czy SSH).
-W systemach wbudowanych IoT TCP wykorzystywany jest w scenariuszach, w których integralność i gwarancja dostarczenia pakietu danych są ważniejsze niż opóźnienie — na przykład podczas autoryzacji sesji, przesyłania konfiguracji urządzenia, komunikacji z serwerem HTTP lub MQTT, transferu plików oraz bezprzewodowych aktualizacji oprogramowania (\textit{ang. OTA - Over The Air}).
+W~przeciwieństwie do protokołu UDP, TCP (\textit{ang. Transmission Control Protocol}) jest zorientowany na połączenie.
+Stanowi on fundament bezpiecznej i~niezawodnej komunikacji w~Internecie (odpowiadając m.in. za protokoły HTTP, FTP czy SSH).
+W~systemach wbudowanych IoT TCP wykorzystywany jest w~scenariuszach, w~których integralność i~gwarancja dostarczenia pakietu danych są ważniejsze niż opóźnienie — na przykład podczas autoryzacji sesji, przesyłania konfiguracji urządzenia, komunikacji z~serwerem HTTP lub MQTT, transferu plików oraz bezprzewodowych aktualizacji oprogramowania (\textit{ang. OTA - Over The Air}).
 
-Z punktu widzenia testów sprzętowych HIL protokół ten wnosi ogromne narzuty kontrolne.
+Z~punktu widzenia testów sprzętowych HIL protokół ten wnosi ogromne narzuty kontrolne.
 Nawiązanie sesji wymaga wymiany trzech pakietów przed przesłaniem jakichkolwiek danych (\textit{ang. 3-way handshake: SYN, SYN-ACK, ACK}).
-Co ważniejsze, każdy wysłany pakiet z danymi docelowymi musi zostać jawnie potwierdzony przez układ ESP32 sygnałem \texttt{ACK}.
+Co ważniejsze, każdy wysłany pakiet z~danymi docelowymi musi zostać jawnie potwierdzony przez układ ESP32 sygnałem \texttt{ACK}.
 
-W przypadku zgubienia ramki w powietrzu lub zniekształcenia jej sumy kontrolnej wbudowany w mikrokontroler stos LwIP nie potwierdzi jej odebrania.
+W~przypadku zgubienia ramki w~powietrzu lub zniekształcenia jej sumy kontrolnej wbudowany w~mikrokontroler stos LwIP nie potwierdzi jej odebrania.
 Komputer PC, po upływie zdefiniowanego czasu (\textit{ang. Retransmission Timeout}), automatycznie wyśle ją ponownie.
 Mechanizm ten gwarantuje, że żaden pakiet nie zostanie zgubiony (wskaźnik PDR wynosi zawsze 100\%), jednak retransmisje - zwłaszcza przy wysokich częstotliwościach próbkowania - drastycznie zaburzają oś czasu, generując wysoki wskaźnik \textit{jitteru}.
-Ponadto TCP to protokół strumieniowy (\textit{ang. Stream-oriented}), co oznacza, że podobnie jak w przypadku kablowego połączenia szeregowego, programista musi samodzielnie zadbać o ramkowanie danych (np. ponownie wykorzystując omawiany wcześniej algorytm COBS), aby układ wbudowany potrafił wyodrębnić koniec jednej wiadomości i początek drugiej.
+Ponadto TCP to protokół strumieniowy (\textit{ang. Stream-oriented}), co oznacza, że podobnie jak w~przypadku kablowego połączenia szeregowego, programista musi samodzielnie zadbać o~ramkowanie danych (np. ponownie wykorzystując omawiany wcześniej algorytm COBS), aby układ wbudowany potrafił wyodrębnić koniec jednej wiadomości i~początek drugiej.
 
 \subsection{Dezaktywacja algorytmu Nagle'a}
 Kluczowym aspektem zaimplementowania protokołu TCP do celów telemetrii wysokiej częstotliwości jest ominięcie specyficznych mechanizmów optymalizacyjnych stosów sieciowych komputera PC.
 Domyślnie gniazda TCP podlegają działaniu \textbf{algorytmu Nagle'a}.
-Algorytm ten zapobiega przeciążeniu sieci, celowo zatrzymując w buforze rutera małe pakiety i łącząc je w jedną większą ramkę zanim ostatecznie wypchnie je do sieci.
+Algorytm ten zapobiega przeciążeniu sieci, celowo zatrzymując w~buforze rutera małe pakiety i~łącząc je w~jedną większą ramkę zanim ostatecznie wypchnie je do sieci.
 
-W architekturze sterowania działanie tego algorytmu jest wysoce destrukcyjne.
-Mikrokontroler zamiast odbierać pakiety równo co 1~ms nie odbiera nic przez 15~ms, po czym otrzymuje zbitkę kilkunastu pakietów w jednym ułamku sekundy.
-Jak zilustrowano w Listingu~\ref{lst:python_tcp}, problem ten wyeliminowano podczas powoływania gniazda do życia, zlecając na poziomie systemu operacyjnego jawną dezaktywację algorytmu Nagle'a (flaga \texttt{TCP\_NODELAY}).
+W~architekturze sterowania działanie tego algorytmu jest wysoce destrukcyjne.
+Mikrokontroler zamiast odbierać pakiety równo co 1~ms nie odbiera nic przez 15~ms, po czym otrzymuje zbitkę kilkunastu pakietów w~jednym ułamku sekundy.
+Jak zilustrowano w~Listingu~\ref{lst:python_tcp}, problem ten wyeliminowano podczas powoływania gniazda do życia, zlecając na poziomie systemu operacyjnego jawną dezaktywację algorytmu Nagle'a~(flaga \texttt{TCP\_NODELAY}).
 
 \begin{listing}[htbp]
-    \caption{Konfiguracja strumieniowego gniazda TCP z dezaktywacją algorytmu Nagle'a i zabezpieczeniem transakcyjnym (\texttt{tcp\_dp.py}) \cite{espy_nexus_python_host}.}
+    \caption{Konfiguracja strumieniowego gniazda TCP z~dezaktywacją algorytmu Nagle'a~i~zabezpieczeniem transakcyjnym (\texttt{tcp\_dp.py}) \cite{espy_nexus_python_host}.}
     \label{lst:python_tcp}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 def connect(self) -> None:
@@ -171,32 +171,32 @@ def disconnect(self) -> None:
 \end{listing}
 
 Zastosowanie metody \texttt{shutdown()} przed finalnym wywołaniem \texttt{close()} jest dodatkowym rygorem inżynierskim.
-Gwarantuje ono, że komputer odczeka na zakończenie przesyłania wszystkich zakolejkowanych ramek TCP i wymieni z mikrokontrolerem flagi zamknęcia sesji (\texttt{FIN/ACK}), zapobiegając powstawaniu wiszących sesji w pamięci rutera (\textit{Half-open connections}).
+Gwarantuje ono, że komputer odczeka na zakończenie przesyłania wszystkich zakolejkowanych ramek TCP i~wymieni z~mikrokontrolerem flagi zamknęcia sesji (\texttt{FIN/ACK}), zapobiegając powstawaniu wiszących sesji w~pamięci rutera (\textit{Half-open connections}).
 
 \section{Protokół warstwy aplikacji (WebSockets)}
 \label{sec:protokol_websockets}
 
-Ewolucja systemów wbudowanych oraz Internetu Rzeczy (IoT) wymusiła na inżynierach poszukiwanie protokołów, które potrafią płynnie integrować urządzenia brzegowe (takie jak mikrokontrolery) z nowoczesnymi interfejsami przeglądarkowymi i rozwiązaniami chmurowymi.
-Tradycyjne gniazda TCP i UDP są często blokowane przez zapory sieciowe (\textit{ang. Firewalls}) oraz translatory adresów (NAT).
-Odpowiedzią na ten problem jest protokół \textbf{WebSockets}, zdefiniowany w standardzie RFC 6455.
+Ewolucja systemów wbudowanych oraz Internetu Rzeczy (IoT) wymusiła na inżynierach poszukiwanie protokołów, które potrafią płynnie integrować urządzenia brzegowe (takie jak mikrokontrolery) z~nowoczesnymi interfejsami przeglądarkowymi i~rozwiązaniami chmurowymi.
+Tradycyjne gniazda TCP i~UDP są często blokowane przez zapory sieciowe (\textit{ang. Firewalls}) oraz translatory adresów (NAT).
+Odpowiedzią na ten problem jest protokół \textbf{WebSockets}, zdefiniowany w~standardzie RFC 6455.
 
-WebSockets to zorientowany na połączenie, dwukierunkowy protokół komunikacyjny działający w warstwie aplikacji (L7) modelu OSI, oparty na szkielecie TCP.
+WebSockets to zorientowany na połączenie, dwukierunkowy protokół komunikacyjny działający w~warstwie aplikacji (L7) modelu OSI, oparty na szkielecie TCP.
 Jego unikalną cechą jest to, że inicjalizacja połączenia rozpoczyna się jako klasyczne, tekstowe żądanie HTTP.
-Po pomyślnej wymianie nagłówków serwer i klient dokonują tzw. podniesienia protokołu (\textit{ang. HTTP Upgrade}), po którym kanał pozostaje otwarty, umożliwiając asynchroniczne strumieniowanie danych w obie strony ze znacznie niższym opóźnieniem niż w przypadku klasycznego odpytywania HTTP (\textit{ang. Polling}).
+Po pomyślnej wymianie nagłówków serwer i~klient dokonują tzw. podniesienia protokołu (\textit{ang. HTTP Upgrade}), po którym kanał pozostaje otwarty, umożliwiając asynchroniczne strumieniowanie danych w~obie strony ze znacznie niższym opóźnieniem niż w~przypadku klasycznego odpytywania HTTP (\textit{ang. Polling}).
 
-W systemach HIL i automatyce protokół ten jest wykorzystywany m.in. do bezpośredniego strumieniowania telemetrii z urządzenia (np. robota AGV) do chmurowego panelu dyspozytorskiego, bez konieczności stawiania serwerów pośredniczących.
-WebSockets wprowadza jednak dodatkowe narzuty strukturalne - każda wiadomość owijana jest w specjalną ramkę zawierającą m.in. bity maskujące, kody operacji (\textit{Opcodes}) oraz metadane o długości ładunku.
+W~systemach HIL i~automatyce protokół ten jest wykorzystywany m.in. do bezpośredniego strumieniowania telemetrii z~urządzenia (np. robota AGV) do chmurowego panelu dyspozytorskiego, bez konieczności stawiania serwerów pośredniczących.
+WebSockets wprowadza jednak dodatkowe narzuty strukturalne - każda wiadomość owijana jest w~specjalną ramkę zawierającą m.in. bity maskujące, kody operacji (\textit{Opcodes}) oraz metadane o~długości ładunku.
 
-\subsection{Wymogi rygoru czasowego a asynchroniczność w Pythonie}
-Implementacja klienta WebSockets w Płaszczyźnie Danych (\texttt{WsDataPlane}) napotkała na istotny problem architektoniczny języka Python.
+\subsection{Wymogi rygoru czasowego a~asynchroniczność w~Pythonie}
+Implementacja klienta WebSockets w~Płaszczyźnie Danych (\texttt{WsDataPlane}) napotkała na istotny problem architektoniczny języka Python.
 Większość nowoczesnych bibliotek do obsługi tego protokołu (np. \texttt{websockets} czy \texttt{aiohttp}) bazuje na asynchronicznej pętli zdarzeń (\texttt{asyncio}).
 Użycie asynchroniczności wiąże się ze zjawiskiem oddawania kontekstu (\textit{ang. Context Switching}) do systemu operacyjnego.
-W środowisku, w którym generator ruchu (\texttt{TestEngine}) wykorzystuje pętlę \textit{busy-wait} w celu osiągnięcia precyzji mikrosekundowej, pętla zdarzeń wprowadzałaby niedeterministyczne opóźnienia rzędu kilkunastu milisekund (jitter systemowy).
+W~środowisku, w~którym generator ruchu (\texttt{TestEngine}) wykorzystuje pętlę \textit{busy-wait} w~celu osiągnięcia precyzji mikrosekundowej, pętla zdarzeń wprowadzałaby niedeterministyczne opóźnienia rzędu kilkunastu milisekund (jitter systemowy).
 
-Aby zachować rygor czasowy narzucony przez HIL, zrezygnowano z bibliotek asynchronicznych na rzecz w pełni synchronicznego, blokującego modułu \texttt{websocket-client}.
+Aby zachować rygor czasowy narzucony przez HIL, zrezygnowano z~bibliotek asynchronicznych na rzecz w~pełni synchronicznego, blokującego modułu \texttt{websocket-client}.
 
 \begin{listing}[htbp]
-    \caption{Synchroniczna implementacja klienta WebSockets z użyciem binarnych kodów operacji (\texttt{ws\_dp.py}) \cite{espy_nexus_python_host}.}
+    \caption{Synchroniczna implementacja klienta WebSockets z~użyciem binarnych kodów operacji (\texttt{ws\_dp.py}) \cite{espy_nexus_python_host}.}
     \label{lst:python_websocket}
     \begin{minted}[fontsize=\footnotesize, linenos]{python}
 from websocket import create_connection, ABNF
@@ -224,10 +224,10 @@ def transmit(self, precompiled_packets: list, frequency_hz: int):
 \end{minted}
 \end{listing}
 
-\subsection{Natywne ramkowanie i transmisja binarna}
-Zaletą korzystania z protokołu wyższej warstwy jest natywna hermetyzacja wiadomości.
-Klient WebSockets samodzielnie oznacza początek i koniec każdego komunikatu (tzw. \textit{Framing}).
+\subsection{Natywne ramkowanie i~transmisja binarna}
+Zaletą korzystania z~protokołu wyższej warstwy jest natywna hermetyzacja wiadomości.
+Klient WebSockets samodzielnie oznacza początek i~koniec każdego komunikatu (tzw. \textit{Framing}).
 Umożliwiło to całkowite wyłączenie algorytmu COBS, niezbędnego podczas surowej komunikacji szeregowej.
 
-Ponadto, w metodzie nadawczej (Listing~\ref{lst:python_websocket}) zastosowano flagę \texttt{opcode=ABNF.OPCODE\_BINARY}.
-Wymusza to na kliencie traktowanie ładunku jako czystego ciągu bajtów zamiast łańcucha tekstowego UTF-8, eliminując narzut procesora związany z kodowaniem i dekodowaniem znaków po stronie mikrokontrolera ESP32.
+Ponadto, w~metodzie nadawczej (Listing~\ref{lst:python_websocket}) zastosowano flagę \texttt{opcode=ABNF.OPCODE\_BINARY}.
+Wymusza to na kliencie traktowanie ładunku jako czystego ciągu bajtów zamiast łańcucha tekstowego UTF-8, eliminując narzut procesora związany z~kodowaniem i~dekodowaniem znaków po stronie mikrokontrolera ESP32.

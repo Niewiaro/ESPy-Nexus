@@ -3,108 +3,108 @@
 
 \section{Podsumowanie realizacji pracy}
 
-Celem pracy było empiryczne zbadanie granic wydajności transmisji bezprzewodowej w systemach wbudowanych czasu rzeczywistego oraz wskazanie kompromisów, które należy uwzględnić przy wyborze protokołu komunikacyjnego.
-Cel ten zrealizowano poprzez zaprojektowanie, implementację i wykorzystanie autorskiego środowiska badawczego ESPy-Nexus, działającego w architekturze \textit{Hardware-in-the-Loop}.
+Celem pracy było empiryczne zbadanie granic wydajności transmisji bezprzewodowej w~systemach wbudowanych czasu rzeczywistego oraz wskazanie kompromisów, które należy uwzględnić przy wyborze protokołu komunikacyjnego.
+Cel ten zrealizowano poprzez zaprojektowanie, implementację i~wykorzystanie autorskiego środowiska badawczego ESPy-Nexus, działającego w~architekturze \textit{Hardware-in-the-Loop}.
 
 Opracowane środowisko obejmuje trzy współpracujące warstwy.
 Oprogramowanie wbudowane uruchamiane na mikrokontrolerze ESP32 realizuje obsługę płaszczyzny sterowania, akwizycję danych oraz rejestrację stempli czasowych.
-Zastosowanie zewnętrznej pamięci PSRAM pozwoliło przy tym na buforowanie dużej liczby rekordów, natomiast binarna akwizycja ograniczyła narzut przesyłania wyników z ESP32 do komputera.
-Silnik testowy w języku Python odpowiada za konfigurację eksperymentów, generowanie ruchu, komunikację z urządzeniem i zapis wyników w bazie SQLite.
-Uzupełnieniem systemu jest aplikacja webowa wykonana z wykorzystaniem frameworka Nuxt, która umożliwia filtrowanie, porównywanie i wizualizację zagregowanych metryk.
+Zastosowanie zewnętrznej pamięci PSRAM pozwoliło przy tym na buforowanie dużej liczby rekordów, natomiast binarna akwizycja ograniczyła narzut przesyłania wyników z~ESP32 do komputera.
+Silnik testowy w~języku Python odpowiada za konfigurację eksperymentów, generowanie ruchu, komunikację z~urządzeniem i~zapis wyników w~bazie SQLite.
+Uzupełnieniem systemu jest aplikacja webowa wykonana z~wykorzystaniem frameworka Nuxt, która umożliwia filtrowanie, porównywanie i~wizualizację zagregowanych metryk.
 
-W ramach pracy przygotowano macierz obejmującą topologie \texttt{NONE}, \texttt{AP\_ESP}, \texttt{AP\_PC} i \texttt{AP\_ROUTER}, protokoły \texttt{SERIAL\_STR}, \texttt{SERIAL\_BIN}, \texttt{UDP}, \texttt{TCP} i \texttt{WS}, ładunki o rozmiarach od 4~B do 1024~B oraz częstotliwości od 1~Hz do 10.000~Hz.
-Dane surowe były następnie przekształcane do ujednoliconych wskaźników jakości transmisji, takich jak PDR, jitter, czas przerwy w odbiorze, goodput, liczba zdarzeń \textit{Out-of-Order} i względne opóźnienie.
+W~ramach pracy przygotowano macierz obejmującą topologie \texttt{NONE}, \texttt{AP\_ESP}, \texttt{AP\_PC} i~\texttt{AP\_ROUTER}, protokoły \texttt{SERIAL\_STR}, \texttt{SERIAL\_BIN}, \texttt{UDP}, \texttt{TCP} i~\texttt{WS}, ładunki o~rozmiarach od 4~B~do 1024~B~oraz częstotliwości od 1~Hz do 10.000~Hz.
+Dane surowe były następnie przekształcane do ujednoliconych wskaźników jakości transmisji, takich jak PDR, jitter, czas przerwy w~odbiorze, goodput, liczba zdarzeń \textit{Out-of-Order} i~względne opóźnienie.
 
 \section{Stopień osiągnięcia celu}
 
-Założony cel pracy został osiągnięty w wysokim stopniu.
-Zbudowany system umożliwił przeprowadzenie powtarzalnych eksperymentów z rzeczywistym mikrokontrolerem.
-Dzięki temu w wynikach uwzględniono ograniczenia procesora, pamięci, sterowników i stosów komunikacyjnych, których nie można w pełni odtworzyć w symulacji programowej.
+Założony cel pracy został osiągnięty w~wysokim stopniu.
+Zbudowany system umożliwił przeprowadzenie powtarzalnych eksperymentów z~rzeczywistym mikrokontrolerem.
+Dzięki temu w~wynikach uwzględniono ograniczenia procesora, pamięci, sterowników i~stosów komunikacyjnych, których nie można w~pełni odtworzyć w~symulacji programowej.
 
 Zrealizowano również cel analityczny.
 Zestaw metryk pozwolił rozdzielić trzy różne aspekty jakości transmisji: niezawodność dostarczania, stabilność czasową oraz przepustowość użyteczną.
-Weryfikacja na scenariuszach mock potwierdziła poprawne rozpoznawanie strat, duplikatów, nieregularności odstępów między pakietami, zmian kolejności i narastającego opóźnienia.
-Jednocześnie analiza wykazała, że część wskaźników, zwłaszcza względne opóźnienie i dryft wyrażony w PPM, należy interpretować jako miary diagnostyczne zależne od przyjętego modelu, a nie jako bezpośredni pomiar pojedynczego zjawiska fizycznego.
+Weryfikacja na scenariuszach mock potwierdziła poprawne rozpoznawanie strat, duplikatów, nieregularności odstępów między pakietami, zmian kolejności i~narastającego opóźnienia.
+Jednocześnie analiza wykazała, że część wskaźników, zwłaszcza względne opóźnienie i~dryft wyrażony w~PPM, należy interpretować jako miary diagnostyczne zależne od przyjętego modelu, a~nie jako bezpośredni pomiar pojedynczego zjawiska fizycznego.
 
 Trzeba jednak zastrzec, że nie można uznać systemu za deterministyczne źródło czasu rzeczywistego.
-Generator ruchu działa na komputerze z systemem GPOS, dlatego aktywne oczekiwanie ogranicza, lecz nie usuwa wpływu planisty zadań, sterowników i buforów systemowych.
-Ograniczenie to zostało zidentyfikowane i uwzględnione w interpretacji wyników, dlatego nie podważa realizacji celu projektowego, lecz wyznacza zakres wiarygodnych wniosków.
+Generator ruchu działa na komputerze z~systemem GPOS, dlatego aktywne oczekiwanie ogranicza, lecz nie usuwa wpływu planisty zadań, sterowników i~buforów systemowych.
+Ograniczenie to zostało zidentyfikowane i~uwzględnione w~interpretacji wyników, dlatego nie podważa realizacji celu projektowego, lecz wyznacza zakres wiarygodnych wniosków.
 
 \section{Najważniejsze wyniki badań}
 
-Poniżej zebrano najważniejsze wnioski, które wynikają wprost z przeprowadzonej kampanii pomiarowej:
+Poniżej zebrano najważniejsze wnioski, które wynikają wprost z~przeprowadzonej kampanii pomiarowej:
 
 \begin{enumerate}
     \item Nie istnieje jeden protokół komunikacyjny, który byłby najlepszy dla wszystkich badanych kryteriów.
-          Wybór rozwiązania powinien wynikać z wymagań dotyczących dopuszczalnych strat, opóźnienia, zmienności czasowej, przepustowości oraz rozmiaru przesyłanych danych.
+          Wybór rozwiązania powinien wynikać z~wymagań dotyczących dopuszczalnych strat, opóźnienia, zmienności czasowej, przepustowości oraz rozmiaru przesyłanych danych.
 
     \item Interfejs szeregowy może stanowić użyteczną linię bazową, lecz jego przepustowość szybko ogranicza wzrost rozmiaru ładunku.
-          Dla \texttt{SERIAL\_BIN} z ładunkiem 4~B PDR utrzymywał się na poziomie 100\% aż do 5600~Hz, a dopiero przy 5700~Hz spadł do 93,4\%.
-          Dla ładunku 1024~B pierwsze straty pojawiły się już przy 40~Hz, a przy 50~Hz PDR wyniósł 1,1\%.
+          Dla \texttt{SERIAL\_BIN} z~ładunkiem 4~B~PDR utrzymywał się na poziomie 100\% aż do 5600~Hz, a~dopiero przy 5700~Hz spadł do 93,4\%.
+          Dla ładunku 1024~B~pierwsze straty pojawiły się już przy 40~Hz, a~przy 50~Hz PDR wyniósł 1,1\%.
 
-    \item TCP i WebSockets skutecznie chronią integralność uporządkowanego strumienia, lecz wysoki PDR nie oznacza niskiego opóźnienia.
-          W badanym przypadku TCP zachowywał PDR równy 100\%, ale przy dużym obciążeniu występowały opóźnienia względne rzędu sekund oraz spadek goodputu.
-          Dla konfiguracji TCP, \texttt{AP\_PC}, 4~B i 3900~Hz odnotowano CV około 3000\% oraz maksymalne opóźnienie względne około 2,23~s.
+    \item TCP i~WebSockets skutecznie chronią integralność uporządkowanego strumienia, lecz wysoki PDR nie oznacza niskiego opóźnienia.
+          W~badanym przypadku TCP zachowywał PDR równy 100\%, ale przy dużym obciążeniu występowały opóźnienia względne rzędu sekund oraz spadek goodputu.
+          Dla konfiguracji TCP, \texttt{AP\_PC}, 4~B~i~3900~Hz odnotowano CV około 3000\% oraz maksymalne opóźnienie względne około 2,23~s.
 
-    \item UDP oferuje korzystny kompromis dla zastosowań, w których ważniejsze od dostarczenia każdego pakietu jest ograniczenie opóźnienia i obsługa aktualnych danych.
-          W konfiguracji \texttt{AP\_ROUTER} i dla ładunku 1024~B goodput osiągnął około 28,03~Mbps, jednak przy tym obciążeniu PDR spadł do około 65\%.
+    \item UDP oferuje korzystny kompromis dla zastosowań, w~których ważniejsze od dostarczenia każdego pakietu jest ograniczenie opóźnienia i~obsługa aktualnych danych.
+          W~konfiguracji \texttt{AP\_ROUTER} i~dla ładunku 1024~B~goodput osiągnął około 28,03~Mbps, jednak przy tym obciążeniu PDR spadł do około 65\%.
           Wynik pokazuje, że wzrost przepustowości może odbywać się kosztem niezawodności.
 
     \item Topologia sieciowa istotnie wpływa na wyniki.
-          Dla UDP i ładunku 1024~B pierwsze obserwowane straty wystąpiły przy około 100~Hz w topologii \texttt{AP\_PC}, 128~Hz w topologii \texttt{AP\_ROUTER} i 300~Hz w topologii \texttt{AP\_ESP}.
-          Przy wysokich częstotliwościach ranking mógł się jednak odwracać: dla ładunku 16~B i zakresu 9000-10.000~Hz średni PDR wyniósł około 91,6\% dla \texttt{AP\_PC} oraz 26,6\% dla \texttt{AP\_ESP}.
+          Dla UDP i~ładunku 1024~B~pierwsze obserwowane straty wystąpiły przy około 100~Hz w~topologii \texttt{AP\_PC}, 128~Hz w~topologii \texttt{AP\_ROUTER} i~300~Hz w~topologii \texttt{AP\_ESP}.
+          Przy wysokich częstotliwościach ranking mógł się jednak odwracać: dla ładunku 16~B~i~zakresu 9000-10.000~Hz średni PDR wyniósł około 91,6\% dla \texttt{AP\_PC} oraz 26,6\% dla \texttt{AP\_ESP}.
 
-    \item Wskaźnik PDR nie jest wystarczający do oceny przydatności transmisji w systemach czasu rzeczywistego.
-          Kompletne dostarczenie danych może współwystępować z opóźnieniem uniemożliwiającym terminową reakcję, a utrata części pakietów może być akceptowalna, jeśli aplikacja toleruje brak pojedynczych aktualizacji i wymaga małego opóźnienia.
+    \item Wskaźnik PDR nie jest wystarczający do oceny przydatności transmisji w~systemach czasu rzeczywistego.
+          Kompletne dostarczenie danych może współwystępować z~opóźnieniem uniemożliwiającym terminową reakcję, a~utrata części pakietów może być akceptowalna, jeśli aplikacja toleruje brak pojedynczych aktualizacji i~wymaga małego opóźnienia.
 \end{enumerate}
 
 \section{Zalecenia projektowe}
 
-Z powyższych wyników wynikają następujące zalecenia projektowe:
+Z~powyższych wyników wynikają następujące zalecenia projektowe:
 
 \begin{itemize}
-    \item W przypadku zamkniętej pętli sterowania, w której najważniejsze są aktualność danych i ograniczenie opóźnienia, należy w pierwszej kolejności rozważyć UDP.
-          Protokół powinien zostać uzupełniony o warstwę aplikacyjną odpowiadającą za identyfikację pakietów, kontrolę ich aktualności, odrzucanie przestarzałych ramek oraz reakcję na utratę danych.
+    \item W~przypadku zamkniętej pętli sterowania, w~której najważniejsze są aktualność danych i~ograniczenie opóźnienia, należy w~pierwszej kolejności rozważyć UDP.
+          Protokół powinien zostać uzupełniony o~warstwę aplikacyjną odpowiadającą za identyfikację pakietów, kontrolę ich aktualności, odrzucanie przestarzałych ramek oraz reakcję na utratę danych.
 
-    \item TCP lub WebSockets należy stosować wtedy, gdy kluczowe są integralność, uporządkowanie i dostarczenie całego strumienia, na przykład podczas przesyłania konfiguracji, plików lub aktualizacji oprogramowania.
+    \item TCP lub WebSockets należy stosować wtedy, gdy kluczowe są integralność, uporządkowanie i~dostarczenie całego strumienia, na przykład podczas przesyłania konfiguracji, plików lub aktualizacji oprogramowania.
           Protokoły te nie powinny być wybierane do szybkiego sterowania bez dodatkowego mechanizmu kontroli maksymalnego opóźnienia.
 
-    \item Interfejs UART należy traktować jako rozwiązanie dla krótkich komend, konfiguracji i diagnostyki albo jako punkt odniesienia.
-          Przy większych ładunkach trzeba uwzględnić ograniczoną przepływność, buforowanie oraz możliwość długotrwałej przerwy w odbiorze.
+    \item Interfejs UART należy traktować jako rozwiązanie dla krótkich komend, konfiguracji i~diagnostyki albo jako punkt odniesienia.
+          Przy większych ładunkach trzeba uwzględnić ograniczoną przepływność, buforowanie oraz możliwość długotrwałej przerwy w~odbiorze.
 
-    \item Dobór topologii powinien być wykonywany dla rzeczywistego zakresu częstotliwości i rozmiaru ładunku.
-          Wynik uzyskany dla małego obciążenia nie pozwala przewidzieć zachowania przy nasyceniu, dlatego rekomendowane jest badanie co najmniej kilku punktów poniżej i powyżej oczekiwanego progu degradacji.
+    \item Dobór topologii powinien być wykonywany dla rzeczywistego zakresu częstotliwości i~rozmiaru ładunku.
+          Wynik uzyskany dla małego obciążenia nie pozwala przewidzieć zachowania przy nasyceniu, dlatego rekomendowane jest badanie co najmniej kilku punktów poniżej i~powyżej oczekiwanego progu degradacji.
 
-    \item Kryterium akceptacji transmisji powinno obejmować jednocześnie PDR, jitter, maksymalny czas przerwy w odbiorze, goodput oraz względne opóźnienie.
-          W praktyce należy zdefiniować limity dla każdej z tych metryk przed rozpoczęciem kampanii pomiarowej.
+    \item Kryterium akceptacji transmisji powinno obejmować jednocześnie PDR, jitter, maksymalny czas przerwy w~odbiorze, goodput oraz względne opóźnienie.
+          W~praktyce należy zdefiniować limity dla każdej z~tych metryk przed rozpoczęciem kampanii pomiarowej.
 
-    \item Przy testowaniu z użyciem komputera z systemem GPOS należy rejestrować rzeczywisty czas nadawania i traktować aktywne oczekiwanie jako metodę ograniczania jitteru, a nie jako gwarancję determinizmu.
+    \item Przy testowaniu z~użyciem komputera z~systemem GPOS należy rejestrować rzeczywisty czas nadawania i~traktować aktywne oczekiwanie jako metodę ograniczania jitteru, a~nie jako gwarancję determinizmu.
           Wyniki bliskie granicy akceptacji powinny być potwierdzane dodatkowymi powtórzeniami.
 \end{itemize}
 
-\section{Ograniczenia i kierunki dalszych badań}
+\section{Ograniczenia i~kierunki dalszych badań}
 
-Najważniejszym ograniczeniem pracy jest wykorzystanie komputera z systemem operacyjnym ogólnego przeznaczenia jako generatora ruchu.
-Otrzymane wyniki opisują zatem cały badany tor transmisyjny, obejmujący komputer, sterowniki, interfejs sieciowy, urządzenia pośredniczące i ESP32, a nie wyłącznie właściwości samego protokołu.
+Najważniejszym ograniczeniem pracy jest wykorzystanie komputera z~systemem operacyjnym ogólnego przeznaczenia jako generatora ruchu.
+Otrzymane wyniki opisują zatem cały badany tor transmisyjny, obejmujący komputer, sterowniki, interfejs sieciowy, urządzenia pośredniczące i~ESP32, a~nie wyłącznie właściwości samego protokołu.
 Dodatkowo część wniosków opiera się na pojedynczej platformie sprzętowej, określonym firmware oraz konkretnej konfiguracji topologii.
 
-Naturalnym rozwinięciem pracy jest więc rozszerzenie badań o kolejne warianty sprzętowe i metodologiczne.
-W dalszych badaniach zasadne jest:
+Naturalnym rozwinięciem pracy jest więc rozszerzenie badań o~kolejne warianty sprzętowe i~metodologiczne.
+W~dalszych badaniach zasadne jest:
 
 \begin{itemize}
-    \item powtórzenie kampanii na innych modułach ESP32, kartach sieciowych, routerach i wersjach systemu operacyjnego;
-    \item porównanie generatora działającego w GPOS z generatorem czasu rzeczywistego lub sprzętowym generatorem ramek;
-    \item zastosowanie synchronizacji zegarów, na przykład przez PTP, w celu dokładniejszego pomiaru opóźnienia jednokierunkowego;
-    \item wydłużenie pojedynczych testów i wielokrotne powtórzenie tych samych konfiguracji w celu wyznaczenia przedziałów niepewności oraz rozrzutu wyników;
-    \item uzupełnienie analizy o temperaturę, zużycie pamięci, obciążenie procesora, stan buforów oraz informacje z warstw niższych, aby lepiej rozdzielić źródła strat i opóźnień;
-    \item rozszerzenie systemu o automatyczne wyznaczanie progów akceptacji i raportowanie konfiguracji spełniających wymagania konkretnej aplikacji.
+    \item powtórzenie kampanii na innych modułach ESP32, kartach sieciowych, routerach i~wersjach systemu operacyjnego;
+    \item porównanie generatora działającego w~GPOS z~generatorem czasu rzeczywistego lub sprzętowym generatorem ramek;
+    \item zastosowanie synchronizacji zegarów, na przykład przez PTP, w~celu dokładniejszego pomiaru opóźnienia jednokierunkowego;
+    \item wydłużenie pojedynczych testów i~wielokrotne powtórzenie tych samych konfiguracji w~celu wyznaczenia przedziałów niepewności oraz rozrzutu wyników;
+    \item uzupełnienie analizy o~temperaturę, zużycie pamięci, obciążenie procesora, stan buforów oraz informacje z~warstw niższych, aby lepiej rozdzielić źródła strat i~opóźnień;
+    \item rozszerzenie systemu o~automatyczne wyznaczanie progów akceptacji i~raportowanie konfiguracji spełniających wymagania konkretnej aplikacji.
 \end{itemize}
 
 \section{Wniosek końcowy}
 
-ESPy-Nexus spełnił założoną funkcję jako zautomatyzowane środowisko do badania rzeczywistego urządzenia ESP32 w pętli sprzętowej.
-Połączenie warstwy firmware, silnika testowego, analizy ETL i interfejsu webowego umożliwiło przejście od generowania ruchu do porównywalnych wskaźników jakości transmisji.
+ESPy-Nexus spełnił założoną funkcję jako zautomatyzowane środowisko do badania rzeczywistego urządzenia ESP32 w~pętli sprzętowej.
+Połączenie warstwy firmware, silnika testowego, analizy ETL i~interfejsu webowego umożliwiło przejście od generowania ruchu do porównywalnych wskaźników jakości transmisji.
 
 Przeprowadzone badania potwierdziły, że ocena protokołu wyłącznie na podstawie PDR prowadzi do niepełnych wniosków.
-UDP może zapewniać wysoką przepustowość i ograniczone opóźnienia kosztem strat, natomiast TCP i WebSockets mogą dostarczać komplet danych kosztem opóźnienia i zmienności czasowej.
-Ostateczny wybór powinien więc wynikać z wymagań aplikacji oraz z pomiarów wykonanych w docelowej topologii, a nie z ogólnej klasyfikacji protokołów.
+UDP może zapewniać wysoką przepustowość i~ograniczone opóźnienia kosztem strat, natomiast TCP i~WebSockets mogą dostarczać komplet danych kosztem opóźnienia i~zmienności czasowej.
+Ostateczny wybór powinien więc wynikać z~wymagań aplikacji oraz z~pomiarów wykonanych w~docelowej topologii, a~nie z~ogólnej klasyfikacji protokołów.

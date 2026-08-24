@@ -1,25 +1,25 @@
-\chapter{Cel i zakres pracy}
+\chapter{Cel i~zakres pracy}
 
-Głównym celem niniejszej pracy jest empiryczne zbadanie fizycznych oraz logicznych granic wydajności sieci bezprzewodowych w systemach czasu rzeczywistego, a także wskazanie kompromisów projektowych, które należy uwzględnić podczas wyboru protokołu komunikacyjnego.
+Głównym celem niniejszej pracy jest empiryczne zbadanie fizycznych oraz logicznych granic wydajności sieci bezprzewodowych w~systemach czasu rzeczywistego, a~także wskazanie kompromisów projektowych, które należy uwzględnić podczas wyboru protokołu komunikacyjnego.
 
-Aby zrealizować to zamierzenie, wyznaczono cel szczegółowy: zaprojektować, zaimplementować i zweryfikować autorski system pomiarowy w architekturze Hardware-in-the-Loop o nazwie ESPy-Nexus.
-System ten, działający na styku komputera osobistego i mikrokontrolera ESP32, służy do badania parametrów jakości usług sieciowych (\textit{ang. QoS - Quality of Service}) przy obciążeniu o różnej intensywności, z rejestracją znaczników czasowych z rozdzielczością mikrosekundową.
-Badania mają wykazać, w jaki sposób zmiana protokołu, topologii sieciowej lub rozmiaru ładunku użytecznego wpływa na niezawodność, ograniczenia zasobów oraz terminowość transmisji danych.
+Aby zrealizować to zamierzenie, wyznaczono cel szczegółowy: zaprojektować, zaimplementować i~zweryfikować autorski system pomiarowy w~architekturze Hardware-in-the-Loop o~nazwie ESPy-Nexus.
+System ten, działający na styku komputera osobistego i~mikrokontrolera ESP32, służy do badania parametrów jakości usług sieciowych (\textit{ang. QoS - Quality of Service}) przy obciążeniu o~różnej intensywności, z~rejestracją znaczników czasowych z~rozdzielczością mikrosekundową.
+Badania mają wykazać, w~jaki sposób zmiana protokołu, topologii sieciowej lub rozmiaru ładunku użytecznego wpływa na niezawodność, ograniczenia zasobów oraz terminowość transmisji danych.
 
-Zakres niniejszej pracy obejmuje stworzenie kompleksowego środowiska badawczego obejmującego oprogramowanie wbudowane, silnik testowy oraz interfejs użytkownika, a następnie przeprowadzenie za jego pomocą powtarzalnych eksperymentów dla odpowiednio przygotowanej macierzy testowej.
-W ramach realizacji projektu wykonano następujące zadania:
+Zakres niniejszej pracy obejmuje stworzenie kompleksowego środowiska badawczego obejmującego oprogramowanie wbudowane, silnik testowy oraz interfejs użytkownika, a~następnie przeprowadzenie za jego pomocą powtarzalnych eksperymentów dla odpowiednio przygotowanej macierzy testowej.
+W~ramach realizacji projektu wykonano następujące zadania:
 \begin{itemize}
       \item \textbf{Opracowanie oprogramowania wbudowanego (firmware)}
-            dla mikrokontrolera ESP32 z wykorzystaniem systemu FreeRTOS, obejmującego wielozadaniową architekturę aplikacji oraz podział funkcji na zadania odpowiedzialne za obsługę komend, logikę sterującą i realizację warstwy transmisji danych.
+            dla mikrokontrolera ESP32 z~wykorzystaniem systemu FreeRTOS, obejmującego wielozadaniową architekturę aplikacji oraz podział funkcji na zadania odpowiedzialne za obsługę komend, logikę sterującą i~realizację warstwy transmisji danych.
       \item \textbf{Stworzenie silnika testowego (Test Engine)}
-            w języku Python, orkiestrującego przebieg eksperymentów oraz akwizycję wyników w relacyjnej bazie danych.
+            w~języku Python, orkiestrującego przebieg eksperymentów oraz akwizycję wyników w~relacyjnej bazie danych.
             System wykorzystuje wzorce projektowe izolujące płaszczyznę sterowania (\textit{ang. Control Plane}), zarządzającą cyklem testu, od płaszczyzny danych (\textit{ang. Data Plane}), odpowiedzialnej za generowanie ruchu.
       \item \textbf{Analiza zgromadzonych danych (Batch Analyzer)}
-            również w języku Python, przetwarzającego surowe dane zebrane w trakcie eksperymentów.
-            Moduł operuje na relacyjnej bazie danych SQLite niezależnie od silnika testowego, umożliwiając weryfikację wyników i przygotowanie danych do wizualizacji w interfejsie użytkownika.
-      \item \textbf{Zaprojektowanie i implementacja interfejsu użytkownika (User Interface)}
-            zbudowanego z wykorzystaniem meta-frameworka Nuxt opartego na Vue.js i umożliwiającego interaktywną wizualizację wyników eksperymentów.
-            Aplikacja korzysta z możliwości renderowania po stronie serwera oraz z interaktywności klienta po uwodnieniu aplikacji.
+            również w~języku Python, przetwarzającego surowe dane zebrane w~trakcie eksperymentów.
+            Moduł operuje na relacyjnej bazie danych SQLite niezależnie od silnika testowego, umożliwiając weryfikację wyników i~przygotowanie danych do wizualizacji w~interfejsie użytkownika.
+      \item \textbf{Zaprojektowanie i~implementacja interfejsu użytkownika (User Interface)}
+            zbudowanego z~wykorzystaniem meta-frameworka Nuxt opartego na Vue.js i~umożliwiającego interaktywną wizualizację wyników eksperymentów.
+            Aplikacja korzysta z~możliwości renderowania po stronie serwera oraz z~interaktywności klienta po uwodnieniu aplikacji.
 \end{itemize}
 
-Uzyskane wyniki badań pozwolą sformułować wnioski dotyczące konfiguracji połączenia bezprzewodowego badanej pary urządzeń w kontekście rozważanych zastosowań projektowych, a także wskazać kierunki dalszych badań na podstawie przeanalizowanych wskaźników względnych i bezwzględnych.
+Uzyskane wyniki badań pozwolą sformułować wnioski dotyczące konfiguracji połączenia bezprzewodowego badanej pary urządzeń w~kontekście rozważanych zastosowań projektowych, a~także wskazać kierunki dalszych badań na podstawie przeanalizowanych wskaźników względnych i~bezwzględnych.

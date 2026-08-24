@@ -34,7 +34,7 @@ Deterministic mock scenarios were also used to verify the interpretation of loss
 The experimental matrix covered the \texttt{NONE}, \texttt{AP\_ESP}, \texttt{AP\_PC}, and \texttt{AP\_ROUTER} network topologies, payload sizes from 4 B~to 1024 B, and transmission frequencies from 1 Hz to 10,000 Hz.
 The results show that no single protocol is optimal for all evaluation criteria.
 The serial interface can provide a~useful baseline, but its performance deteriorates rapidly as the payload grows.
-For \texttt{SERIAL\_BIN} with a~4 B~payload, PDR remained equal to 100 percent up to 3900 Hz and decreased to 93.4 percent at 5700 Hz.
+For \texttt{SERIAL\_BIN} with a~4 B~payload, PDR remained equal to 100 percent up to 5600 Hz and decreased to 93.4 percent at 5700 Hz.
 With a~1024 B~payload, the first losses appeared at 40 Hz, while at 50 Hz PDR decreased to 1.1 percent and the maximum measured burst blackout reached 7.4 s.
 
 TCP and WebSockets preserved the integrity and ordering of the tested stream, and TCP maintained a~PDR of 100 percent in the analysed cases.
@@ -47,7 +47,7 @@ In the \texttt{AP\_ROUTER} topology with a~1024 B~payload, the measured goodput 
 The results therefore indicate that UDP can be appropriate when an application prioritizes current data and bounded delay over the delivery of every packet.
 The topology also had a~significant effect on the results.
 For UDP and a~1024 B~payload, the first observed losses occurred at approximately 100 Hz for \texttt{AP\_PC}, 128 Hz for \texttt{AP\_ROUTER}, and 300 Hz for \texttt{AP\_ESP}.
-At high frequencies, this initial ranking could change: for 16 B~payloads and the 9000-10,000 Hz range, the average PDR was approximately 92.6 percent for \texttt{AP\_PC} and 27.5 percent for \texttt{AP\_ESP}.
+At high frequencies, this initial ranking could change: for 16 B~payloads and the 9000-10,000 Hz range, the average PDR was approximately 91.6 percent for \texttt{AP\_PC} and 26.6 percent for \texttt{AP\_ESP}.
 
 The main project objective was achieved to a~high degree.
 ESPy-Nexus provides an operational and extensible environment for testing a~real embedded device, automating experiments, acquiring data, calculating metrics, and presenting aggregated results.

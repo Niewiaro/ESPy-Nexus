@@ -309,8 +309,9 @@ Zarejestrowano w~niej odchylenie Jittera (CV) rzędu \textbf{3000\%} oraz ekstre
 
 Fizycznie niemożliwe jest, aby rezonator kwarcowy mikrokontrolera ulegał rozstrojeniu o~8 milionów części na milion.
 Wartość ta jest rezultatem zastosowanego modelu obliczeniowego, a~nie bezpośrednim pomiarem dryftu rezonatora.
-Zgodnie z~wyprowadzonym wcześniej modelem: $$Drift_{PPM} = \left( \frac{\Delta T_{ESP32} - \Delta T_{PC}}{\Delta T_{PC}} \right) \cdot 10^6$$ wynik zależy od różnicy czasu trwania obserwacji mierzonego przez oba zegary oraz od tego, które pakiety zostały odebrane.
-Podobnemu zniekształceniu może ulegać wskaźnik zmienności (CV), który odnosi odchylenie standardowe IAT do średniej wartości IAT.
+Zgodnie z~wyprowadzonym wcześniej modelem przedstawionym w~równaniu \ref{eq:clock_drift_analysis}, wynik zależy od różnicy czasu trwania obserwacji mierzonego przez oba zegary oraz od tego, które pakiety zostały odebrane.
+\begin{equation}
+      Drift_{PPM} = \left( \frac{\Delta T_{ESP32} - \Delta T_{PC}}{\Delta T_{PC}} \right) \cdot 10^6 \label{eq:clock_drift_analysis} \end{equation} Podobnemu zniekształceniu może ulegać wskaźnik zmienności (CV), który odnosi odchylenie standardowe IAT do średniej wartości IAT.
 
 \begin{figure}[htbp]
       \centering

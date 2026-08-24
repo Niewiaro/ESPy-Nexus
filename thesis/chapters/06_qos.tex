@@ -11,7 +11,8 @@ Metryki te umożliwiają analizę zachowania stosu TCP/IP (LwIP) oraz zadań sys
 
 W~niniejszym rozdziale zaprezentowano zestaw autorskich algorytmów analitycznych, wykorzystanych do wyliczenia wskaźników QoS.
 Zdefiniowano matematyczne podstawy wyliczania skuteczności dostarczania (PDR), fluktuacji opóźnień (Jitter), zjawiska utraty seryjnej (\textit{Burst Loss}), użytecznej wydajności (\textit{Goodput}), anomalii kolejności pakietów, a~także zjawiska zatoru buforów (\textit{Queuing Delay}).
-Powyższe parametry stanowią podstawę oceny jakości transmisji danych w~systemach sterowania w~czasie rzeczywistym. Opisane zostały w~literaturze jako kluczowe wskaźniki niezawodności i~stabilności czasowej w~sieciach komputerowych~\cite{kurose_global}.
+Powyższe parametry stanowią podstawę oceny jakości transmisji danych w~systemach sterowania w~czasie rzeczywistym.
+Opisane zostały w~literaturze jako kluczowe wskaźniki niezawodności i~stabilności czasowej w~sieciach komputerowych~\cite{kurose_global}.
 
 \section{Mechanizm transformacji danych (DownlinkAnalyzer)}
 \label{sec:qos_downlink_analyzer}
@@ -124,17 +125,17 @@ Poniższy przykład ilustruje sposób interpretacji danych wejściowych dla scen
     \end{tabular}
 \end{table}
 
-W~tym przypadku odebrano cztery różne identyfikatory spośród pięciu oczekiwanych, dlatego: \[ PDR = \frac{4}{5} \cdot 100\% = 80\%.
-\]
-Jeden brakujący identyfikator ($2$) tworzy zdarzenie \textit{Burst Loss} o~długości $1$, a~przy $IAT_{expected}=100~\mu s$ daje przybliżony czas blackoutu równy ${,}10$ ms.
+W~tym przypadku odebrano cztery różne identyfikatory spośród pięciu oczekiwanych, dlatego zgodnie z~równaniem \ref{eq:mock_pdr}:
+\begin{equation}
+    PDR = \frac{4}{5} \cdot 100\% = 80\% \label{eq:mock_pdr} \end{equation} Jeden brakujący identyfikator ($2$) tworzy zdarzenie \textit{Burst Loss} o~długości $1$, a~przy $IAT_{expected}=100~\mu s$ daje przybliżony czas blackoutu równy ${,}10$ ms.
 Dodatkowe rekordy dla identyfikatorów $0$ i~$1$ są duplikatami.
 Pierwszy z~nich występuje bezpośrednio po swoim poprzedniku, więc algorytm klasyfikuje go jako \texttt{MAC Duplicate}; drugi jest oddzielony innym identyfikatorem i~trafia do kategorii \texttt{Ghost Duplicate}.
 
 Po usunięciu duplikatów i~uporządkowaniu rekordów według identyfikatora analizator otrzymuje stemple $[100, 200, 400, 500]~\mu s$.
 Różnice między nimi wynoszą $[100, 200, 100]~\mu s$, stąd średni IAT wynosi $133{,}33~\mu s$, a~odchylenie standardowe próby, używane jako jitter, $57{,}74~\mu s$.
-Dla czterech unikalnych pakietów i~ładunku $20$~B~goodput jest obliczany jako: \[ Goodput = \frac{(4-1) \cdot 20~\mathrm{B}}{400~\mu s} = 150\,000~\mathrm{B/s}.
-\]
-Względem oferowanego obciążenia $10\,000 \cdot 20 = 200\,000~\mathrm{B/s}$ daje to efektywność równą $75\%$.
+Dla czterech unikalnych pakietów i~ładunku $20$~B~goodput jest obliczany zgodnie z~równaniem \ref{eq:mock_goodput}:
+\begin{equation}
+    Goodput = \frac{(4-1) \cdot 20~\mathrm{B}}{400~\mu s} = 150\,000~\mathrm{B/s} \label{eq:mock_goodput} \end{equation} Względem oferowanego obciążenia $10\,000 \cdot 20 = 200\,000~\mathrm{B/s}$ daje to efektywność równą $75\%$.
 Identyfikator $0$ pojawia się po identyfikatorze $1$, dlatego detektor kolejności rejestruje jedno zdarzenie \textit{Out-of-Order} o~maksymalnym przesunięciu równym $1$.
 
 Zestawienie wyników pozostałych scenariuszy przedstawiono w~tabeli \ref{tab:qos_mock_results}.
@@ -171,7 +172,9 @@ Wynik ten może wskazywać na narastanie opóźnienia.
 Najbardziej fundamentalną metryką oceny niezawodności łącza radiowego jest współczynnik dostarczenia pakietów (\textit{ang. PDR - Packet Delivery Ratio}).
 Określa on stosunek liczby unikalnych identyfikatorów pakietów odebranych przez mikrokontroler (RX) do liczby pakietów wysłanych przez komputer PC (TX), przekazanej do analizatora jako parametr \texttt{total\_sent}.
 
-Wartość PDR wyrażana jest w~procentach i~zdefiniowano ją poniższym wzorem matematycznym: $$PDR = \left( \frac{N_{unique}}{N_{sent}} \right) \cdot 100\%$$ gdzie $N_{unique}$ oznacza liczbę unikalnych identyfikatorów (\texttt{packet\_id}) poprawnie odebranych przez układ ESP32, a~$N_{sent}$ oznacza liczbę wysłanych pakietów przekazaną jako parametr \texttt{total\_sent}.
+Wartość PDR wyrażana jest w~procentach i~zdefiniowano ją równaniem \ref{eq:pdr}:
+\begin{equation}
+    PDR = \left( \frac{N_{unique}}{N_{sent}} \right) \cdot 100\% \label{eq:pdr} \end{equation} gdzie $N_{unique}$ oznacza liczbę unikalnych identyfikatorów (\texttt{packet\_id}) poprawnie odebranych przez układ ESP32, a~$N_{sent}$ oznacza liczbę wysłanych pakietów przekazaną jako parametr \texttt{total\_sent}.
 
 Z~perspektywy automatyki przemysłowej i~telemetrii HIL, spadek wskaźnika PDR poniżej 100\% jest zjawiskiem niepożądanym.
 W~systemach sterowania w~otwartej pętli utracony pakiet oznacza pominięcie ramki aktualizacji stanu (np. niewysterowanie serwomechanizmu na czas).
@@ -236,12 +239,21 @@ W~niniejszej pracy tę zmienność opisano jako \textbf{jitter}.
 \subsection{Model matematyczny IAT i~odchylenia standardowego}
 Podstawą obliczeń jitteru w~zaimplementowanym systemie jest wyznaczenie różnic pomiędzy kolejnymi stemplami czasowymi ESP32.
 Przed obliczeniem różnic dane są pozbawiane duplikatów i~porządkowane według identyfikatora pakietu, dlatego metryka opisuje odstępy w~uporządkowanym strumieniu testowym, a~niekoniecznie kolejność fizycznego odbioru.
-Dla kolejnych stempli $t_i$ wektor $IAT$ określa się jako: $$IAT_i = t_i - t_{i-1}$$
+Dla kolejnych stempli $t_i$ wektor $IAT$ określa się zgodnie z~równaniem \ref{eq:iat}:
+\begin{equation}
+    IAT_i = t_i - t_{i-1}
+    \label{eq:iat}
+\end{equation}
 
-Następnie system wyznacza średnią arytmetyczną badanej próby czasowej: $$\mu_{IAT} = \frac{1}{N-1} \sum_{i=2}^{N} IAT_i$$
+Następnie system wyznacza średnią arytmetyczną badanej próby czasowej zgodnie z~równaniem \ref{eq:mean_iat}:
+\begin{equation}
+    \mu_{IAT} = \frac{1}{N-1} \sum_{i=2}^{N}
+    IAT_i \label{eq:mean_iat} \end{equation}
 
 W~module \texttt{DownlinkAnalyzer} główną miarą zmienności uczyniono \textbf{odchylenie standardowe} ($\sigma_{IAT}$), określające, jak bardzo wartości $IAT$ rozpraszają się wokół średniej.
-Jest ono obliczane przez Pandas metodą \texttt{std()}, która domyślnie stosuje odchylenie standardowe dla próby: $$Jitter = \sigma_{IAT} = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (IAT_i - \mu_{IAT})^2}$$
+Jest ono obliczane przez Pandas metodą \texttt{std()}, która domyślnie stosuje odchylenie standardowe dla próby, zgodnie z~równaniem \ref{eq:jitter}:
+\begin{equation}
+    Jitter = \sigma_{IAT} = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (IAT_i - \mu_{IAT})^2} \label{eq:jitter} \end{equation}
 
 Z~matematycznego punktu widzenia, im niższa wartość $\sigma_{IAT}$, tym kanał transmisyjny jest bardziej deterministyczny.
 
@@ -250,7 +262,9 @@ Samo odchylenie standardowe wyrażone w~mikrosekundach nie stanowi pełnego obra
 Fluktuacja rzędu 1000~$\mu s$ (1~ms) ma marginalne znaczenie przy częstotliwości sterowania 10~Hz ($IAT = 100~ms$), lecz staje się czynnikiem krytycznym, całkowicie zakłócającym sterowanie przy częstotliwości 1000~Hz ($IAT = 1~ms$).
 
 Z~tego względu moduł analityczny (Listing \ref{lst:jitter_pandas}) oblicza również \textbf{współczynnik zmienności} (\textit{ang. Coefficient of Variation - CV}).
-Normalizuje on otrzymane odchylenie standardowe względem wyliczonej średniej, prezentując wynik w~postaci procentowej: $$CV = \left( \frac{\sigma_{IAT}}{\mu_{IAT}} \right) \cdot 100\%$$ Dzięki metryce CV możliwa jest obiektywna i~znormalizowana ocena stabilności łącza, niezależnie od przyjętej w~matrycy testowej częstotliwości uderzeniowej.
+Normalizuje on otrzymane odchylenie standardowe względem wyliczonej średniej, prezentując wynik w~postaci procentowej zgodnie z~równaniem \ref{eq:cv}:
+\begin{equation}
+    CV = \left( \frac{\sigma_{IAT}}{\mu_{IAT}} \right) \cdot 100\% \label{eq:cv} \end{equation} Dzięki metryce CV możliwa jest obiektywna i~znormalizowana ocena stabilności łącza, niezależnie od przyjętej w~matrycy testowej częstotliwości uderzeniowej.
 
 \begin{listing}[htbp]
     \caption{Wektorowe wyznaczanie wektora IAT i~znormalizowanego współczynnika Jittera za pomocą silnika Pandas (\texttt{jitter.py}) \cite{espy_nexus_python_host}.}
@@ -291,9 +305,9 @@ Długość tego zdarzenia $L_B$ równa się liczbie utraconych po sobie pakietó
 
 W~module \texttt{DownlinkAnalyzer} zaimplementowano algorytm poszukujący zdarzenia o~maksymalnej długości, określonej jako $L_{B,\max}$.
 Znalezienie tej wartości pozwala na wyliczenie najważniejszej fizycznej metryki z~punktu widzenia bezpieczeństwa maszyny - \textbf{Maksymalnego czasu braku sterowania} (ang.
-\textit{Max Blackout Time}), zdefiniowanego wzorem:
-$$T_{blackout} = \max(L_B) \cdot IAT_{expected}$$
-Wartość ta, wyrażana w~milisekundach, stanowi przybliżenie czasu, w~którym urządzenie nie odebrało żadnej nowej komendy z~komputera sterującego.
+\textit{Max Blackout Time}), zdefiniowanego równaniem \ref{eq:blackout}:
+\begin{equation}
+    T_{blackout} = \max(L_B) \cdot IAT_{expected} \label{eq:blackout} \end{equation} Wartość ta, wyrażana w~milisekundach, stanowi przybliżenie czasu, w~którym urządzenie nie odebrało żadnej nowej komendy z~komputera sterującego.
 Jej interpretacja zależy od częstotliwości nadawania i~przyjętego modelu sterowania.
 Sama metryka nie wyznacza automatycznie nastawy układu \textit{watchdog}, lecz może pomóc w~jej oszacowaniu.
 
@@ -354,7 +368,9 @@ Całkowity czas pomiaru $\Delta T$ liczony jest jako różnica między stęplem 
 W~związku z~tym pierwszy odebrany pakiet wyznacza początek okna obserwacji ($T=0$), a~w~implementacji jego ładunek nie jest wliczany do liczby bajtów użytych w~liczniku.
 Jest to świadoma konwencja obliczeniowa odpowiadająca poprawce \textit{off-by-one}.
 
-Wzór na przepływność użyteczną, z~uwzględnieniem matematycznej poprawki, przyjmuje postać: $$Goodput = \frac{(N_{unique} - 1) \cdot S_{payload}}{\Delta T} \quad [B/s]$$ gdzie: $N_{unique}$ - całkowita liczba unikalnych i~poprawnie odebranych pakietów, $S_{payload}$ - zadeklarowany, czysty rozmiar struktury badawczej (w~bajtach), $\Delta T$ - rzeczywisty czas trwania akwizycji z~perspektywy odbiorcy (w~sekundach).
+Wzór na przepływność użyteczną, z~uwzględnieniem matematycznej poprawki, przyjmuje postać przedstawioną w~równaniu \ref{eq:goodput}:
+\begin{equation}
+    Goodput = \frac{(N_{unique} - 1) \cdot S_{payload}}{\Delta T} \quad [B/s] \label{eq:goodput} \end{equation} gdzie: $N_{unique}$ - całkowita liczba unikalnych i~poprawnie odebranych pakietów, $S_{payload}$ - zadeklarowany, czysty rozmiar struktury badawczej (w~bajtach), $\Delta T$ - rzeczywisty czas trwania akwizycji z~perspektywy odbiorcy (w~sekundach).
 
 Wynik ten konwertowany jest następnie na megabity na sekundę (Mb/s), przy założeniu przelicznika 1~Mb/s = 1.000.000~bit/s.
 
@@ -460,7 +476,9 @@ for current_id in received_ids.dropna().astype(int):
 
 Sama informacja o~wystąpieniu zaburzenia kolejności jest niewystarczająca do oceny głębokości problemu.
 Algorytm na bieżąco oblicza również wskaźnik \textbf{maksymalnego przesunięcia w~strumieniu} (\textit{ang. Max ID Displacement}).
-Jest on definiowany jako największa zanotowana różnica pomiędzy frontem chronologicznym a~identyfikatorem pakietu zaklasyfikowanego jako opóźniony: $$Displacement_{max} = \max(ID_{max} - ID_{OoO})$$
+Jest on definiowany jako największa zanotowana różnica pomiędzy frontem chronologicznym a~identyfikatorem pakietu zaklasyfikowanego jako opóźniony, zgodnie z~równaniem \ref{eq:displacement}:
+\begin{equation}
+    Displacement_{max} = \max(ID_{max} - ID_{OoO}) \label{eq:displacement} \end{equation}
 
 Wartość ta pozwala oszacować różnicę identyfikatorów między aktualnym maksimum a~pakietem zaklasyfikowanym jako opóźniony.
 Nie określa bezpośrednio liczby generacji stanów, o~które cofnęłaby się maszyna, ponieważ zależy to od semantyki identyfikatora i~logiki aplikacji.
@@ -479,8 +497,12 @@ Narastająca kolejka zwiększa opóźnienie i~może pogorszyć stabilność ster
 
 Precyzyjny pomiar czasu przelotu w~jedną stronę (\textit{ang. OWD - One-Way Delay}) wymagałby synchronizacji zegara komputera z~zegarem ESP32.
 Aby ograniczyć wpływ nieznanego przesunięcia zegarów, moduł analityczny oblicza \textbf{względne opóźnienie}.
-Jak zilustrowano na Listingu \ref{lst:timing_trends}, początkowo wyznaczany jest surowy wektor różnicy czasu: $$OWD_{raw} = T_{ESP32} - T_{PC}$$ Wektor ten zawiera między innymi stałe przesunięcie zegarów (\textit{Clock Offset}).
-Następnie wykonywana jest normalizacja: od każdej wartości odejmowane jest minimum: $$Delay_{relative} = OWD_{raw} - \min(OWD_{raw})$$ Operacja ta usuwa stały składnik przesunięcia, lecz wynik może nadal obejmować zmienność czasu transmisji, kolejkowanie i~dryft zegarów.
+Jak zilustrowano na Listingu \ref{lst:timing_trends}, początkowo wyznaczany jest surowy wektor różnicy czasu zgodnie z~równaniem \ref{eq:owd_raw}:
+\begin{equation}
+    OWD_{raw} = T_{ESP32} - T_{PC} \label{eq:owd_raw} \end{equation} Wektor ten zawiera między innymi stałe przesunięcie zegarów (\textit{Clock Offset}).
+Następnie wykonywana jest normalizacja zgodnie z~równaniem \ref{eq:relative_delay}:
+\begin{equation}
+    Delay_{relative} = OWD_{raw} - \min(OWD_{raw}) \label{eq:relative_delay} \end{equation} Operacja ta usuwa stały składnik przesunięcia, lecz wynik może nadal obejmować zmienność czasu transmisji, kolejkowanie i~dryft zegarów.
 Nie jest więc bezpośrednim pomiarem czasu spędzonego w~konkretnym buforze.
 
 \subsection{Regresja liniowa i~detekcja zatorów (Queuing Delay)}
@@ -498,7 +520,9 @@ W~systemach HIL należy również uwzględnić niedoskonałości samej platformy
 Zegary używane do rejestracji czasu na komputerze PC i~ESP32 mogą różnić się częstotliwością, między innymi wskutek właściwości rezonatorów oraz wpływu warunków pracy.
 Różnica ta jest obserwowana jako dryft zegarów (\textit{ang. Clock Drift}).
 
-Algorytm mierzy różnicę w~postrzeganiu całkowitego czasu trwania eksperymentu przez PC ($\Delta T_{PC}$) oraz ESP32 ($\Delta T_{ESP32}$), wyrażając ją w~częściach na milion (\textit{ang. PPM - Parts Per Million}): $$Drift_{PPM} = \left( \frac{\Delta T_{ESP32} - \Delta T_{PC}}{\Delta T_{PC}} \right) \cdot 10^6$$ Otrzymana wartość opisuje różnicę czasu trwania eksperymentu zmierzoną przez oba zegary.
+Algorytm mierzy różnicę w~postrzeganiu całkowitego czasu trwania eksperymentu przez PC ($\Delta T_{PC}$) oraz ESP32 ($\Delta T_{ESP32}$), wyrażając ją w~częściach na milion (\textit{ang. PPM - Parts Per Million}) zgodnie z~równaniem \ref{eq:clock_drift}:
+\begin{equation}
+    Drift_{PPM} = \left( \frac{\Delta T_{ESP32} - \Delta T_{PC}}{\Delta T_{PC}} \right) \cdot 10^6 \label{eq:clock_drift} \end{equation} Otrzymana wartość opisuje różnicę czasu trwania eksperymentu zmierzoną przez oba zegary.
 Jej interpretacja jako wyłącznie dryftu rezonatora wymagałaby dodatkowej kalibracji i~kontroli pozostałych źródeł błędu.
 
 \begin{listing}[htbp]

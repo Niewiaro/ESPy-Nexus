@@ -83,10 +83,15 @@ Całość oparto na programowaniu obiektowym (OOP) oraz wzorcach projektowych.
 
 Podstawą uniwersalności platformy jest narzucenie ścisłych kontraktów dla poszczególnych modułów transmisyjnych.
 Wykorzystując wbudowaną bibliotekę \texttt{abc} (\textit{ang. Abstract Base Classes}), zdefiniowano abstrakcyjne interfejsy, takie jak \texttt{BaseControlPlane} oraz \texttt{BaseDataPlane}.
-Zmuszają one każdą nową implementację do bezwzględnego zaimplementowania określonych metod (np. \texttt{connect()}, \texttt{disconnect()}, \texttt{transmit()}) niezależnie czy będzie to port szeregowy, czy gniazdo UDP.
+Zmuszają one każdą nową implementację do bezwzględnego dostarczenia określonych metod (np. \texttt{connect()}, \texttt{disconnect()}, \texttt{transmit()}), niezależnie od tego, czy fizycznym medium będzie port szeregowy, czy gniazdo UDP.
 
-Takie podejście wspiera zasadę otwarte-zamknięte (\textit{Open/Closed Principle}) oraz zasadę podstawienia Liskov (\textit{Liskov Substitution Principle}) opisaną w~\cite{solid}.
-Silnik wykonawczy wie jedynie, że operuje na obiekcie typu \texttt{BaseDataPlane}, co całkowicie uniezależnia wewnętrzną logikę testów od fizycznej implementacji poszczególnych protokołów transportowych.
+Takie podejście bezpośrednio wspiera zasadę otwarte-zamknięte (\textit{ang. OCP - Open/Closed Principle}) oraz zasadę podstawienia Liskov (\textit{ang. LSP - Liskov Substitution Principle}).
+Koncepcje te zostały szczegółowo sformułowane i~opisane w~książce Roberta C.
+Martina~\cite{solid}, znanego również jako \textit{Uncle Bob}.
+Stanowią one fundament powszechnie znanego w~inżynierii oprogramowania zbioru dobrych praktyk obiektowych (SRP, OCP, LSP, ISP, DIP), dziś znanych powszechnie jako mnemonik \textbf{SOLID}.
+
+W~zaprojektowanej architekturze silnik wykonawczy wie jedynie, że operuje na polimorficznym obiekcie typu \texttt{BaseDataPlane}.
+Całkowicie uniezależnia to wewnętrzną logikę testów HIL od fizycznej implementacji i~specyfiki poszczególnych protokołów transportowych.
 
 \subsection{Wzorzec Fabryki i~Wstrzykiwanie Zależności}
 

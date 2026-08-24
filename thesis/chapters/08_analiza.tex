@@ -51,7 +51,8 @@ Analizując przebieg krzywych, można zaobserwować dwa powtarzalne etapy funkcj
             Przepustowość kanału radiowego przewyższa liczbę generowanych danych.
       \item \textbf{Próg saturacji i~strefa degradacji:}
             po przekroczeniu określonej krytycznej częstotliwości (obciążenia granicznego), każda z~krzywych ulega załamaniu.
-            Oznacza to obszar, w~którym pojawiają się straty pakietów. Na podstawie samych zagregowanych wyników nie można jednoznacznie wskazać, czy ich źródłem jest interfejs, bufor, czy inny element toru transmisyjnego.
+            Oznacza to obszar, w~którym pojawiają się straty pakietów.
+            Na podstawie samych zagregowanych wyników nie można jednoznacznie wskazać, czy ich źródłem jest interfejs, bufor, czy inny element toru transmisyjnego.
 \end{enumerate}
 
 \section{Miedziana linia bazowa - granice interfejsu UART}
@@ -204,7 +205,8 @@ Intuicyjne podejście inżynierskie sugeruje, że architektura, która najdłuż
 Zestawienie całego spektrum badawczego obnaża jednak istotne uproszczenie takiego rozumowania, ujawniając niezwykle interesujący paradoks obciążeniowy na skrajnych krańcach pasma częstotliwości.
 
 \subsection{Odporność na start degradacji, a~degradacja skrajna}
-Analizując zachowanie topologii natywnej (\texttt{AP\_ESP}) dla ładunku 1024~B, stwierdzono, że utrzymuje ona PDR równy 100\% do częstotliwości 256~Hz. Przy 300~Hz pojawiły się pierwsze straty.
+Analizując zachowanie topologii natywnej (\texttt{AP\_ESP}) dla ładunku 1024~B, stwierdzono, że utrzymuje ona PDR równy 100\% do częstotliwości 256~Hz.
+Przy 300~Hz pojawiły się pierwsze straty.
 Z~kolei wirtualny hotspot Windowsa (\texttt{AP\_PC}) poddaje się i~gubi pierwsze ramki już przy wartości 100~Hz.
 
 Sytuacja ta może jednak odwracać się w~warunkach wysokiego obciążenia.
@@ -347,7 +349,7 @@ W~celu usystematyzowania wiedzy wypracowanej podczas kampanii badawczej, najważ
                   twardy próg wydajności uzależniony od wielkości paczki.
                   \newline \textbf{Defekty kolejności:}
                   obserwowane zdarzenia Out-of-Order w~warunkach przeciążenia toru szeregowego.
-                                    & Inicjalizacja sprzętowa, konsola debugująca, przesył bardzo krótkich, stabilnych komend sterujących.                                                                                                                                                 \\ \hline
+                                    & Inicjalizacja sprzętowa, konsola debugująca, przesył bardzo krótkich, stabilnych komend sterujących.                                                                                                                                                        \\ \hline
                   \textbf{UDP}
                                     & \textbf{Tolerancja strat:}
                   brak retransmisji na poziomie transportowym; w~warunkach zatoru może wystąpić upuszczanie pakietów (PDR $< 100\%$).

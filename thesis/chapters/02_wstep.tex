@@ -1,79 +1,66 @@
 \chapter{Wstęp}
 
-We współczesnym świecie zdominowanym przez koncepcję Internetu Rzeczy (\textit{ang. Iot -- Internet of Things}), robotykę oraz pojazdy autonomiczne transmisja danych na odległość stała się zagadnieniem powszechnym.
-O ile klasyczne przesyłanie informacji, takie jak pobieranie plików, czy przeglądanie aplikacji i stron internetowych, opiera się na gwarancji bezbłędności transmisji niezależnie od czasu trwania tego procesu, o tyle telemetria i zdalne sterowanie wprowadzają radykalnie odmienny paradygmat.
+We współczesnym świecie, zdominowanym przez koncepcję Internetu Rzeczy (\textit{ang. IoT - Internet of Things}), robotykę oraz pojazdy autonomiczne, transmisja danych na odległość stała się powszechnym elementem systemów technicznych.
+O ile klasyczne zastosowania sieciowe, takie jak pobieranie plików czy przeglądanie aplikacji i stron internetowych, koncentrują się przede wszystkim na integralności danych, o tyle telemetria i zdalne sterowanie wprowadzają odmienne wymagania.
 W systemach czasu rzeczywistego (\textit{ang. Real-Time Systems}) wartość informacji drastycznie spada wraz z upływem czasu.
 
-Na bezwzględny czas transmisji danych składa się wiele czynników.
-Zjawiska takie jak opóźnienia w buforach, zmienność opóźnień, czy utrata ciągłości sterowania potrafią doprowadzić do katastrofalnych skutków, na przykład utraty kontroli nad lecącym bezzałogowym statkiem powietrznym.
-Inżynierowie projektujący tego typu rozwiązania nieustannie stają przed dylematem wyboru odpowiedniego medium transmisyjnego oraz protokołu warstwy transportowej lub aplikacyjnej.
-Gwarancja dostarczenia każdego pakietu zazwyczaj wiąże się z niedopuszczalnym w systemach dynamicznych narzutem czasowym, podczas gdy minimalizacja opóźnień wymaga akceptacji nieuchronnego gubienia części danych w eterze.
+Na całkowity czas dostarczenia danych wpływa wiele czynników, między innymi opóźnienia w kolejkach, zmienność opóźnienia, sposób obsługi retransmisji oraz obciążenie urządzeń pośredniczących.
+W systemach dynamicznych przekroczenie dopuszczalnego czasu reakcji może obniżyć jakość sterowania, a w zastosowaniach krytycznych również zagrozić poprawności działania całego układu.
+Inżynierowie projektujący tego typu rozwiązania stają zatem przed wyborem odpowiedniego medium transmisyjnego oraz protokołu warstwy transportowej lub aplikacyjnej.
+Gwarancja dostarczenia każdego pakietu może wiązać się ze wzrostem opóźnienia i koniecznością buforowania, podczas gdy ograniczenie opóźnienia może wymagać akceptacji utraty części danych.
+
+W dalszej części pracy przedstawiono cel i zakres badań, architekturę stanowiska HIL oraz zastosowane mechanizmy automatyzacji.
+Następnie omówiono platformę sprzętową ESP32, oprogramowanie wbudowane i badane protokoły komunikacyjne.
+Kolejny rozdział poświęcono metrykom jakości transmisji oraz metodom ich obliczania, a następnie zaprezentowano webowe środowisko analityczne oparte na Nuxt.
+Wyniki kampanii pomiarowej i ich interpretację przedstawiono w rozdziale analitycznym.
+Pracę zamykają wnioski, zalecenia projektowe oraz kierunki dalszych badań.
+
+\section{Inspiracja praktyczna i motywacja do badań}
+
+Bezpośrednią inspiracją do opracowania systemu ESPy-Nexus były doświadczenia zdobyte jako członek drużyny hackathonowej „Czterej Pancerni i Piec” \cite{czterej_pancerni_i_piec}.
+W ramach konkursu Remote Car Design Competition (RCDC) zadaniem zespołu było zaprojektowanie i zbudowanie zdalnie sterowanego samochodu, który w możliwie krótkim czasie pokona tor przeszkód \cite{rcdc_official}.
+Jednym z istotnych elementów projektu był system zdalnego sterowania pojazdem, którego komunikację bezprzewodową, zgodnie z wymaganiami konkursu, należało zrealizować z wykorzystaniem sieci Wi-Fi \cite{rcdc_2025_team_repository}.
+
+W opracowanym rozwiązaniu kontroler PlayStation 5 DualSense przekazywał dane sterujące do aplikacji uruchomionej na komputerze.
+Komputer serializował wartości związane ze sterowaniem, a następnie przesyłał je przez połączenie WebSocket do mikrokontrolera ESP8266.
+Mikrokontroler przekształcał odebrane dane na sygnały PWM oraz sygnały kierunku obrotu silników napędowych.
+Dane były wysyłane po wykryciu zmiany wartości sterujących, co ograniczało zbędny ruch w kanale komunikacyjnym i sprzyjało uzyskaniu krótkiego czasu reakcji.
+
+Doświadczenia z budowy i testowania pojazdu doprowadziły do powstania pytania, w jaki sposób dobrać sposób komunikacji oraz topologię sieci Wi-Fi, aby uzyskać możliwie stabilne i szybkie sterowanie.
+W kontekście sterowania samochodem większa częstotliwość aktualizacji może oznaczać krótszy czas oczekiwania na przekazanie nowej wartości sterującej, jednak sama częstotliwość nie jest wystarczającym kryterium oceny.
+Równie istotne są opóźnienie, jego zmienność, możliwość wystąpienia strat pakietów oraz zachowanie systemu przy zwiększonym obciążeniu.
+
+Samochód zespołu zwyciężył w kategorii Remote Car Development bez konieczności przeprowadzenia badań opisanych w niniejszej pracy.
+Nie zmienia to jednak faktu, że obserwacje poczynione podczas zawodów wskazywały na możliwość dalszego doskonalenia systemu sterowania i poprawy uzyskanego czasu przejazdu.
+Chęć sprawdzenia, czy wybór protokołu, topologii i parametrów transmisji może wpłynąć na responsywność pojazdu, stała się praktycznym punktem wyjścia do szerszych badań.
+Zamiast ograniczyć się do pojedynczej konfiguracji użytej w samochodzie, opracowano uniwersalne stanowisko HIL, pozwalające porównywać różne rozwiązania w kontrolowanych i powtarzalnych warunkach.
 
 \section{Problematyka systemów czasu rzeczywistego}
 
 Zgodnie z klasyczną definicją systemy czasu rzeczywistego to systemy obliczeniowe, które muszą reagować na zdarzenia w środowisku w ramach precyzyjnie określonych ograniczeń czasowych.
 W konsekwencji poprawne zachowanie tych systemów zależy nie tylko od logicznej poprawności samych obliczeń, ale również od czasu, w którym wyniki te są dostarczane \cite{buttazzo2011}.
 
-Flagowym przykładem systemu o twardych ograniczeniach czasowych (\textit{ang. Hard Real-Time}) jest architektura sterowania typu X-by-Wire (np. Steer-by-Wire lub Brake-by-Wire) we współczesnych pojazdach autonomicznych oraz zaawansowanych systemach wspomagania kierowcy (\textit{ang. ADAS - Advanced Driver Assistance Systems}).
-W przypadku aktywnego układu unikania kolizji (\textit{ang. AED - Autonomous Emergency Braking}) wewnętrzna pętla sterowania odpowiadająca za fuzję danych z czujników otoczenia, takich jak radary, LiDAR, czy wizja maszynowa, przeliczenie algorytmów predykcji trajektorii oraz wysterowanie elektromechanicznych aktuatorów na układzie kierowniczym lub hamulcowym musi wykonywać się z żelazną, ściśle deterministyczną precyzją.
-Jeśli na skutek zatoru sieciowego lub zjawiska Bufferbloat w wewnątrzpojazdowej magistrali komunikacyjnej (np. Automotive Ethernet lub CAN FD) pakiet wymuszający awaryjny manewr dotrze do sterownika wykonawczego z opóźnieniem rzędu kilkunastu milisekund, informacja ta staje się nie tylko bezużyteczna, ale wręcz skrajnie niebezpieczna.
-Przy prędkości autostradowej ułamki sekund opóźnienia przekładają się na metry przejechanego dystansu, co w przypadku pojawienia się nagłej przeszkody nieuchronnie doprowadzi do braku odpowiedniej reakcji fizycznej i katastrofalnej w skutkach kolizji.
-W systemach tych spóźniona odpowiedź jest z definicji równoznaczna z odpowiedzią błędną.
+Przykładem systemu o twardych ograniczeniach czasowych (\textit{ang. Hard Real-Time}) może być architektura sterowania typu X-by-Wire, stosowana między innymi w pojazdach autonomicznych i systemach wspomagania kierowcy (\textit{ang. ADAS - Advanced Driver Assistance Systems}).
+W przypadku układu automatycznego hamowania awaryjnego (\textit{ang. AEB - Autonomous Emergency Braking}) przetwarzanie danych z radarów, lidaru i systemów wizyjnych oraz sterowanie aktuatorami musi odbywać się w ramach określonych ograniczeń czasowych.
+Jeśli pakiet sterujący dotrze do właściwego sterownika z opóźnieniem wynikającym z przeciążenia sieci lub zatoru buforów, reakcja układu może nastąpić zbyt późno.
+Przy dużej prędkości nawet niewielkie opóźnienie przekłada się na dodatkowy dystans pokonany przez pojazd, dlatego w takich systemach terminowość dostarczenia informacji jest równie istotna jak jej poprawność.
 
-Radykalnym przeciwieństwem tak zdefiniowanego determinizmu są powszechnie stosowane systemy operacyjne ogólnego przeznaczenia (\textit{ang. GPOS -- General Purpose Operating Systems}), takie jak Microsoft Windows, macOS czy klasyczne dystrybucje GNU/Linux.
-Choć dysponują one gigantyczną mocą obliczeniową wielordzeniowych procesorów i wysoką przepustowością (\textit{ang. throughput}), z architektonicznego punktu widzenia są całkowicie niezdolne do pracy pod rygorem twardego czasu rzeczywistego.
+Istotnym ograniczeniem podczas testowania takich układów jest wykorzystanie systemu operacyjnego ogólnego przeznaczenia (\textit{ang. GPOS - General Purpose Operating System}), takiego jak Microsoft Windows, macOS lub typowa dystrybucja GNU/Linux.
+Systemy te oferują dużą moc obliczeniową i wysoką przepustowość, lecz nie gwarantują deterministycznego czasu wykonania operacji wymaganych przez systemy o twardych ograniczeniach czasowych.
 Planiści zadań (\textit{ang. schedulers}) w systemach GPOS zostali zoptymalizowani pod kątem sprawnego przydzielania zasobów, płynnej obsługi interfejsu graficznego oraz sprawiedliwości czasowej, a nie gwarancji dotrzymania nieprzekraczalnego terminu zakończenia operacji (\textit{ang. deadline}).
 W systemie takim jak Windows niespodziewane przerwanie sprzętowe od karty sieciowej, operacja wejścia-wyjścia na dysku, czy systemowy proces zarządzania pamięcią potrafią zamrozić wykonanie wątku komunikacyjnego użytkownika na kilka lub kilkadziesiąt milisekund.
 
-O ile w typowych aplikacjach ogólnego przeznaczenia takie mikro-zawieszenia planisty pozostają bez znaczenia, o tyle przy sprzęganiu środowiska PC ze sterownikami wbudowanymi wprowadzają one potężny szum czasowy po stronie nadawcy.
-Z tego względu opieranie analizy wyłącznie na czasach raportowanych przez system GPOS prowadziłoby do drastycznego zafałszowania wyników.
-Rozwiązaniem tego wyzwania architektonicznego, jest dwustronna rejestracja stempli czasowych - zarówno w momencie zlecenia wysyłki przez komputer jak i w sprzętowym przerwaniu mikrokontrolera, co stanowi metrologiczny fundament niniejszej pracy.
+O ile w typowych aplikacjach ogólnego przeznaczenia krótkotrwałe wstrzymanie wątku pozostaje niezauważalne, o tyle podczas sprzęgania komputera PC z urządzeniem wbudowanym może wprowadzać dodatkową zmienność czasu nadawania.
+Z tego względu analiza oparta wyłącznie na czasach raportowanych przez system GPOS może prowadzić do błędnej oceny charakterystyki badanego toru.
+W niniejszej pracy problem ten ograniczono przez dwustronną rejestrację stempli czasowych: po stronie komputera oraz po stronie mikrokontrolera ESP32.
 
-Prace w toku...
+\section{Założenia platformy badawczej}
 
-% W tej sekcji przechodzimy od ogółu do konkretnych dziedzin, w których czas ma znaczenie krytyczne.
+Sama specyfikacja protokołu nie pozwala przewidzieć pełnego zachowania transmisji w konkretnej konfiguracji sprzętowej.
+Na wynik wpływają również rozmiar ładunku, częstotliwość generowania ruchu, topologia sieci, implementacja stosu komunikacyjnego oraz sposób obsługi buforów.
+Dlatego potrzebne jest stanowisko umożliwiające kontrolowane zwiększanie obciążenia i porównywanie wielu metryk, a nie tylko pomiar średniej przepustowości.
 
-\subsection{Sterowanie zdalne a telemetria}
-Omówienie fundamentalnej różnicy między telemetrią (gdzie dopuszczalne są opóźnienia i buforowanie danych z czujników) a twardym sterowaniem zdalnym (gdzie spóźniony pakiet z instrukcją ruchu maszyny jest bezużyteczny lub wręcz niebezpieczny).
-
-\subsection{Wymóg determinizmu w nowoczesnym IoT}
-Zdefiniowanie pojęcia determinizmu czasowego i wyjaśnienie, dlaczego w dynamicznych układach cyberfizycznych przewidywalność dostarczenia pakietu jest ważniejsza niż sama maksymalna przepustowość (przepaść między wymaganiami IoT a klasycznymi sieciami IT).
-
-\section{Motywacja badawcza i uzasadnienie tematu}
-% To jest akademicka wersja Twoich pytań: "po co?", "co?", "jak?", "dlaczego?".
-
-\subsection{Potrzeba ewaluacji protokołów w warunkach brzegowych}
-Uzasadnienie, dlaczego deklaracje producentów sprzętu (teoretyczne przepustowości WiFi/BLE) są niewystarczające przy projektowaniu systemów HIL i dlaczego konieczne jest empiryczne badanie stosów sieciowych pod ekstremalnym obciążeniem.
-
-\subsection{Ograniczenia istniejących narzędzi diagnostycznych}
-Wskazanie luki na rynku polegającej na tym, że popularne narzędzia sieciowe (np. iPerf, Ping) nie oddają w pełni charakterystyki małych, gęstych pakietów mikrokontrolerów, co wymusza budowę dedykowanego, sprzętowego systemu analitycznego.
-
-\subsection{Oczekiwane rezultaty i wartość inżynierska}
-Krótkie określenie, że wynikiem przeprowadzonych w pracy badań będzie praktyczny zbiór wytycznych i kompromisów architektonicznych, ułatwiający inżynierom dobór topologii oraz protokołu adekwatnego do wymagań projektowanego systemu osadzonego.
-
-\section{Problematyka systemów czasu rzeczywistego}
-
-\subsection{Definicja i wymóg determinizmu}
-System czasu rzeczywistego (ang.
-Real-Time System - RTS) to system komputerowy, w którym o poprawności działania decyduje nie tylko bezbłędność wypracowanych wyników, ale przede wszystkim rygorystyczny czas ich dostarczenia.
-Wyróżnia się systemy o miękkich ograniczeniach czasowych (ang.
-Soft Real-Time), gdzie spóźnienie danych obniża jakość usługi (np. zacięcie się strumienia wideo), oraz o twardych ograniczeniach czasowych (ang.
-Hard Real-Time), gdzie przekroczenie wyznaczonego terminu dostarczenia informacji traktowane jest jako krytyczna awaria całego systemu.
-
-\subsection{Telemetria a sterowanie zdalne}
-W kontekście transmisji danych należy wyraźnie rozróżnić telemetrię od sterowania zdalnego.
-Telemetria, polegająca na cyklicznym raportowaniu stanu czujników (np. stacje pogodowe, systemy Smart Home), najczęściej toleruje opóźnienia i pozwala na buforowanie danych.
-Z kolei dynamiczne sterowanie zdalne (np. kierowanie pojazdem autonomicznym, robotem przemysłowym czy wielowirnikowcem) reprezentuje twarde wymagania czasowe.
-Spóźniony pakiet z komendą skrętu lub korekty obrotów silnika jest bezużyteczny, a jego wykonanie po terminie może zdestabilizować układ sterowania.
-
-\subsection{Systemy GPOS a RTOS w architekturze badawczej}
-Powszechnie wykorzystywane systemy operacyjne, takie jak Windows, macOS czy dystrybucje GNU/Linux, należą do grupy systemów ogólnego przeznaczenia (ang.
-General Purpose Operating Systems - GPOS).
-Ich planiści (ang.
-schedulers) są zoptymalizowani pod kątem maksymalizacji ogólnej przepustowości oraz responsywności interfejsu użytkownika.
-Oznacza to, że procesy w tle mogą w dowolnym momencie wstrzymać wykonanie wątku wysyłającego dane sieciowe na kilka lub kilkadziesiąt milisekund.
-Choć z perspektywy użytkownika komputera jest to niezauważalne, w systemach wbudowanych stanowi to wieczność.
-
-To fundamentalne ograniczenie sprawia, że do precyzyjnego sterowania oraz mierzenia opóźnień niezbędne są mikrokontrolery pracujące pod kontrolą dedykowanych systemów czasu rzeczywistego (ang.
-Real-Time Operating Systems - RTOS), takich jak FreeRTOS.
-W układach badawczych typu Hardware-in-the-Loop występuje naturalna asymetria: komputer PC pełni rolę symulatora generującego obciążenie (często wprowadzając naturalny szum czasowy), podczas gdy mikrokontroler z systemem RTOS przyjmuje rolę deterministycznego układu pomiarowego, precyzyjnie rejestrującego opóźnienia i defekty wprowadzane zarówno przez stos sieciowy PC, jak i same fizyczne media transmisyjne.
+W odpowiedzi na tę potrzebę w pracy opracowano system ESPy-Nexus, wykorzystujący metodę \textit{Hardware-in-the-Loop} (HIL).
+Rzeczywisty mikrokontroler ESP32 wykonuje badane oprogramowanie, natomiast komputer PC steruje przebiegiem eksperymentów, generuje ruch, odbiera wyniki i przeprowadza ich analizę.
+Dodatkowo w celu dogłębnej i interaktywnej analizy wyników opracowano webowy interfejs użytkownika, który umożliwia filtrowanie, porównywanie i wizualizację metryk jakości transmisji.
+Takie rozwiązanie pozwala oceniać zachowanie rzeczywistego urządzenia w powtarzalnych warunkach, przy jednoczesnym uwzględnieniu ograniczeń środowiska testowego.

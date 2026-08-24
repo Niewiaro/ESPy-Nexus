@@ -7,11 +7,17 @@
 \input{settings}
 
 \begin{document}
+\pagenumbering{arabic}
+\pagestyle{empty}
 
 % Comment during development to avoid unnecessary compilation of the title page and claims page
 \input{frontmatter/title_page}
 \restoregeometry
 \input{frontmatter/claims_page}
+
+\clearpage
+\setcounter{page}{5}
+\pagestyle{plain}
 
 % Tabele of contents
 \tableofcontents
@@ -24,11 +30,6 @@
 \phantomsection
 
 % Chapters
-% \input{chapters/wykaz_oznaczen}
-% \include{chapters/00_chapters}
-% \include{chapters/03_uklad}
-% \include{chapters/04_wnioski}
-
 \include{chapters/01_cel_i_zakres}
 \include{chapters/02_wstep}
 \include{chapters/03_hil}
@@ -38,7 +39,6 @@
 \include{chapters/07_nuxt}
 \include{chapters/08_analiza}
 \include{chapters/09_wnioski}
-
 \endgroup
 
 % Bibliography

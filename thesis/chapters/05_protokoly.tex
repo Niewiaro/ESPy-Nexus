@@ -92,6 +92,7 @@ System odbiorczy ESP32 każdorazowo odczytuje dokładnie taką samą porcję baj
 
 W~zaimplementowanej klasie \texttt{UdpDataPlane} obsługa transmisji realizowana jest poprzez natywną bibliotekę \texttt{socket}.
 Do wysłania pakietu wykorzystywana jest bezpołączeniowa metoda \texttt{sendto()}, przyjmująca na wejściu bezpośredni adres docelowy (IP i~port rutera lub samego mikrokontrolera ESP32).
+Szczegóły konfiguracji gniazda oraz pętli nadawczej przedstawiono na Listingu \ref{lst:python_udp}.
 
 \begin{listing}[htbp]
     \caption{Konfiguracja bezpołączeniowego gniazda UDP z~rozszerzonym systemowym buforem nadawczym (\texttt{udp\_dp.py}) \cite{espy_nexus_python_host}.}
@@ -193,7 +194,7 @@ Większość nowoczesnych bibliotek do obsługi tego protokołu (np. \texttt{web
 Użycie asynchroniczności wiąże się ze zjawiskiem oddawania kontekstu (\textit{ang. Context Switching}) do systemu operacyjnego.
 W~środowisku, w~którym generator ruchu (\texttt{TestEngine}) wykorzystuje pętlę \textit{busy-wait} w~celu osiągnięcia precyzji mikrosekundowej, pętla zdarzeń wprowadzałaby niedeterministyczne opóźnienia rzędu kilkunastu milisekund (jitter systemowy).
 
-Aby zachować rygor czasowy narzucony przez HIL, zrezygnowano z~bibliotek asynchronicznych na rzecz w~pełni synchronicznego, blokującego modułu \texttt{websocket-client}.
+Aby zachować rygor czasowy narzucony przez HIL, zrezygnowano z~bibliotek asynchronicznych na rzecz w~pełni synchronicznego, blokującego modułu \texttt{websocket-client} zaprezentowanego na Listingu \ref{lst:python_websocket}.
 
 \begin{listing}[htbp]
     \caption{Synchroniczna implementacja klienta WebSockets z~użyciem binarnych kodów operacji (\texttt{ws\_dp.py}) \cite{espy_nexus_python_host}.}

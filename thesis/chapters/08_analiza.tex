@@ -68,6 +68,7 @@ Analiza zebranych metryk QoS nie potwierdziła w~pełni tej hipotezy.
 Dane wskazują na istnienie progu degradacji interfejsu szeregowego, którego położenie zależy od rozmiaru przesyłanego ładunku użytecznego (\textit{Payload}).
 Dla najmniejszych testowanych struktur (4~B) zoptymalizowany protokół binarny (\texttt{SERIAL\_BIN}) utrzymywał PDR równy 100\% nieprzerwanie aż do częstotliwości 5600~Hz, a~dopiero przy 5700~Hz odnotowano pierwszy, wciąż niewielki spadek do 93,4\%.
 Wraz ze wzrostem wielkości pakietu do 256~B~moment utraty stabilności przesuwa się jednak drastycznie w~stronę niższych częstotliwości: próg stuprocentowej skuteczności zostaje przekroczony już przy 200~Hz, przy czym spadek jest gwałtowny — PDR obniża się z~pełnych 100\% (przy 128~Hz) do zaledwie 1,9\% zaledwie o~jeden krok pomiaru dalej.
+Zależność spadku PDR od częstotliwości i~rozmiaru ładunku przedstawiono na Rysunku \ref{fig:wykres_uart_payload}.
 
 \begin{figure}[htbp]
       \centering
@@ -87,7 +88,7 @@ W~skrajnym przypadku protokołu tekstowego (\texttt{SERIAL\_STR} w~topologii \te
 W~danych analitycznych zarejestrowano również odizolowane, wybitnie niebezpieczne zdarzenie awaryjne występujące nawet przy relatywnie niskich częstotliwościach.
 W~teście protokołu \texttt{SERIAL\_BIN} obciążonego ładunkiem 1024~B~przy częstotliwości zaledwie 50~Hz nastąpiła całkowita dysfunkcja przepływu.
 Skuteczność dostarczania (PDR) spadła do 1,1\%, a~maksymalny czas przerwy wynikający z~metryki \textit{Burst Blackout} wyniósł \textbf{7,4~s} (7400~ms).
-Na rysunku \ref{fig:burst_max_blackout_ms_serial} przedstawiono ten krytyczny przypadek.
+Na Rysunku \ref{fig:burst_max_blackout_ms_serial} przedstawiono ten krytyczny przypadek.
 W~rzeczywistości fizycznej maszyna pracowałaby przez ponad siedem sekund bez jakiegokolwiek nadzoru i~szansy na reakcję, co poddaje w~wątpliwość przydatność tego interfejsu w~poważnych zastosowaniach telemetrycznych przy dużych pakietach danych.
 
 \begin{figure}[htbp]
@@ -137,6 +138,7 @@ Jako przypadek szczególny należy wyróżnić eksperyment przeprowadzony na pro
 Zarejestrowane maksymalne opóźnienie względne (\texttt{timing\_max\_bloat\_us}) wyniosło tam około \textbf{2,23~s} (2229~ms).
 Jednocześnie, znormalizowana miara stabilności transmisji - współczynnik zmienności Jittera (CV) - eksplodowała do wartości bliskiej \textbf{3000\%}.
 Wynik wskazuje na utratę stabilności czasowej.
+Zależność maksymalnego opóźnienia od częstotliwości przedstawiono na Rysunku \ref{fig:wykres_tcp_bloat}.
 
 \begin{figure}[htbp]
       \centering
@@ -180,6 +182,7 @@ Jak zaprezentowano na wykresie z~modułu analitycznego (Rys. \ref{fig:wykres_prz
             architektura natywna, w~której sam mikrokontroler sprzętowo rozsiewał sieć Wi-Fi (\textit{SoftAP}).
             Dla ładunku 1024~B~PDR po raz pierwszy spadł poniżej 100\% przy częstotliwości \textbf{300~Hz}.
 \end{itemize}
+Porównanie stabilności czasowej protokołów UDP i~TCP przedstawiono na Rysunku \ref{fig:wykres_udp_vs_tcp_jitter}.
 
 \begin{figure}[htbp]
       \centering
@@ -263,6 +266,7 @@ W~tym obszarze ograniczenia toru transmisyjnego i~przetwarzania danych powodują
 Osiągnięcie granicy 28~Mbps zbiega się w~czasie z~kolapsem niezawodności - wskaźnik PDR dla tych częstotliwości spada do poziomu ok.
 65\%.
 Wynik jest zgodny z~obrazem przeciążenia toru transmisyjnego.
+Przebieg przepustowości użytecznej przedstawiono na Rysunku \ref{fig:wykres_goodput_kolaps}.
 
 \begin{figure}[htbp]
       \centering
@@ -312,6 +316,7 @@ Wartość ta jest rezultatem zastosowanego modelu obliczeniowego, a~nie bezpośr
 Zgodnie z~wyprowadzonym wcześniej modelem przedstawionym w~równaniu \ref{eq:clock_drift_analysis}, wynik zależy od różnicy czasu trwania obserwacji mierzonego przez oba zegary oraz od tego, które pakiety zostały odebrane.
 \begin{equation}
       Drift_{PPM} = \left( \frac{\Delta T_{ESP32} - \Delta T_{PC}}{\Delta T_{PC}} \right) \cdot 10^6 \label{eq:clock_drift_analysis} \end{equation} Podobnemu zniekształceniu może ulegać wskaźnik zmienności (CV), który odnosi odchylenie standardowe IAT do średniej wartości IAT.
+Wizualizację zmian dryftu zegara przedstawiono na Rysunku \ref{fig:wykres_szum_metodologiczny}.
 
 \begin{figure}[htbp]
       \centering
@@ -338,7 +343,7 @@ W~celu usystematyzowania wiedzy wypracowanej podczas kampanii badawczej, najważ
 
 \begin{table}[htbp]
       \centering
-      \caption{Zestawienie właściwości sprzętowych protokołów komunikacyjnych na podstawie analizy środowiska ESPy-Nexus}
+      \caption{Zestawienie właściwości sprzętowych protokołów komunikacyjnych na podstawie analizy środowiska ESPy-Nexus~\cite{espy_nexus_nuxt_dashboard}.}
       \label{tab:synteza_protokolow}
       \resizebox{\textwidth}{!}{%
             \begin{tabular}{|l|p{4.5cm}|p{4.5cm}|p{4.5cm}|}

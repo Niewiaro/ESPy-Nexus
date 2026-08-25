@@ -127,7 +127,7 @@ Poniższy przykład ilustruje sposób interpretacji danych wejściowych dla scen
 
 W~tym przypadku odebrano cztery różne identyfikatory spośród pięciu oczekiwanych, dlatego zgodnie z~równaniem \ref{eq:mock_pdr}:
 \begin{equation}
-    PDR = \frac{4}{5} \cdot 100\% = 80\% \label{eq:mock_pdr} \end{equation} Jeden brakujący identyfikator ($2$) tworzy zdarzenie \textit{Burst Loss} o~długości $1$, a~przy $IAT_{expected}=100~\mu s$ daje przybliżony czas blackoutu równy ${,}10$ ms.
+    PDR = \frac{4}{5} \cdot 100\% = 80\% \label{eq:mock_pdr} \end{equation} Jeden brakujący identyfikator ($2$) tworzy zdarzenie \textit{Burst Loss} o~długości $1$, a~przy $IAT_{expected}=100~\mu s$ daje przybliżony czas blackoutu równy $0{,}10$ ms.
 Dodatkowe rekordy dla identyfikatorów $0$ i~$1$ są duplikatami.
 Pierwszy z~nich występuje bezpośrednio po swoim poprzedniku, więc algorytm klasyfikuje go jako \texttt{MAC Duplicate}; drugi jest oddzielony innym identyfikatorem i~trafia do kategorii \texttt{Ghost Duplicate}.
 
@@ -161,9 +161,9 @@ Pokazuje to, że poszczególne anomalie wpływają na różne grupy metryk: utra
     \end{tabular}
 \end{table}
 
-Najbardziej bezpośrednio działanie detektora strat obrazuje scenariusz \texttt{BURST\_LOSS}: trzy kolejne braki pakietów obniżają PDR do $40\%$ i~wyznaczają maksymalny blackout o~długości $3 \cdot 100~\mu s~= {,}30$ ms.
+Najbardziej bezpośrednio działanie detektora strat obrazuje scenariusz \texttt{BURST\_LOSS}: trzy kolejne braki pakietów obniżają PDR do $40\%$ i~wyznaczają maksymalny blackout o~długości $3 \cdot 100~\mu s~= 0{,}30$ ms.
 Scenariusz \texttt{JITTER} zachowuje PDR równy $100\%$, lecz zwiększa jitter do $58{,}31~\mu s$, co pokazuje, że niezawodność dostarczenia nie opisuje stabilności czasowej.
-Z~kolei scenariusz \texttt{QUEUING\_AND\_DRIFT} nie zawiera strat ani duplikatów, ale wykazuje dodatni współczynnik trendu równy ${,}42~\mu s/\mu s$ oraz maksymalne względne opóźnienie $170~\mu s$.
+Z~kolei scenariusz \texttt{QUEUING\_AND\_DRIFT} nie zawiera strat ani duplikatów, ale wykazuje dodatni współczynnik trendu równy $0{,}42~\mu s/\mu s$ oraz maksymalne względne opóźnienie $170~\mu s$.
 Wynik ten może wskazywać na narastanie opóźnienia.
 
 \section{Skuteczność dostarczania i~analiza duplikatów (PDR)}

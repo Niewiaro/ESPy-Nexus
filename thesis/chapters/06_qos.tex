@@ -230,7 +230,11 @@ if total_duplicates > 0:
 
 Niezawodność sterowania w~systemach wbudowanych określa się nie tylko poprzez wskaźnik skuteczności dostarczania (PDR), ale przede wszystkim poprzez płynność tego procesu.
 W~idealnych, teoretycznych warunkach sieciowych pakiety danych nadawane ze stałą częstotliwością $f$ powinny docierać do mikrokontrolera w~równych odstępach czasu, określanych jako \textbf{oczekiwany czas między pakietami} (\textit{ang. IAT - Expected Inter-Arrival Time}).
-W~implementacji, w~której czas wyrażany jest w~mikrosekundach, wartość ta wynosi $IAT_{expected} = \frac{10^6}{f}$~us.
+W~implementacji, w~której czas wyrażany jest w~mikrosekundach, wartość tę wyznacza się zgodnie z~równaniem \ref{eq:iat_expected}:
+\begin{equation}
+    IAT_{expected} = \frac{10^6}{f}
+    \label{eq:iat_expected}
+\end{equation}
 
 W~rzeczywistości zjawiska zachodzące w~różnych warstwach stosu komunikacyjnego, takie jak unikanie kolizji w~sieciach bezprzewodowych (algorytm CSMA/CA w~Wi-Fi), narzuty związane z~obsługą ramek w~systemie operacyjnym Windows oraz kolejkowanie w~stosie LwIP na układzie ESP32, wprowadzają zmienność czasów odbioru.
 W~efekcie, pakiety ulegają ścieśnieniu lub rozciągnięciu w~dziedzinie czasu.
@@ -508,7 +512,11 @@ Nie jest więc bezpośrednim pomiarem czasu spędzonego w~konkretnym buforze.
 \subsection{Regresja liniowa i~detekcja zatorów (Queuing Delay)}
 
 Aby opisać kierunek zmian względnego opóźnienia, zaimplementowano algorytm regresji liniowej wykorzystujący metodę najmniejszych kwadratów (\textit{Least Squares}) z~biblioteki \texttt{NumPy}.
-Funkcja \texttt{np.polyfit(x, y, 1)} dopasowuje do wykresu opóźnień wielomian pierwszego stopnia w~postaci $y~= ax + b$, wyodrębniając współczynnik kierunkowy prostej $a$ (\texttt{slope}).
+Funkcja \texttt{np.polyfit(x, y, 1)} dopasowuje do wykresu opóźnień wielomian pierwszego stopnia zgodnie z~równaniem \ref{eq:linear_regression}, wyodrębniając współczynnik kierunkowy prostej $a$ (\texttt{slope}).
+\begin{equation}
+    y = ax + b
+    \label{eq:linear_regression}
+\end{equation}
 \begin{itemize}
     \item Jeśli $a~\approx 0$, względne opóźnienie nie wykazuje wyraźnego trendu liniowego.
     \item Jeśli $a~> 0$, względne opóźnienie rośnie w~czasie, co może wskazywać na narastanie kolejek.

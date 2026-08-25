@@ -1,0 +1,50 @@
+\chapter*{Wykaz oznaczeń}
+\addcontentsline{toc}{chapter}{Wykaz oznaczeń}
+
+\section*{Symbole łacińskie}
+
+\begin{description}
+    \item[$a$] - współczynnik kierunkowy regresji liniowej, \(\mathrm{\mu s/\mu s}\), % eq:linear_regression
+    \item[$b$] - wyraz wolny regresji liniowej, % eq:linear_regression
+    \item[$f$] - częstotliwość nadawania pakietów, \(\mathrm{Hz}\), % eq:iat_expected
+    \item[$IAT$] - odstęp między kolejnymi pakietami (\textit{ang. Inter-Arrival Time}), \(\mathrm{\mu s}\), % eq:iat, eq:mean_iat, eq:jitter, eq:cv
+    \item[$L_B$] - długość zdarzenia utraty seryjnej, \(\mathrm{pak.}\), % eq:blackout
+    \item[$N$] - liczba elementów próby, % eq:mean_iat
+    \item[$OWD$] - jednokierunkowe opóźnienie transmisji (\textit{ang. One-Way Delay}), % eq:owd_raw
+    \item[$PDR$] - współczynnik dostarczenia pakietów (\textit{ang. Packet Delivery Ratio}), \(\mathrm{\%}\), % eq:pdr
+    \item[$S$] - rozmiar, \(\mathrm{B}\), % eq:goodput
+    \item[$T$] - czas, % eq:owd_raw, eq:goodput, eq:clock_drift, eq:clock_drift_analysis
+    \item[$t$] - stempel czasowy pakietu, \(\mathrm{\mu s}\), % eq:iat
+    \item[$CV$] - współczynnik zmienności (\textit{ang. Coefficient of Variation}), \(\mathrm{\%}\), % eq:cv
+    \item[$Goodput$] - przepływność użyteczna, \(\mathrm{B/s}\), % eq:mock_goodput, eq:goodput
+    \item[$Jitter$] - zmienność odstępów między pakietami, \(\mathrm{\mu s}\), % eq:jitter
+    \item[$Drift$] - względna różnica czasu wskazywana przez zegary, \(\mathrm{PPM}\), % eq:clock_drift, eq:clock_drift_analysis
+    \item[$Displacement$] - przesunięcie identyfikatora pakietu, % eq:displacement
+    \item[$Delay$] - względne opóźnienie transmisji, \(\mathrm{\mu s}\). % eq:relative_delay
+\end{description}
+
+\section*{Symbole greckie}
+
+\begin{description}
+    \item[$\Delta$] - różnica lub przyrost wartości, % eq:goodput, eq:clock_drift, eq:clock_drift_analysis
+    \item[$\mu$] - średnia arytmetyczna, % eq:mean_iat, eq:jitter, eq:cv
+    \item[$\sigma$] - odchylenie standardowe. % eq:jitter, eq:cv
+\end{description}
+
+\section*{Indeksy dolne}
+
+\begin{description}
+    \item[$B$] - zdarzenie utraty seryjnej (\textit{ang. Burst}), % eq:blackout
+    \item[$ESP32$] - wartość zmierzona przez układ ESP32, % eq:owd_raw, eq:clock_drift, eq:clock_drift_analysis
+    \item[$PC$] - wartość zmierzona przez komputer PC, % eq:owd_raw, eq:clock_drift, eq:clock_drift_analysis
+    \item[$expected$] - wartość oczekiwana, % eq:blackout
+    \item[$max$] - wartość maksymalna, % eq:blackout, eq:displacement
+    \item[$min$] - wartość minimalna, % eq:relative_delay
+    \item[$payload$] - ładunek użyteczny, % eq:goodput
+    \item[$raw$] - wartość surowa, % eq:owd_raw
+    \item[$relative$] - wartość względna, % eq:relative_delay
+    \item[$sent$] - pakiety wysłane, % eq:pdr
+    \item[$unique$] - pakiety unikalne. % eq:pdr, eq:goodput
+    \item[$i$] - indeks kolejnego pakietu lub elementu próby, % eq:iat, eq:mean_iat, eq:jitter
+    \item[$PPM$] - części na milion (\textit{ang. Parts Per Million}). % eq:clock_drift, eq:clock_drift_analysis
+\end{description}

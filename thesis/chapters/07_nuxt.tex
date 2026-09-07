@@ -227,7 +227,7 @@ Szablon ten (Listing \ref{lst:app_vue}) zapewnia jednolitą strukturę otaczają
 \begin{listing}[htbp]
 	\caption{Szablon główny aplikacji integrujący system trasowania Nuxt (\texttt{app.vue}) \cite{espy_nexus_nuxt_dashboard}.}
 	\label{lst:app_vue}
-	\begin{minted}[fontsize=\footnotesize, linenos]{html}
+	\begin{minted}[fontsize=\footnotesize, linenos]{vue}
 <template>
 	<UApp :locale="locales[locale]">
 		<NuxtRouteAnnouncer />
@@ -433,7 +433,7 @@ Przykład wykorzystania gotowych kontrolerów do budowy zaawansowanego panelu fi
 \begin{listing}[htbp]
 	\caption{Deklaratywna budowa interfejsu sterującego z~użyciem zoptymalizowanych komponentów Nuxt UI (\texttt{DataExplorerFilters.vue}) \cite{espy_nexus_nuxt_dashboard}.}
 	\label{lst:data_explorer_filters}
-	\begin{minted}[fontsize=\footnotesize, linenos]{html}
+	\begin{minted}[fontsize=\footnotesize, linenos]{vue}
 <template>
 	<UAccordion
 		:items="accordionItems"
@@ -492,7 +492,7 @@ Rozwiązanie to jest w~pełni zintegrowane z~komponentem Nuxt UI \texttt{<UTable
 \begin{listing}[htbp]
 	\caption{Deklaratywne podłączanie silnika TanStack Table do interfejsu wizualnego Nuxt UI (\texttt{data.vue}) \cite{espy_nexus_nuxt_dashboard}.}
 	\label{lst:data_vue_table}
-	\begin{minted}[fontsize=\footnotesize, linenos]{html}
+	\begin{minted}[fontsize=\footnotesize, linenos]{vue}
 <UTable
 	ref="table"
 	v-model:pagination="pagination"
